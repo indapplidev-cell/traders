@@ -1,0 +1,19 @@
+{
+  "artifact": "FINALIST_FREEZE_HANDOFF",
+  "content_hash": "b15aa76736e86fff81f2a12dcc9ae40d16832529c2b137fba635ece8db75d1e3",
+  "dataset_fingerprint": "799b6509efdc0de4903381d0a60d9d6474e9166ddea999f381d571e1d6efa9d2",
+  "finalists": [],
+  "freeze_id": "finalist-freeze:v1:b15aa76736e86fff81f2a12dcc9ae40d16832529c2b137fba635ece8db75d1e3",
+  "holdout_opened": false,
+  "holdout_reads": 0,
+  "lifecycle_optimization_executed": false,
+  "profile": "trade-5m-v2",
+  "promotion_eligible": false,
+  "ranking_policy_fingerprint": "c9e9bf68988b7436d8af2824139031c8196245f5a606e01e764efba7d288889a",
+  "reason": "ZERO_ELIGIBLE_VALIDATION_FINALISTS",
+  "schema_version": 1,
+  "symbol": "SUIUSDT",
+  "validation_policy_fingerprint": "e1a77eee8eb331556fa2c97ff218a883be3c51e14e0708aa8fa9bf40dad75545",
+  "validation_ranking_handoff_fingerprint": "cfc33bfc2b70d1286500d22d0b21e6f6278d68135690c80edc904b3437dcba69",
+  "validation_split_fingerprint": "5fc5ca21c4f65b03eda5aa642874959d4e068ee4ecbd0adcd5d7fcdc76a8f433"
+}

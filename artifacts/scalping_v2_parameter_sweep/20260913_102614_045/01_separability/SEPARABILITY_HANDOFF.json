@@ -1,0 +1,1521 @@
+{
+  "artifact": "SEPARABILITY_HANDOFF",
+  "descriptive_evidence_only": true,
+  "features": [
+    {
+      "categories": [
+        {
+          "category": "10",
+          "count": 3,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 3,
+          "share_of_losers": 0.25,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "11",
+          "count": 2,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 2,
+          "share_of_losers": 0.16666666666666666,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "13",
+          "count": 1,
+          "lift_vs_global_win_rate": 7.0,
+          "loss_rate": 0.0,
+          "losses": 0,
+          "share_of_losers": 0.0,
+          "share_of_winners": 0.5,
+          "win_rate": 1.0,
+          "wins": 1
+        },
+        {
+          "category": "14",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "15",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "16",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "18",
+          "count": 2,
+          "lift_vs_global_win_rate": 3.5,
+          "loss_rate": 0.5,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.5,
+          "win_rate": 0.5,
+          "wins": 1
+        },
+        {
+          "category": "3",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "4",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        },
+        {
+          "category": "8",
+          "count": 1,
+          "lift_vs_global_win_rate": 0.0,
+          "loss_rate": 1.0,
+          "losses": 1,
+          "share_of_losers": 0.08333333333333333,
+          "share_of_winners": 0.0,
+          "win_rate": 0.0,
+          "wins": 0
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CYCLIC",
+      "direction": "CATEGORY_DEPENDENT",
+      "do_not_generate_linear_min_max_range": true,
+      "feature": "utc_hour",
+      "missingness": 0.0,
+      "period": 24,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CYCLIC",
+      "separation_score": 0.9166666666666665,
+      "stability_score": 1.0,
+      "usable": true
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_LOWER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "atr_normalized_stop",
+      "loser_distribution": {
+        "mean": 0.9651588572278093,
+        "median": 0.9712113293657907,
+        "p10": 0.6640465617977445,
+        "p25": 0.7732327433628728,
+        "p50": 0.9712113293657907,
+        "p75": 1.134377946634932,
+        "p90": 1.3353389838658978
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.5833333333333333,
+      "stability_score": 1.0,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 0.5726146365666158,
+        "median": 0.5726146365666158,
+        "p10": 0.4048070652443702,
+        "p25": 0.4677349044902123,
+        "p50": 0.5726146365666158,
+        "p75": 0.6774943686430194,
+        "p90": 0.7404222078888615
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_HIGHER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "planned_rr",
+      "loser_distribution": {
+        "mean": 2.1715810125000004,
+        "median": 1.9339179199999998,
+        "p10": 1.497788322,
+        "p25": 1.7593563975000002,
+        "p50": 1.9339179199999998,
+        "p75": 2.5873344525,
+        "p90": 2.825286252
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.5833333333333333,
+      "stability_score": 1.0,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 3.22199198,
+        "median": 3.22199198,
+        "p10": 2.689455868,
+        "p25": 2.8891569099999996,
+        "p50": 3.22199198,
+        "p75": 3.55482705,
+        "p90": 3.754528092
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_LOWER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "stop_distance_bps",
+      "loser_distribution": {
+        "mean": 33.66117660151347,
+        "median": 34.013763628739376,
+        "p10": 19.39015149768788,
+        "p25": 25.43786705581248,
+        "p50": 34.013763628739376,
+        "p75": 43.28312102997635,
+        "p90": 45.5022402095535
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.5,
+      "stability_score": 0.8333333333333334,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 22.974424115263062,
+        "median": 22.974424115263062,
+        "p10": 14.244403392516592,
+        "p25": 17.518161163546516,
+        "p50": 22.974424115263062,
+        "p75": 28.4306870669796,
+        "p90": 31.70444483800953
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_HIGHER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "entry_reference",
+      "loser_distribution": {
+        "mean": 0.7897583333333333,
+        "median": 0.7925500000000001,
+        "p10": 0.7672,
+        "p25": 0.7847500000000001,
+        "p50": 0.7925500000000001,
+        "p75": 0.8004,
+        "p90": 0.8018700000000001
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.5,
+      "stability_score": 0.7142857142857143,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 0.8009999999999999,
+        "median": 0.8009999999999999,
+        "p10": 0.79996,
+        "p25": 0.8003499999999999,
+        "p50": 0.8009999999999999,
+        "p75": 0.8016500000000001,
+        "p90": 0.80204
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_LOWER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "spread_bps",
+      "loser_distribution": {
+        "mean": 1.2668320630208536,
+        "median": 1.2621879928492743,
+        "p10": 1.2483773218583125,
+        "p25": 1.2499218798825074,
+        "p50": 1.2621879928492743,
+        "p75": 1.274778507234368,
+        "p90": 1.3014164146052605
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.5,
+      "stability_score": 0.7142857142857143,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 1.2492227908908218,
+        "median": 1.2492227908908218,
+        "p10": 1.2475373934964908,
+        "p25": 1.248169417519365,
+        "p50": 1.2492227908908218,
+        "p75": 1.2502761642622788,
+        "p90": 1.250908188285153
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "SATURDAY",
+          "count": 11,
+          "lift_vs_global_win_rate": 0.6363636363636365,
+          "loss_rate": 0.9090909090909091,
+          "losses": 10,
+          "share_of_losers": 0.8333333333333334,
+          "share_of_winners": 0.5,
+          "win_rate": 0.09090909090909091,
+          "wins": 1
+        },
+        {
+          "category": "SUNDAY",
+          "count": 3,
+          "lift_vs_global_win_rate": 2.3333333333333335,
+          "loss_rate": 0.6666666666666666,
+          "losses": 2,
+          "share_of_losers": 0.16666666666666666,
+          "share_of_winners": 0.5,
+          "win_rate": 0.3333333333333333,
+          "wins": 1
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "CATEGORY_DEPENDENT",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "utc_day_of_week",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.33333333333333337,
+      "stability_score": 1.0,
+      "usable": true
+    },
+    {
+      "categories": [
+        {
+          "category": "LONG",
+          "count": 10,
+          "lift_vs_global_win_rate": 0.7000000000000001,
+          "loss_rate": 0.9,
+          "losses": 9,
+          "share_of_losers": 0.75,
+          "share_of_winners": 0.5,
+          "win_rate": 0.1,
+          "wins": 1
+        },
+        {
+          "category": "SHORT",
+          "count": 4,
+          "lift_vs_global_win_rate": 1.75,
+          "loss_rate": 0.75,
+          "losses": 3,
+          "share_of_losers": 0.25,
+          "share_of_winners": 0.5,
+          "win_rate": 0.25,
+          "wins": 1
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "CATEGORY_DEPENDENT",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "direction",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.25,
+      "stability_score": 1.0,
+      "usable": true
+    },
+    {
+      "categories": [
+        {
+          "category": "LOCAL_5M",
+          "count": 5,
+          "lift_vs_global_win_rate": 1.4000000000000001,
+          "loss_rate": 0.8,
+          "losses": 4,
+          "share_of_losers": 0.3333333333333333,
+          "share_of_winners": 0.5,
+          "win_rate": 0.2,
+          "wins": 1
+        },
+        {
+          "category": "LOCAL_RANGE_BOUNDARY",
+          "count": 9,
+          "lift_vs_global_win_rate": 0.7777777777777778,
+          "loss_rate": 0.8888888888888888,
+          "losses": 8,
+          "share_of_losers": 0.6666666666666666,
+          "share_of_winners": 0.5,
+          "win_rate": 0.1111111111111111,
+          "wins": 1
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "CATEGORY_DEPENDENT",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "target_source",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.16666666666666666,
+      "stability_score": 1.0,
+      "usable": true
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_HIGHER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "atr_value",
+      "loser_distribution": {
+        "mean": 0.002936111111111108,
+        "median": 0.0026458333333333377,
+        "p10": 0.0020483333333333235,
+        "p25": 0.0023270833333333177,
+        "p50": 0.0026458333333333377,
+        "p75": 0.0037166666666666737,
+        "p90": 0.003824166666666679
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.16666666666666674,
+      "stability_score": 0.8571428571428571,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 0.0030666666666666668,
+        "median": 0.0030666666666666668,
+        "p10": 0.002740000000000003,
+        "p25": 0.0028625000000000018,
+        "p50": 0.0030666666666666668,
+        "p75": 0.0032708333333333318,
+        "p90": 0.0033933333333333307
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "WINNERS_HIGHER",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "volatility_buffer",
+      "loser_distribution": {
+        "mean": 0.002936111111111108,
+        "median": 0.0026458333333333377,
+        "p10": 0.0020483333333333235,
+        "p25": 0.0023270833333333177,
+        "p50": 0.0026458333333333377,
+        "p75": 0.0037166666666666737,
+        "p90": 0.003824166666666679
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.16666666666666674,
+      "stability_score": 0.8571428571428571,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 0.0030666666666666668,
+        "median": 0.0030666666666666668,
+        "p10": 0.002740000000000003,
+        "p25": 0.0028625000000000018,
+        "p50": 0.0030666666666666668,
+        "p75": 0.0032708333333333318,
+        "p90": 0.0033933333333333307
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "FLAT",
+          "count": 6,
+          "lift_vs_global_win_rate": 1.1666666666666667,
+          "loss_rate": 0.8333333333333334,
+          "losses": 5,
+          "share_of_losers": 0.4166666666666667,
+          "share_of_winners": 0.5,
+          "win_rate": 0.16666666666666666,
+          "wins": 1
+        },
+        {
+          "category": "UNKNOWN",
+          "count": 8,
+          "lift_vs_global_win_rate": 0.875,
+          "loss_rate": 0.875,
+          "losses": 7,
+          "share_of_losers": 0.5833333333333334,
+          "share_of_winners": 0.5,
+          "win_rate": 0.125,
+          "wins": 1
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "CATEGORY_DEPENDENT",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "regime",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.08333333333333334,
+      "stability_score": 1.0,
+      "usable": true
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "plan_score",
+      "loser_distribution": {
+        "mean": 95.77083333333333,
+        "median": 92.75,
+        "p10": 92.75,
+        "p25": 92.75,
+        "p50": 92.75,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 96.375,
+        "median": 96.375,
+        "p10": 93.47500000000001,
+        "p25": 94.5625,
+        "p50": 96.375,
+        "p75": 98.1875,
+        "p90": 99.275
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "risk_score",
+      "loser_distribution": {
+        "mean": 95.77083333333333,
+        "median": 92.75,
+        "p10": 92.75,
+        "p25": 92.75,
+        "p50": 92.75,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 96.375,
+        "median": 96.375,
+        "p10": 93.47500000000001,
+        "p25": 94.5625,
+        "p50": 96.375,
+        "p75": 98.1875,
+        "p90": 99.275
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_context_score",
+      "loser_distribution": {
+        "mean": 26.666666666666668,
+        "median": 23.75,
+        "p10": 23.75,
+        "p25": 23.75,
+        "p50": 23.75,
+        "p75": 30.75,
+        "p90": 30.75
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 27.25,
+        "median": 27.25,
+        "p10": 24.45,
+        "p25": 25.5,
+        "p50": 27.25,
+        "p75": 29.0,
+        "p90": 30.05
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "source_confidence",
+      "loser_distribution": {
+        "mean": 0.4444444444444445,
+        "median": 0.25,
+        "p10": 0.25,
+        "p25": 0.25,
+        "p50": 0.25,
+        "p75": 0.7166666666666667,
+        "p90": 0.7166666666666667
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 0.48333333333333334,
+        "median": 0.48333333333333334,
+        "p10": 0.2966666666666667,
+        "p25": 0.3666666666666667,
+        "p50": 0.48333333333333334,
+        "p75": 0.6,
+        "p90": 0.67
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "strategy_margin_to_threshold",
+      "loser_distribution": {
+        "mean": 26.44458333333333,
+        "median": 22.75,
+        "p10": 22.75,
+        "p25": 22.75,
+        "p50": 22.75,
+        "p75": 31.617,
+        "p90": 31.617
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 27.183500000000002,
+        "median": 27.183500000000002,
+        "p10": 23.6367,
+        "p25": 24.96675,
+        "p50": 27.183500000000002,
+        "p75": 29.40025,
+        "p90": 30.7303
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "strategy_raw_score",
+      "loser_distribution": {
+        "mean": 91.66666666666667,
+        "median": 88.75,
+        "p10": 88.75,
+        "p25": 88.75,
+        "p50": 88.75,
+        "p75": 95.75,
+        "p90": 95.75
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 92.25,
+        "median": 92.25,
+        "p10": 89.45,
+        "p25": 90.5,
+        "p50": 92.25,
+        "p75": 94.0,
+        "p90": 95.05
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "strategy_score",
+      "loser_distribution": {
+        "mean": 91.44458333333334,
+        "median": 87.75,
+        "p10": 87.75,
+        "p25": 87.75,
+        "p50": 87.75,
+        "p75": 96.617,
+        "p90": 96.617
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.08333333333333326,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 92.18350000000001,
+        "median": 92.18350000000001,
+        "p10": 88.6367,
+        "p25": 89.96675,
+        "p50": 92.18350000000001,
+        "p75": 94.40025,
+        "p90": 95.7303
+      }
+    },
+    {
+      "categories": [],
+      "coverage": 0.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "causal_reset_state",
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "commission_bps",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "CONFIRMED_BY_ANALYSIS",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "confirmation_state",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "dynamic_required_rr",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "effective_total_cost_bps",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "confirmation_or_reference_closed_candle",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "entry_reference_source",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "estimated_p_win",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "expected_ev_r",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "False",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "BOOLEAN",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "has_conflict",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "BOOLEAN",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "categories": [
+        {
+          "category": "NO_IMPULSE",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "impulse_phase",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "categories": [
+        {
+          "category": "True",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "BOOLEAN",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "liquidity_presence",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "BOOLEAN",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "momentum_score",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "net_edge_bps",
+      "loser_distribution": {
+        "mean": 39.291128845,
+        "median": 38.77997128,
+        "p10": 23.908992124,
+        "p25": 30.82665349,
+        "p50": 38.77997128,
+        "p75": 49.144579745,
+        "p90": 56.515413164
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 38.510044765,
+        "median": 38.510044765,
+        "p10": 22.615013097000002,
+        "p25": 28.575649972500003,
+        "p50": 38.510044765,
+        "p75": 48.4444395575,
+        "p90": 54.405076433
+      }
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "probability_sample_size",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "LOW",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "ORDINAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "risk_level",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "ORDINAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "categories": [
+        {
+          "category": "True",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "BOOLEAN",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "risk_pre_approved",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "BOOLEAN",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_confirmation_score",
+      "loser_distribution": {
+        "mean": 30.0,
+        "median": 30.0,
+        "p10": 30.0,
+        "p25": 30.0,
+        "p50": 30.0,
+        "p75": 30.0,
+        "p90": 30.0
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 30.0,
+        "median": 30.0,
+        "p10": 30.0,
+        "p25": 30.0,
+        "p50": 30.0,
+        "p75": 30.0,
+        "p90": 30.0
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "WEAK",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "ORDINAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_quality",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "ORDINAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_quality_score",
+      "loser_distribution": {
+        "mean": 64.99900000000001,
+        "median": 64.999,
+        "p10": 64.999,
+        "p25": 64.999,
+        "p50": 64.999,
+        "p75": 64.999,
+        "p90": 64.999
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 64.999,
+        "median": 64.999,
+        "p10": 64.999,
+        "p25": 64.999,
+        "p50": 64.999,
+        "p75": 64.999,
+        "p90": 64.999
+      }
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_structural_score",
+      "loser_distribution": {
+        "mean": 35.0,
+        "median": 35.0,
+        "p10": 35.0,
+        "p25": 35.0,
+        "p50": 35.0,
+        "p75": 35.0,
+        "p90": 35.0
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 35.0,
+        "median": 35.0,
+        "p10": 35.0,
+        "p25": 35.0,
+        "p50": 35.0,
+        "p75": 35.0,
+        "p90": 35.0
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "SCALP_MOMENTUM_CONTINUATION",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "setup_type",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "slippage_bps",
+      "loser_distribution": {
+        "mean": 2.0,
+        "median": 2.0,
+        "p10": 2.0,
+        "p25": 2.0,
+        "p50": 2.0,
+        "p75": 2.0,
+        "p90": 2.0
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": 2.0,
+        "median": 2.0,
+        "p10": 2.0,
+        "p25": 2.0,
+        "p50": 2.0,
+        "p75": 2.0,
+        "p90": 2.0
+      }
+    },
+    {
+      "categories": [
+        {
+          "category": "causal_invalidation_plus_profile_atr_buffer",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "CATEGORICAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "stop_source",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "CATEGORICAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "categories": [
+        {
+          "category": "False",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "BOOLEAN",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "strategy_cap_applied",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "BOOLEAN",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "categories": [
+        {
+          "category": "GOOD",
+          "count": 14,
+          "lift_vs_global_win_rate": 1.0,
+          "loss_rate": 0.8571428571428571,
+          "losses": 12,
+          "share_of_losers": 1.0,
+          "share_of_winners": 1.0,
+          "win_rate": 0.14285714285714285,
+          "wins": 2
+        }
+      ],
+      "coverage": 1.0,
+      "data_type": "ORDINAL",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "strategy_quality",
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "ORDINAL",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false
+    },
+    {
+      "coverage": 1.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "target_distance_bps",
+      "loser_distribution": {
+        "mean": 67.55796090942643,
+        "median": 67.04490995802625,
+        "p10": 52.183494969520915,
+        "p25": 59.083038687301446,
+        "p50": 67.04490995802625,
+        "p75": 77.40858903555238,
+        "p90": 84.75887147974795
+      },
+      "missingness": 0.0,
+      "period": null,
+      "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": true,
+      "winner_distribution": {
+        "mean": 66.75926755594504,
+        "median": 66.75926755594504,
+        "p10": 50.86592128660399,
+        "p25": 56.825926137606885,
+        "p50": 66.75926755594504,
+        "p75": 76.6926089742832,
+        "p90": 82.65261382528611
+      }
+    },
+    {
+      "coverage": 0.0,
+      "data_type": "NUMERIC",
+      "direction": "NO_CLEAR_DIRECTION",
+      "do_not_generate_linear_min_max_range": false,
+      "feature": "volume_ratio",
+      "loser_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "missingness": 1.0,
+      "period": null,
+      "sample_adequacy_status": "LOW_SAMPLE",
+      "semantic_type": "NUMERIC",
+      "separation_score": 0.0,
+      "stability_score": 0.0,
+      "usable": false,
+      "winner_distribution": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    }
+  ],
+  "purpose": "EMPIRICAL_INPUT_FOR_FUTURE_DATA_DRIVEN_RANGE_GENERATION",
+  "schema_version": 1
+}

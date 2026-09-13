@@ -1,0 +1,3163 @@
+{
+  "artifact": "RANGE_GENERATION_TRACE",
+  "parameters": [
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "effective_total_cost_bps",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "adverse_fill_reserve_bps -> total-cost formula -> effective_total_cost_bps",
+      "parameter": "adverse_fill_reserve_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "break_even_activation_target_progress",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "probability_sample_size",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "bucket_min_sample -> probability sample gate <= probability_sample_size",
+      "parameter": "bucket_min_sample",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EVIDENCE_ACTIVITY_ALL_MISSING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [],
+        "coverage": 0.0,
+        "data_type": "CATEGORICAL",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "causal_reset_state",
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "CATEGORICAL",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "causal_reset_min_conditions -> reset state machine -> causal_reset_state",
+      "parameter": "causal_reset_min_conditions",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [
+          {
+            "category": "CONFIRMED_BY_ANALYSIS",
+            "count": 14,
+            "lift_vs_global_win_rate": 1.0,
+            "loss_rate": 0.8571428571428571,
+            "losses": 12,
+            "share_of_losers": 1.0,
+            "share_of_winners": 1.0,
+            "win_rate": 0.14285714285714285,
+            "wins": 2
+          }
+        ],
+        "coverage": 1.0,
+        "data_type": "CATEGORICAL",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "confirmation_state",
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "CATEGORICAL",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "confirmation count -> 1m refinement state -> confirmation_state",
+      "parameter": "entry_refinement_1m_confirmation_count",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "slippage_bps",
+        "loser_distribution": {
+          "mean": 2.0,
+          "median": 2.0,
+          "p10": 2.0,
+          "p25": 2.0,
+          "p50": 2.0,
+          "p75": 2.0,
+          "p90": 2.0
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": 2.0,
+          "median": 2.0,
+          "p10": 2.0,
+          "p25": 2.0,
+          "p50": 2.0,
+          "p75": 2.0,
+          "p90": 2.0
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": 2.0,
+        "median": 2.0,
+        "p10": 2.0,
+        "p25": 2.0,
+        "p50": 2.0,
+        "p75": 2.0,
+        "p90": 2.0
+      },
+      "mapping_path": "entry_slippage_bps -> paper causal primitives -> slippage_bps",
+      "parameter": "entry_slippage_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EVIDENCE_ACTIVITY_CONSTANT",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": 2.0,
+        "median": 2.0,
+        "p10": 2.0,
+        "p25": 2.0,
+        "p50": 2.0,
+        "p75": 2.0,
+        "p90": 2.0
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "extension_seconds",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "hard_timeout_seconds",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "max_extensions",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [
+          {
+            "category": "True",
+            "count": 14,
+            "lift_vs_global_win_rate": 1.0,
+            "loss_rate": 0.8571428571428571,
+            "losses": 12,
+            "share_of_losers": 1.0,
+            "share_of_winners": 1.0,
+            "win_rate": 0.14285714285714285,
+            "wins": 2
+          }
+        ],
+        "coverage": 1.0,
+        "data_type": "BOOLEAN",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "risk_pre_approved",
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "BOOLEAN",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "max_new_commands_per_cycle -> selector -> downstream approval state",
+      "parameter": "max_new_commands_per_cycle",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [
+          {
+            "category": "True",
+            "count": 14,
+            "lift_vs_global_win_rate": 1.0,
+            "loss_rate": 0.8571428571428571,
+            "losses": 12,
+            "share_of_losers": 1.0,
+            "share_of_winners": 1.0,
+            "win_rate": 0.14285714285714285,
+            "wins": 2
+          }
+        ],
+        "coverage": 1.0,
+        "data_type": "BOOLEAN",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "risk_pre_approved",
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "BOOLEAN",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "max_open_positions -> portfolio gate -> risk_pre_approved",
+      "parameter": "max_open_positions",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "expected_ev_r",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "min_ev_reserve_r -> EV reserve formula -> expected_ev_r",
+      "parameter": "min_ev_reserve_r",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "min_mfe_bps_at_soft_timeout",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": {
+        "minimum_spacing": 0.55515413,
+        "raw_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 28.575649972500003
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 38.510044765
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 48.4444395575
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 22.615013097000002
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 56.515413164
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 38.6450080225
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 1.0
+          }
+        ],
+        "schema_clipped_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 28.57565
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 38.510045
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 48.44444
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 22.615013
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 56.515413
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 38.645008
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 1.0
+          }
+        ]
+      },
+      "final_generated_range": [
+        1.0,
+        22.615013,
+        28.57565,
+        38.510045,
+        48.44444,
+        56.515413
+      ],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "net_edge_bps",
+        "loser_distribution": {
+          "mean": 39.291128845,
+          "median": 38.77997128,
+          "p10": 23.908992124,
+          "p25": 30.82665349,
+          "p50": 38.77997128,
+          "p75": 49.144579745,
+          "p90": 56.515413164
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": true,
+        "winner_distribution": {
+          "mean": 38.510044765,
+          "median": 38.510044765,
+          "p10": 22.615013097000002,
+          "p25": 28.575649972500003,
+          "p50": 38.510044765,
+          "p75": 48.4444395575,
+          "p90": 54.405076433
+        }
+      },
+      "interaction_annotations": [
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "planned_rr",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.08333333333333326,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.33333333333333326,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "entry_reference",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.25,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "spread_bps",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.25,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "atr_value",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.08333333333333337,
+          "interaction_score": 0.08333333333333337,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.16666666666666674,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "volatility_buffer",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.08333333333333337,
+          "interaction_score": 0.08333333333333337,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.16666666666666674,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "NO_CLEAR_DIRECTION + NO_CLEAR_DIRECTION",
+          "feature_a": "net_edge_bps",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.0,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.0,
+          "univariate_score_b": 0.0
+        }
+      ],
+      "loser_distribution_summary": {
+        "mean": 39.291128845,
+        "median": 38.77997128,
+        "p10": 23.908992124,
+        "p25": 30.82665349,
+        "p50": 38.77997128,
+        "p75": 49.144579745,
+        "p90": 56.515413164
+      },
+      "mapping_path": "min_net_edge_bps -> economics gate <= expected_net_edge_bps",
+      "parameter": "min_net_edge_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EMPIRICAL_WINNER_DENSE_TRANSITION_SUPPORT_PLUS_CURRENT",
+      "schema_clipping": [
+        {
+          "source": "winner_dense_q0.25",
+          "value": 28.57565
+        },
+        {
+          "source": "winner_dense_q0.5",
+          "value": 38.510045
+        },
+        {
+          "source": "winner_dense_q0.75",
+          "value": 48.44444
+        },
+        {
+          "source": "observed_support_q0.1",
+          "value": 22.615013
+        },
+        {
+          "source": "observed_support_q0.9",
+          "value": 56.515413
+        },
+        {
+          "source": "winner_loser_transition",
+          "value": 38.645008
+        },
+        {
+          "source": "current_authoritative_value",
+          "value": 1.0
+        }
+      ],
+      "winner_distribution_summary": {
+        "mean": 38.510044765,
+        "median": 38.510044765,
+        "p10": 22.615013097000002,
+        "p25": 28.575649972500003,
+        "p50": 38.510044765,
+        "p75": 48.4444395575,
+        "p90": 54.405076433
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "expected_ev_r",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "min_positive_ev_r -> economics gate <= expected_ev_r",
+      "parameter": "min_positive_ev_r",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EVIDENCE_ACTIVITY_ALL_MISSING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "min_remaining_ev_r_at_soft_timeout",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "min_target_progress_at_soft_timeout",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": {
+        "minimum_spacing": 0.03154528,
+        "raw_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 2.8891569099999996
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 3.22199198
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 3.55482705
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 1.497788322
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 3.754528092
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 2.5779549499999996
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 0.6
+          }
+        ],
+        "schema_clipped_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 2.889157
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 3.221992
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 3.554827
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 1.497788
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 3.754528
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 2.577955
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 0.6
+          }
+        ]
+      },
+      "final_generated_range": [
+        0.6,
+        1.497788,
+        2.577955,
+        2.889157,
+        3.221992,
+        3.554827,
+        3.754528
+      ],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "WINNERS_HIGHER",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "planned_rr",
+        "loser_distribution": {
+          "mean": 2.1715810125000004,
+          "median": 1.9339179199999998,
+          "p10": 1.497788322,
+          "p25": 1.7593563975000002,
+          "p50": 1.9339179199999998,
+          "p75": 2.5873344525,
+          "p90": 2.825286252
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.5833333333333333,
+        "stability_score": 1.0,
+        "usable": true,
+        "winner_distribution": {
+          "mean": 3.22199198,
+          "median": 3.22199198,
+          "p10": 2.689455868,
+          "p25": 2.8891569099999996,
+          "p50": 3.22199198,
+          "p75": 3.55482705,
+          "p90": 3.754528092
+        }
+      },
+      "interaction_annotations": [
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_HIGHER",
+          "feature_a": "planned_rr",
+          "feature_b": "entry_reference",
+          "incremental_separation": 0.25,
+          "interaction_score": 0.8333333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_LOWER",
+          "feature_a": "planned_rr",
+          "feature_b": "spread_bps",
+          "incremental_separation": 0.25,
+          "interaction_score": 0.8333333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_HIGHER",
+          "feature_a": "planned_rr",
+          "feature_b": "atr_value",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.75,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.16666666666666674
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_HIGHER",
+          "feature_a": "planned_rr",
+          "feature_b": "volatility_buffer",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.75,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.16666666666666674
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_HIGHER",
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "planned_rr",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5833333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5833333333333333
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_LOWER",
+          "feature_a": "planned_rr",
+          "feature_b": "stop_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5833333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "planned_rr",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": -0.08333333333333326,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "planned_rr",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.08333333333333326,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        }
+      ],
+      "loser_distribution_summary": {
+        "mean": 2.1715810125000004,
+        "median": 1.9339179199999998,
+        "p10": 1.497788322,
+        "p25": 1.7593563975000002,
+        "p50": 1.9339179199999998,
+        "p75": 2.5873344525,
+        "p90": 2.825286252
+      },
+      "mapping_path": "minimum_planned_rr -> engine._gate_result <= planned_rr",
+      "parameter": "minimum_planned_rr",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EMPIRICAL_WINNER_DENSE_TRANSITION_SUPPORT_PLUS_CURRENT",
+      "schema_clipping": [
+        {
+          "source": "winner_dense_q0.25",
+          "value": 2.889157
+        },
+        {
+          "source": "winner_dense_q0.5",
+          "value": 3.221992
+        },
+        {
+          "source": "winner_dense_q0.75",
+          "value": 3.554827
+        },
+        {
+          "source": "observed_support_q0.1",
+          "value": 1.497788
+        },
+        {
+          "source": "observed_support_q0.9",
+          "value": 3.754528
+        },
+        {
+          "source": "winner_loser_transition",
+          "value": 2.577955
+        },
+        {
+          "source": "current_authoritative_value",
+          "value": 0.6
+        }
+      ],
+      "winner_distribution_summary": {
+        "mean": 3.22199198,
+        "median": 3.22199198,
+        "p10": 2.689455868,
+        "p25": 2.8891569099999996,
+        "p50": 3.22199198,
+        "p75": 3.55482705,
+        "p90": 3.754528092
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "net_break_even_protection_enabled",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "estimated_p_win",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "prior_alpha -> beta posterior -> estimated_p_win",
+      "parameter": "prior_alpha",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "estimated_p_win",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "prior_beta -> beta posterior -> estimated_p_win",
+      "parameter": "prior_beta",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 0.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "estimated_p_win",
+        "loser_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        },
+        "missingness": 1.0,
+        "period": null,
+        "sample_adequacy_status": "LOW_SAMPLE",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": null,
+          "median": null,
+          "p10": null,
+          "p25": null,
+          "p50": null,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      },
+      "mapping_path": "probability_confidence_level -> conservative probability formula -> estimated_p_win",
+      "parameter": "probability_confidence_level",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": null,
+        "median": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [
+          {
+            "category": "FLAT",
+            "count": 6,
+            "lift_vs_global_win_rate": 1.1666666666666667,
+            "loss_rate": 0.8333333333333334,
+            "losses": 5,
+            "share_of_losers": 0.4166666666666667,
+            "share_of_winners": 0.5,
+            "win_rate": 0.16666666666666666,
+            "wins": 1
+          },
+          {
+            "category": "UNKNOWN",
+            "count": 8,
+            "lift_vs_global_win_rate": 0.875,
+            "loss_rate": 0.875,
+            "losses": 7,
+            "share_of_losers": 0.5833333333333334,
+            "share_of_winners": 0.5,
+            "win_rate": 0.125,
+            "wins": 1
+          }
+        ],
+        "coverage": 1.0,
+        "data_type": "CATEGORICAL",
+        "direction": "CATEGORY_DEPENDENT",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "regime",
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "CATEGORICAL",
+        "separation_score": 0.08333333333333334,
+        "stability_score": 1.0,
+        "usable": true
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "regime_lookback_candles -> regime-history gate -> observed regime",
+      "parameter": "regime_lookback_candles",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "risk_score",
+        "loser_distribution": {
+          "mean": 95.77083333333333,
+          "median": 92.75,
+          "p10": 92.75,
+          "p25": 92.75,
+          "p50": 92.75,
+          "p75": 100.0,
+          "p90": 100.0
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.08333333333333326,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": 96.375,
+          "median": 96.375,
+          "p10": 93.47500000000001,
+          "p25": 94.5625,
+          "p50": 96.375,
+          "p75": 98.1875,
+          "p90": 99.275
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": 95.77083333333333,
+        "median": 92.75,
+        "p10": 92.75,
+        "p25": 92.75,
+        "p50": 92.75,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "mapping_path": "risk_per_trade_bps -> sizing/risk stages -> risk_score",
+      "parameter": "risk_per_trade_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": 96.375,
+        "median": 96.375,
+        "p10": 93.47500000000001,
+        "p25": 94.5625,
+        "p50": 96.375,
+        "p75": 98.1875,
+        "p90": 99.275
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": null,
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": null,
+      "parameter": "soft_timeout_seconds",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    },
+    {
+      "candidate_calculation": {
+        "minimum_spacing": 0.35755597,
+        "raw_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 17.518161163546516
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 22.974424115263062
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 28.4306870669796
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 14.244403392516592
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 45.5022402095535
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 28.49409387200122
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 50.0
+          }
+        ],
+        "schema_clipped_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 17.518161
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 22.974424
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 28.430687
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 14.244403
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 45.50224
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 28.494094
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 50.0
+          }
+        ]
+      },
+      "final_generated_range": [
+        14.244403,
+        17.518161,
+        22.974424,
+        28.430687,
+        45.50224,
+        50.0
+      ],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "WINNERS_LOWER",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "stop_distance_bps",
+        "loser_distribution": {
+          "mean": 33.66117660151347,
+          "median": 34.013763628739376,
+          "p10": 19.39015149768788,
+          "p25": 25.43786705581248,
+          "p50": 34.013763628739376,
+          "p75": 43.28312102997635,
+          "p90": 45.5022402095535
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.5,
+        "stability_score": 0.8333333333333334,
+        "usable": true,
+        "winner_distribution": {
+          "mean": 22.974424115263062,
+          "median": 22.974424115263062,
+          "p10": 14.244403392516592,
+          "p25": 17.518161163546516,
+          "p50": 22.974424115263062,
+          "p75": 28.4306870669796,
+          "p90": 31.70444483800953
+        }
+      },
+      "interaction_annotations": [
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_HIGHER",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "atr_value",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.6666666666666667,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.16666666666666674
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_HIGHER",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "entry_reference",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.6666666666666667,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_LOWER",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "spread_bps",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.6666666666666667,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_HIGHER",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "volatility_buffer",
+          "incremental_separation": 0.16666666666666674,
+          "interaction_score": 0.6666666666666667,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.16666666666666674
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + WINNERS_LOWER",
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "stop_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5833333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + WINNERS_LOWER",
+          "feature_a": "planned_rr",
+          "feature_b": "stop_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5833333333333333,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.5
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "net_edge_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        }
+      ],
+      "loser_distribution_summary": {
+        "mean": 33.66117660151347,
+        "median": 34.013763628739376,
+        "p10": 19.39015149768788,
+        "p25": 25.43786705581248,
+        "p50": 34.013763628739376,
+        "p75": 43.28312102997635,
+        "p90": 45.5022402095535
+      },
+      "mapping_path": "stop_max_bps -> engine._gate_result >= stop_distance_bps",
+      "parameter": "stop_max_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EMPIRICAL_WINNER_DENSE_TRANSITION_SUPPORT_PLUS_CURRENT",
+      "schema_clipping": [
+        {
+          "source": "winner_dense_q0.25",
+          "value": 17.518161
+        },
+        {
+          "source": "winner_dense_q0.5",
+          "value": 22.974424
+        },
+        {
+          "source": "winner_dense_q0.75",
+          "value": 28.430687
+        },
+        {
+          "source": "observed_support_q0.1",
+          "value": 14.244403
+        },
+        {
+          "source": "observed_support_q0.9",
+          "value": 45.50224
+        },
+        {
+          "source": "winner_loser_transition",
+          "value": 28.494094
+        },
+        {
+          "source": "current_authoritative_value",
+          "value": 50.0
+        }
+      ],
+      "winner_distribution_summary": {
+        "mean": 22.974424115263062,
+        "median": 22.974424115263062,
+        "p10": 14.244403392516592,
+        "p25": 17.518161163546516,
+        "p50": 22.974424115263062,
+        "p75": 28.4306870669796,
+        "p90": 31.70444483800953
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "strategy_score",
+        "loser_distribution": {
+          "mean": 91.44458333333334,
+          "median": 87.75,
+          "p10": 87.75,
+          "p25": 87.75,
+          "p50": 87.75,
+          "p75": 96.617,
+          "p90": 96.617
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.08333333333333326,
+        "stability_score": 0.0,
+        "usable": false,
+        "winner_distribution": {
+          "mean": 92.18350000000001,
+          "median": 92.18350000000001,
+          "p10": 88.6367,
+          "p25": 89.96675,
+          "p50": 92.18350000000001,
+          "p75": 94.40025,
+          "p90": 95.7303
+        }
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": {
+        "mean": 91.44458333333334,
+        "median": 87.75,
+        "p10": 87.75,
+        "p25": 87.75,
+        "p50": 87.75,
+        "p75": 96.617,
+        "p90": 96.617
+      },
+      "mapping_path": "strategy_minimum_score -> engine._gate_result >= strategy_score",
+      "parameter": "strategy_minimum_score",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EVIDENCE_ACTIVITY_EFFECTIVELY_CONSTANT",
+      "schema_clipping": null,
+      "winner_distribution_summary": {
+        "mean": 92.18350000000001,
+        "median": 92.18350000000001,
+        "p10": 88.6367,
+        "p25": 89.96675,
+        "p50": 92.18350000000001,
+        "p75": 94.40025,
+        "p90": 95.7303
+      }
+    },
+    {
+      "candidate_calculation": {
+        "minimum_spacing": 0.3389295,
+        "raw_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 56.825926137606885
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 66.75926755594504
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 76.6926089742832
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 50.86592128660399
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 84.75887147974795
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 66.90208875698565
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 60.0
+          }
+        ],
+        "schema_clipped_candidates": [
+          {
+            "source": "winner_dense_q0.25",
+            "value": 56.825926
+          },
+          {
+            "source": "winner_dense_q0.5",
+            "value": 66.759268
+          },
+          {
+            "source": "winner_dense_q0.75",
+            "value": 76.692609
+          },
+          {
+            "source": "observed_support_q0.1",
+            "value": 50.865921
+          },
+          {
+            "source": "observed_support_q0.9",
+            "value": 84.758871
+          },
+          {
+            "source": "winner_loser_transition",
+            "value": 66.902089
+          },
+          {
+            "source": "current_authoritative_value",
+            "value": 60.0
+          }
+        ]
+      },
+      "final_generated_range": [
+        50.865921,
+        56.825926,
+        60.0,
+        66.759268,
+        76.692609,
+        84.758871
+      ],
+      "input_evidence": {
+        "coverage": 1.0,
+        "data_type": "NUMERIC",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "target_distance_bps",
+        "loser_distribution": {
+          "mean": 67.55796090942643,
+          "median": 67.04490995802625,
+          "p10": 52.183494969520915,
+          "p25": 59.083038687301446,
+          "p50": 67.04490995802625,
+          "p75": 77.40858903555238,
+          "p90": 84.75887147974795
+        },
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "NUMERIC",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": true,
+        "winner_distribution": {
+          "mean": 66.75926755594504,
+          "median": 66.75926755594504,
+          "p10": 50.86592128660399,
+          "p25": 56.825926137606885,
+          "p50": 66.75926755594504,
+          "p75": 76.6926089742832,
+          "p90": 82.65261382528611
+        }
+      },
+      "interaction_annotations": [
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "planned_rr",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.08333333333333326,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "stop_distance_bps",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.5,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.33333333333333326,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5833333333333333,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "entry_reference",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.25,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_LOWER + NO_CLEAR_DIRECTION",
+          "feature_a": "spread_bps",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.25,
+          "interaction_score": 0.25,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.5,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "atr_value",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.08333333333333337,
+          "interaction_score": 0.08333333333333337,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.16666666666666674,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "WINNERS_HIGHER + NO_CLEAR_DIRECTION",
+          "feature_a": "volatility_buffer",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": -0.08333333333333337,
+          "interaction_score": 0.08333333333333337,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.16666666666666674,
+          "univariate_score_b": 0.0
+        },
+        {
+          "direction_category_pattern": "NO_CLEAR_DIRECTION + NO_CLEAR_DIRECTION",
+          "feature_a": "net_edge_bps",
+          "feature_b": "target_distance_bps",
+          "incremental_separation": 0.0,
+          "interaction_score": 0.0,
+          "sample_count": 14,
+          "stability_notes": "DESCRIPTIVE_ONLY_BOUNDED_PAIRWISE_SCREEN",
+          "univariate_score_a": 0.0,
+          "univariate_score_b": 0.0
+        }
+      ],
+      "loser_distribution_summary": {
+        "mean": 67.55796090942643,
+        "median": 67.04490995802625,
+        "p10": 52.183494969520915,
+        "p25": 59.083038687301446,
+        "p50": 67.04490995802625,
+        "p75": 77.40858903555238,
+        "p90": 84.75887147974795
+      },
+      "mapping_path": "target_min_bps -> engine._gate_result <= target_distance_bps",
+      "parameter": "target_min_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "EMPIRICAL_WINNER_DENSE_TRANSITION_SUPPORT_PLUS_CURRENT",
+      "schema_clipping": [
+        {
+          "source": "winner_dense_q0.25",
+          "value": 56.825926
+        },
+        {
+          "source": "winner_dense_q0.5",
+          "value": 66.759268
+        },
+        {
+          "source": "winner_dense_q0.75",
+          "value": 76.692609
+        },
+        {
+          "source": "observed_support_q0.1",
+          "value": 50.865921
+        },
+        {
+          "source": "observed_support_q0.9",
+          "value": 84.758871
+        },
+        {
+          "source": "winner_loser_transition",
+          "value": 66.902089
+        },
+        {
+          "source": "current_authoritative_value",
+          "value": 60.0
+        }
+      ],
+      "winner_distribution_summary": {
+        "mean": 66.75926755594504,
+        "median": 66.75926755594504,
+        "p10": 50.86592128660399,
+        "p25": 56.825926137606885,
+        "p50": 66.75926755594504,
+        "p75": 76.6926089742832,
+        "p90": 82.65261382528611
+      }
+    },
+    {
+      "candidate_calculation": null,
+      "final_generated_range": [],
+      "input_evidence": {
+        "categories": [
+          {
+            "category": "True",
+            "count": 14,
+            "lift_vs_global_win_rate": 1.0,
+            "loss_rate": 0.8571428571428571,
+            "losses": 12,
+            "share_of_losers": 1.0,
+            "share_of_winners": 1.0,
+            "win_rate": 0.14285714285714285,
+            "wins": 2
+          }
+        ],
+        "coverage": 1.0,
+        "data_type": "BOOLEAN",
+        "direction": "NO_CLEAR_DIRECTION",
+        "do_not_generate_linear_min_max_range": false,
+        "feature": "risk_pre_approved",
+        "missingness": 0.0,
+        "period": null,
+        "sample_adequacy_status": "DESCRIPTIVE_ONLY",
+        "semantic_type": "BOOLEAN",
+        "separation_score": 0.0,
+        "stability_score": 0.0,
+        "usable": false
+      },
+      "interaction_annotations": [],
+      "loser_distribution_summary": null,
+      "mapping_path": "total_open_risk_limit_bps -> portfolio risk gate -> risk_pre_approved",
+      "parameter": "total_open_risk_limit_bps",
+      "policy_provenance": {
+        "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+        "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+        "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+        "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+        "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+        "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+        "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+        "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+        "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+        "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+        "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+        "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+        "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+        "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+        "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+        "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+      },
+      "policy_values_used": {
+        "boundary_pressure_quantile": 0.75,
+        "boundary_pressure_tolerance_fraction": 0.05,
+        "generator_version": "data-driven-ranges-v1",
+        "high_confidence_min_separation": 0.7,
+        "high_confidence_min_stability": 0.7,
+        "low_sample_minimum_points": 3,
+        "max_generated_points": 7,
+        "medium_confidence_min_separation": 0.4,
+        "medium_confidence_min_stability": 0.4,
+        "minimum_observed_coverage": 0.8,
+        "minimum_spacing_fraction": 0.01,
+        "observed_support_quantiles": [
+          0.1,
+          0.9
+        ],
+        "preserve_current_value_under_low_confidence": true,
+        "rounding_decimal_places": 6,
+        "transition_weight": 0.5,
+        "winner_dense_quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "reason": "NO_AUTHORIZED_NUMERIC_DIRECT_RANGE_MAPPING",
+      "schema_clipping": null,
+      "winner_distribution_summary": null
+    }
+  ],
+  "schema_version": 1
+}

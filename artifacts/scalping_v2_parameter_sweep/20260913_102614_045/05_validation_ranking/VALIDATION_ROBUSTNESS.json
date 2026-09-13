@@ -1,0 +1,887 @@
+{
+  "artifact": "VALIDATION_ROBUSTNESS",
+  "descriptive_behavioral": [
+    {
+      "behavioral_signature": "0e4806c389670a938ed6bb1623810c13c00c34b5db1621a83777628822cf7a61",
+      "representative_config_id": "f71212a4a8d277f29e7b201d55e040ecb150099379d212a8c7521451f264ff7c",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "f13f65644185877297440277f8234c5a4757085022dea0ac461723df5353b4a5",
+      "representative_config_id": "f6ba51ab0e7cdc7e738592fc1ebed38e49d789b6c2e58d31f3b09cc18b57456f",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "7bf2f398a7dec67392453781543269d6ff681eb4c80eca50407f7bec5a4721b2",
+      "representative_config_id": "f1608d9adbb2bf52ae4088bd71b85e9f481b7a2fbeabd7590aea4e44006a81d2",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "23f3db588e1ccb4bc4cda78f057d40cf5df07b73a51a70f07630ffd26c3918b5",
+      "representative_config_id": "ee611749b2104978976121d852e03939f1f9da50d1e2c2fe57e276a5c9589593",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "33f62f51139f4373abeea14a83793e85dd0aa90a07c30c5a6b0dce5db178a56c",
+      "representative_config_id": "eaa8e5542abf6cf3da8c80d006018fbd407282a16442646c25ab48cc3896fd76",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "ce6b0301fb37c0181244ac51ef4c5ecbe504172fd78f6c885fa63d1cfcec3e8d",
+      "representative_config_id": "e6cc57eb3db75c84d6861cf4dd2cb2df4f8f6229cc2f30ef4b85673b336edd5a",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 2,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 2
+        }
+      }
+    },
+    {
+      "behavioral_signature": "00ef8273209473f793138cbd0c046202b25a1eab64fb9d5f8caebf4b24937154",
+      "representative_config_id": "e17568c5c47fc50ccb29502c96a08f5e7e5e0f382bac778282d117459121a6c2",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 3,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 3
+        }
+      }
+    },
+    {
+      "behavioral_signature": "8bd60c0a1e1a352f03c5a9b029ce5d774bfdfe22f927cb1592e1768a414a08f2",
+      "representative_config_id": "e01439c88c178f983154df4311836fc6aae852ace9061ee5df716b80e3281b4d",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 3,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 3
+        }
+      }
+    },
+    {
+      "behavioral_signature": "233f4603c6eec0f515d6f0f5634c0282b4646830cdcbcb38eb81e0d0178785a2",
+      "representative_config_id": "fedc50f1caf1461157a1d9bd4c8a1f2526f9dd511a69a7a942063cc89e2ab298",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05",
+          "2026-09-06"
+        ],
+        "independent_period_count": 2,
+        "max_trades_in_one_period": null,
+        "number_of_non_empty_periods": 2,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 2,
+        "trade_distribution_by_period": "NOT_AVAILABLE_FROM_ACCEPTED_COMPACT_ARTIFACT"
+      }
+    },
+    {
+      "behavioral_signature": "e60503ef7d12ab3f1302b2900a871a8f34bd4977607833bd75ffabca9b1a8b9b",
+      "representative_config_id": "ef03537be4b2c6b6f497407b32719e8e575428d1dd2f3437c58960dd72448242",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05",
+          "2026-09-06"
+        ],
+        "independent_period_count": 2,
+        "max_trades_in_one_period": null,
+        "number_of_non_empty_periods": 2,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 2,
+        "trade_distribution_by_period": "NOT_AVAILABLE_FROM_ACCEPTED_COMPACT_ARTIFACT"
+      }
+    },
+    {
+      "behavioral_signature": "9bcb380db460b500471db0c0efe883783a82c4d43f35a8a47df74a7702333a26",
+      "representative_config_id": "ffb92002472fb6b07aa1a3566d0765ddaa44f0df1a2419dc6119c9eb46776ec3",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "515e4a1e5ffb71279d40e7d909702812a1a525423a2d6423fb363a0a6bda9023",
+      "representative_config_id": "ffaa36eace5c5dec5b175ce966c6f5c4a3bae535036dd70c806237810a57d3c1",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "285d7e7fdbe9ad79817ea55dc63c01f73e5ef5bd92bbcf30d00320e5f55dbe50",
+      "representative_config_id": "fe5eb3d3f47ce3ad5a52c431696aa12f839b2f8ee73841c13ef2067201d5b5ff",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "79acae695771675442ae57f28399ced272bf59fb36b503cd71a50f0ac0277809",
+      "representative_config_id": "fd5639f233fa3405a7a62d894892c7b66a4c36a6c367ec07f7e0ae45c1b864e6",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "8cd56de483a1988876afc192654c748a01561a81214316309ac1650e897b9dc8",
+      "representative_config_id": "f8782a104b6c567303b238039663678ec124df698d40244495a25332cc24a5c1",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "6115db8529024fc2113dc9818b88f59f25b4ecd5ed54b277b7dcacc2698cecd1",
+      "representative_config_id": "f6a76b4c4b4054e35c9140f89c66f36999a11d0cbbc671d4db1c496458e89e8f",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "3ebe38fb83ab242ee0f3e5e8bf09d4bc2f681ac4e37772be96ebe54575f96de0",
+      "representative_config_id": "f4763729d2204f954a822306501a1e8000518fea72325f91f9441bcbc841d93f",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "57e037a5bca8c347b08a14a094eefb32caf1058b0358b0c8a8bf765873605234",
+      "representative_config_id": "f3f420fe94df7f7113935b4ee9ad4d1683694d204a0f3c334b1f3ad717a9ae30",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "bd308d393f64b7237c13833ea999d5b2a8e6bd567993386a25857628e34ae8f9",
+      "representative_config_id": "edd2dd45d26450f7252d3f7376728f1a5827995aae22b1397c28a58876735882",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "63d0da849089570dd6a4f45e039e7bfa40cd4332dfe8360cb1dad05202ea062d",
+      "representative_config_id": "ec0cfa1deb7aea966d60610ddb705b39bd4e495f0ca49aa88be4ebc5b769d69f",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "1a57aa9c701a532129b782db9fd1ca16ba0519c88ec341994b0bb674e665d109",
+      "representative_config_id": "e42cc16ed0ce33aed1e4414f1e3dc1dd396e9eb73bc7ade8a74f97194f4cb506",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "b39ce42a0f349e64092a235d8d670ea48529ecf0ca22f1b1985f01deac9e9ecf",
+      "representative_config_id": "e2ef7e718f1eeaf69dc6e096a4ba227335f87505bd1fb9a493d0b11a9bea906e",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "b82d95139ad9e28ce87c308b49ebf68a9f8a2397715c8783229dfbde0c56d89c",
+      "representative_config_id": "e28e4ab5ac20680cfc4aef4ac51f3a23c13414cfa482be8d9dda2549725cec9f",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "d9d3403f71fe7dbc1b56f86e4dd3fe20940fafd489e1b95f8a51077e729d406c",
+      "representative_config_id": "c4f420699b05c06bc04e14849770495b069922d1c6721bd3d65fd9df107aac57",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "95c5d2a54bf637d74cb98ae7d04287446e42f4eb7e67f41b72f624533d3a5905",
+      "representative_config_id": "6ce0a696d2931659c0e25dae59ab48bf86caf18c99971b30617206ab1413a61b",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "e359d9cbd3d1b2b597b5c15c3c0bc29cc1bc83936a736f0e37b6d3daf02f11d0",
+      "representative_config_id": "539c09239eb970fefededddd40b07020002d4fea70688e19d43aa63a299c70bc",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 0,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "305a982bd02fc13ea5c30cab53dff4720c37073e9b9fd1fe407ece48cf8c5cbd",
+      "representative_config_id": "51526e8a94ca8a3c878c813577f7aea73213fb42eadb6037a12dc4b1631b9b3a",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "95af1624d6501dbbbdb0323323e964f16d5231e32e8910534c718908ef13bcb5",
+      "representative_config_id": "0e3797ed6023eece55893e72b4455edfac1caf06b7fc24509b5a6073d4549b46",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [],
+        "independent_period_count": 0,
+        "max_trades_in_one_period": 0,
+        "number_of_non_empty_periods": 0,
+        "regime_coverage": 0,
+        "setup_coverage": 0,
+        "share_of_trades_in_largest_period": null,
+        "slice_count": 1,
+        "trade_distribution_by_period": {}
+      }
+    },
+    {
+      "behavioral_signature": "22bd699a3ec6cd9749172b56166288071420b3c6da7238bd42cded7bf0666b15",
+      "representative_config_id": "f918ca0b3491c6e8833648ef2af13ed19b9fabec15bf526c439ac1101ad63266",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    },
+    {
+      "behavioral_signature": "7be86f6e734a4e4ae9ecca8f83bbc91d851d1bc8e42400c49657dacb5a502629",
+      "representative_config_id": "f902a41e1bd62f6dcdf559e12d535d8af54d14371b3d80a983e45f473c179bc3",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    },
+    {
+      "behavioral_signature": "9bd37800fe58e83c71199d1f170fd9996a9a2e533566d168546e5a298ba88d50",
+      "representative_config_id": "f144d2f67827d059916a061cc604908ca566eb30f576f1216f18d2bb81fa03bc",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    },
+    {
+      "behavioral_signature": "1ea97e07fff727d97cb7b3fbeca79cc119ce5f8d5a7ddae757b813457febbf14",
+      "representative_config_id": "a81087a1d47267a8b4e595b8d0a019cfaaf4396370aa1ab218e1ab0b32baa4b1",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    },
+    {
+      "behavioral_signature": "5be17f2297f66cffd9a4ce3a593940759f3bfc01f91012df7ce5dd5abf10d0e0",
+      "representative_config_id": "8db3c0462bd5c5d6532a76b5b499b30c0627d907b16855f046960e6372da3d9d",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    },
+    {
+      "behavioral_signature": "fc0ed56936eb77dd093eede27f083c8d4047179b6e4016c262c6b5fcba3498c9",
+      "representative_config_id": "89c6560d6e51e3117d00cc3c50d7b489f0563b8dc321501b255ccb6716819fe8",
+      "robustness_diagnostics": {
+        "classification": {
+          "direction_coverage": "DIAGNOSTIC_ONLY",
+          "independent_period_count": "EXISTING_GATE",
+          "regime_coverage": "DIAGNOSTIC_ONLY",
+          "setup_coverage": "EXISTING_GATE",
+          "slice_count": "EXISTING_GATE",
+          "temporal_concentration": "DIAGNOSTIC_ONLY"
+        },
+        "direction_coverage": null,
+        "independent_period_buckets": [
+          "2026-09-05"
+        ],
+        "independent_period_count": 1,
+        "max_trades_in_one_period": 1,
+        "number_of_non_empty_periods": 1,
+        "regime_coverage": 1,
+        "setup_coverage": 1,
+        "share_of_trades_in_largest_period": 1.0,
+        "slice_count": 2,
+        "trade_distribution_by_period": {
+          "2026-09-05": 1
+        }
+      }
+    }
+  ],
+  "diagnostics_add_no_gate": true,
+  "eligibility_gates_unchanged": true,
+  "eligible_behavioral": [],
+  "schema_version": 1
+}

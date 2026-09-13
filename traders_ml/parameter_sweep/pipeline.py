@@ -19,11 +19,13 @@ from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 from .data_driven_ranges import run_range_generation
 from .engine import ReadOnlyResearchDatabase, resolve_database_binding
 from .expanded_search import run_expanded_search
+from .finalist_freeze import run_finalist_freeze, verify_freeze
 from .separability import run_separability
 from .universe import validate_parameter_sweep_symbol
+from .validation_ranking import run_validation_ranking
 
 
-PIPELINE_SCHEMA_VERSION = 1
+PIPELINE_SCHEMA_VERSION = 2
 PIPELINE_NAME = "NEW_SINGLE_SYMBOL_PIPELINE"
 PROFILE = "trade-5m-v2"
 PHASE_ORDER = (
@@ -31,14 +33,18 @@ PHASE_ORDER = (
     "DATA_DRIVEN_RANGE_GENERATION",
     "EXPANDED_AUTOMATIC_SEARCH",
     "ADAPTIVE_REFINEMENT",
+    "VALIDATION_RANKING",
+    "IMMUTABLE_FINALIST_FREEZE",
     "COMPLETED",
 )
-EXECUTION_PHASES = PHASE_ORDER[:4]
+EXECUTION_PHASES = PHASE_ORDER[:6]
 PHASE_DIRECTORIES = {
     "SEPARABILITY": "01_separability",
     "DATA_DRIVEN_RANGE_GENERATION": "02_data_driven_ranges",
     "EXPANDED_AUTOMATIC_SEARCH": "03_expanded_search",
     "ADAPTIVE_REFINEMENT": "04_adaptive_refinement",
+    "VALIDATION_RANKING": "05_validation_ranking",
+    "IMMUTABLE_FINALIST_FREEZE": "06_finalist_freeze",
 }
 
 ProgressCallback = Callable[[Mapping[str, Any]], None]
@@ -71,12 +77,16 @@ class SingleSymbolResearchPipeline:
         range_runner: PhaseRunner = run_range_generation,
         expanded_runner: PhaseRunner = run_expanded_search,
         adaptive_runner: PhaseRunner = run_adaptive_refinement,
+        validation_runner: PhaseRunner = run_validation_ranking,
+        freeze_runner: PhaseRunner = run_finalist_freeze,
     ) -> None:
         self._progress = progress or (lambda _update: None)
         self._separability_runner = separability_runner
         self._range_runner = range_runner
         self._expanded_runner = expanded_runner
         self._adaptive_runner = adaptive_runner
+        self._validation_runner = validation_runner
+        self._freeze_runner = freeze_runner
         self._cancel = threading.Event()
 
     def request_cancel(self) -> None:
@@ -109,6 +119,16 @@ class SingleSymbolResearchPipeline:
             "expanded_search_handoff_fingerprint": None,
             "adaptive_refinement_status": "NOT_STARTED",
             "adaptive_handoff_fingerprint": None,
+            "validation_ranking_status": "NOT_STARTED",
+            "validation_ranking_handoff_fingerprint": None,
+            "validation_ranking_eligible_numeric_count": 0,
+            "validation_ranking_eligible_behavioral_count": 0,
+            "finalist_freeze_status": "NOT_STARTED",
+            "finalist_freeze_id": None,
+            "finalist_freeze_content_hash": None,
+            "finalist_freeze_selected_count": 0,
+            "finalist_freeze_selection_reason": None,
+            "finalist_freeze_handoff_fingerprint": None,
             "dataset_fingerprint": None,
             "legacy_fallback_used": False,
             "legacy_array_fallback": 0,
@@ -118,25 +138,36 @@ class SingleSymbolResearchPipeline:
             "next_stage_available": None,
             "validation_ranking_executed": False,
             "finalist_freeze_executed": False,
+            "holdout_reads": 0,
             "holdout_opened": False,
+            "lifecycle_executed": False,
+            "promotion_eligible": False,
             "live_state": False,
             "binance_order_calls": 0,
             "production_mutations": 0,
             "final_pipeline_status": "RUNNING",
+            "campaign_result": None,
+            "campaign_certification_state": None,
+            "next_stage": None,
             "stop_reason": None,
             "GUI_ORCHESTRATOR": PIPELINE_NAME,
             "PHASE_1": "SEPARABILITY",
             "PHASE_2": "DATA_DRIVEN_RANGE_GENERATION",
             "PHASE_3": "EXPANDED_AUTOMATIC_SEARCH",
             "PHASE_4": "ADAPTIVE_REFINEMENT",
-            "PHASE_5": "COMPLETED",
+            "PHASE_5": "VALIDATION_RANKING",
+            "PHASE_6": "IMMUTABLE_FINALIST_FREEZE",
+            "PHASE_7": "COMPLETED",
             "LEGACY_TARGETED_STAGED_USED": "NO",
             "LEGACY_ARRAY_FALLBACK": 0,
             "handoff_fingerprint_chain": None,
             "symbol_binding": None,
             "resume_guards": [
                 "pipeline_schema_version", "selected_symbol", "profile",
-                "dataset_fingerprint", "phase_handoff_fingerprints",
+                "dataset_fingerprint", "separability_handoff_fingerprint",
+                "range_handoff_fingerprint", "expanded_search_handoff_fingerprint",
+                "adaptive_handoff_fingerprint", "validation_ranking_handoff_fingerprint",
+                "finalist_freeze_id", "finalist_freeze_content_hash",
             ],
         }
 
@@ -161,11 +192,24 @@ class SingleSymbolResearchPipeline:
             ("range_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[1]] / "DATA_DRIVEN_RANGE_HANDOFF.json"),
             ("expanded_search_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[2]] / "EXPANDED_SEARCH_HANDOFF.json"),
             ("adaptive_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[3]] / "ADAPTIVE_REFINEMENT_HANDOFF.json"),
+            ("validation_ranking_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[4]] / "VALIDATION_RANKING_HANDOFF.json"),
+            ("finalist_freeze_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[5]] / "FINALIST_FREEZE_HANDOFF.json"),
         )
         for field, path in checks:
             expected = manifest.get(field)
             if expected is not None and (not path.is_file() or _fingerprint(path) != expected):
                 raise ValueError("FAIL_CLOSED_HANDOFF_MISMATCH")
+        freeze_path = root / PHASE_DIRECTORIES[PHASE_ORDER[5]] / "FINALIST_FREEZE.json"
+        if manifest.get("finalist_freeze_content_hash") is not None:
+            if not freeze_path.is_file():
+                raise ValueError("FAIL_CLOSED_FINALIST_FREEZE_MUTATED")
+            freeze = _read_json(freeze_path)
+            verify_freeze(freeze)
+            if (
+                freeze.get("freeze_id") != manifest.get("finalist_freeze_id")
+                or freeze.get("finalist_freeze_content_hash") != manifest.get("finalist_freeze_content_hash")
+            ):
+                raise ValueError("FAIL_CLOSED_FINALIST_FREEZE_MUTATED")
         dataset_path = root / PHASE_DIRECTORIES[PHASE_ORDER[0]] / "SEPARABILITY_DATASET_MANIFEST.json"
         if manifest.get("dataset_fingerprint") is not None:
             if not dataset_path.is_file() or _read_json(dataset_path).get("dataset_sha256") != manifest["dataset_fingerprint"]:
@@ -198,6 +242,8 @@ class SingleSymbolResearchPipeline:
             "data_driven_ranges": manifest.get("range_handoff_fingerprint"),
             "expanded_search": manifest.get("expanded_search_handoff_fingerprint"),
             "adaptive_refinement": manifest.get("adaptive_handoff_fingerprint"),
+            "validation_ranking": manifest.get("validation_ranking_handoff_fingerprint"),
+            "finalist_freeze": manifest.get("finalist_freeze_handoff_fingerprint"),
         }
         manifest["symbol_binding"] = {
             "gui_selected_symbol": manifest["selected_symbol"],
@@ -206,6 +252,8 @@ class SingleSymbolResearchPipeline:
             "range_generation_symbol": manifest["selected_symbol"] if manifest.get("range_handoff_fingerprint") else None,
             "expanded_search_symbol": manifest["selected_symbol"] if manifest.get("expanded_search_handoff_fingerprint") else None,
             "adaptive_refinement_symbol": manifest["selected_symbol"] if manifest.get("adaptive_handoff_fingerprint") else None,
+            "validation_ranking_symbol": manifest["selected_symbol"] if manifest.get("validation_ranking_handoff_fingerprint") else None,
+            "finalist_freeze_symbol": manifest["selected_symbol"] if manifest.get("finalist_freeze_handoff_fingerprint") else None,
         }
         self._write(root, manifest)
         self._emit(manifest)
@@ -250,6 +298,8 @@ class SingleSymbolResearchPipeline:
         range_dir = root / PHASE_DIRECTORIES[PHASE_ORDER[1]]
         expanded_dir = root / PHASE_DIRECTORIES[PHASE_ORDER[2]]
         adaptive_dir = root / PHASE_DIRECTORIES[PHASE_ORDER[3]]
+        validation_dir = root / PHASE_DIRECTORIES[PHASE_ORDER[4]]
+        freeze_dir = root / PHASE_DIRECTORIES[PHASE_ORDER[5]]
 
         try:
             if manifest["phase_status"][PHASE_ORDER[0]] not in {"COMPLETED", "LIMITED"}:
@@ -292,7 +342,7 @@ class SingleSymbolResearchPipeline:
                     manifest["range_generation_status"] = "STOPPED"
                     return self._finish(
                         root, manifest, status="STOPPED",
-                        reason="STOPPED_NO_DATA_DRIVEN_SEARCH_RANGES",
+                        reason="STOPPED_NO_DATA_DRIVEN_RANGES",
                     )
                 manifest["phase_status"][PHASE_ORDER[1]] = "COMPLETED"
                 manifest["range_generation_status"] = "COMPLETED"
@@ -365,14 +415,132 @@ class SingleSymbolResearchPipeline:
                 manifest["next_stage_available"] = "VALIDATION_RANKING"
                 self._write(root, manifest)
                 self._emit(manifest)
+            cancelled = self._cancel_if_requested(root, manifest)
+            if cancelled:
+                return cancelled
+
+            if manifest["phase_status"][PHASE_ORDER[4]] != "COMPLETED":
+                self._phase_start(root, manifest, PHASE_ORDER[4])
+                validation = self._validation_runner(
+                    symbol=selected, profile=PROFILE, output=validation_dir,
+                    range_handoff_path=range_dir / "DATA_DRIVEN_RANGE_HANDOFF.json",
+                    expanded_config_path=expanded_dir / "EXPANDED_SEARCH_CONFIG.json",
+                    expanded_handoff_path=expanded_dir / "EXPANDED_SEARCH_HANDOFF.json",
+                    expanded_clusters_path=expanded_dir / "BEHAVIORAL_CLUSTERS.json",
+                    expanded_results_path=expanded_dir / "EXPANDED_SEARCH_RESULTS.jsonl",
+                    normalization_path=expanded_dir / "SEARCH_VALUE_NORMALIZATION.json",
+                    adaptive_config_path=adaptive_dir / "ADAPTIVE_REFINEMENT_CONFIG.json",
+                    adaptive_handoff_path=adaptive_dir / "ADAPTIVE_REFINEMENT_HANDOFF.json",
+                    adaptive_clusters_path=adaptive_dir / "ADAPTIVE_BEHAVIORAL_CLUSTERS.json",
+                    adaptive_results_path=adaptive_dir / "ADAPTIVE_RESULTS.jsonl",
+                    dataset_path=sep_dir / "SEPARABILITY_DATASET.jsonl",
+                    dataset_manifest_path=sep_dir / "SEPARABILITY_DATASET_MANIFEST.json",
+                )
+                validation_handoff = dict(validation["handoff"])
+                if validation_handoff.get("symbol") != selected or validation_handoff.get("profile") != PROFILE:
+                    raise ValueError("FAIL_CLOSED_VALIDATION_RANKING_INPUT_MISMATCH")
+                if validation_handoff.get("adaptive_handoff_fingerprint") != manifest["adaptive_handoff_fingerprint"]:
+                    raise ValueError("FAIL_CLOSED_VALIDATION_RANKING_INPUT_MISMATCH")
+                validation_status = dict(validation.get("status", {}))
+                manifest["phase_status"][PHASE_ORDER[4]] = "COMPLETED"
+                manifest["validation_ranking_status"] = "COMPLETED"
+                manifest["validation_ranking_executed"] = True
+                manifest["validation_ranking_handoff_fingerprint"] = _fingerprint(
+                    validation_dir / "VALIDATION_RANKING_HANDOFF.json"
+                )
+                manifest["validation_ranking_eligible_numeric_count"] = int(
+                    validation_status.get("ELIGIBLE_NUMERIC_CONFIGS", 0)
+                )
+                manifest["validation_ranking_eligible_behavioral_count"] = int(
+                    validation_status.get("ELIGIBLE_BEHAVIORAL_CLUSTERS", 0)
+                )
+                manifest["phase_summary"][PHASE_ORDER[4]] = {
+                    "total_numeric_configs": validation_status.get("TOTAL_NUMERIC_CONFIGS", 0),
+                    "total_behavioral_clusters": validation_status.get("TOTAL_BEHAVIORAL_CLUSTERS", 0),
+                    "eligible_numeric_configs": validation_status.get("ELIGIBLE_NUMERIC_CONFIGS", 0),
+                    "eligible_behavioral_clusters": validation_status.get("ELIGIBLE_BEHAVIORAL_CLUSTERS", 0),
+                    "descriptive_behavioral_clusters": validation_status.get("DESCRIPTIVE_BEHAVIORAL_CLUSTERS", 0),
+                    "positive_behavioral_clusters": validation_status.get("POSITIVE_BEHAVIORAL_CLUSTERS", 0),
+                    "result": (
+                        "ZERO_ELIGIBLE_VALID_OUTCOME"
+                        if int(validation_status.get("ELIGIBLE_BEHAVIORAL_CLUSTERS", 0)) == 0
+                        else "VALIDATION_ELIGIBLE_OUTCOME"
+                    ),
+                }
+                manifest["next_stage_available"] = "IMMUTABLE_FINALIST_FREEZE"
+                self._write(root, manifest)
+                self._emit(manifest)
+            cancelled = self._cancel_if_requested(root, manifest)
+            if cancelled:
+                return cancelled
+
+            if manifest["phase_status"][PHASE_ORDER[5]] != "COMPLETED":
+                self._phase_start(root, manifest, PHASE_ORDER[5])
+                validation_handoff = _read_json(validation_dir / "VALIDATION_RANKING_HANDOFF.json")
+                freeze = self._freeze_runner(
+                    handoff_path=validation_dir / "VALIDATION_RANKING_HANDOFF.json",
+                    output=freeze_dir, symbol=selected, profile=PROFILE,
+                    dataset_fingerprint=validation_handoff["dataset_fingerprint"],
+                    calibration_split_fingerprint=validation_handoff["calibration_split_fingerprint"],
+                    validation_split_fingerprint=validation_handoff["validation_split_fingerprint"],
+                    validation_policy_fingerprint=validation_handoff["validation_policy_fingerprint"],
+                    ranking_policy_fingerprint=validation_handoff["ranking_policy_fingerprint"],
+                    parameter_registry_fingerprint=validation_handoff["parameter_registry_fingerprint"],
+                )
+                freeze_value = dict(freeze["freeze"])
+                freeze_status = dict(freeze.get("status", {}))
+                verify_freeze(freeze_value)
+                selected_count = int(freeze_value["selected_finalist_count"])
+                reason = str(freeze_value["selection_reason"])
+                manifest["phase_status"][PHASE_ORDER[5]] = "COMPLETED"
+                manifest["finalist_freeze_status"] = "COMPLETED"
+                manifest["finalist_freeze_executed"] = True
+                manifest["finalist_freeze_id"] = freeze_value["freeze_id"]
+                manifest["finalist_freeze_content_hash"] = freeze_value["finalist_freeze_content_hash"]
+                manifest["finalist_freeze_selected_count"] = selected_count
+                manifest["finalist_freeze_selection_reason"] = reason
+                manifest["finalist_freeze_handoff_fingerprint"] = _fingerprint(
+                    freeze_dir / "FINALIST_FREEZE_HANDOFF.json"
+                )
+                manifest["phase_summary"][PHASE_ORDER[5]] = {
+                    "requested_finalists": freeze_status.get("REQUESTED_FINALIST_COUNT"),
+                    "selected_finalists": selected_count,
+                    "freeze_id": freeze_value["freeze_id"],
+                    "integrity_status": "PASS",
+                    "selection_reason": reason,
+                    "campaign_message": (
+                        "Campaign completed without certified finalist" if selected_count == 0 else None
+                    ),
+                }
+                if selected_count == 0:
+                    manifest["campaign_result"] = "COMPLETED_EMPTY_FREEZE"
+                    manifest["campaign_certification_state"] = "NO_ELIGIBLE_FINALIST"
+                    manifest["next_stage"] = "WAIT_FOR_NEW_DATA_OR_NEW_CAMPAIGN"
+                else:
+                    manifest["campaign_result"] = "FINALISTS_FROZEN_READY_FOR_NEXT_DECISION"
+                    manifest["campaign_certification_state"] = "VALIDATION_ELIGIBLE_FINALISTS_FROZEN"
+                    manifest["next_stage"] = "LIFECYCLE_NEED_DECISION"
+                manifest["next_stage_available"] = manifest["next_stage"]
+                self._write(root, manifest)
+                self._emit(manifest)
             return self._finish(root, manifest, status="COMPLETED", reason=None)
         except BaseException as error:
             reason = str(error) or type(error).__name__
-            if "SYMBOL" in reason:
+            current = str(manifest["current_phase"])
+            if reason == "FAIL_CLOSED_FINALIST_FREEZE_MUTATED":
+                pass
+            elif current == "VALIDATION_RANKING" and any(
+                token in reason for token in ("HANDOFF", "FINGERPRINT", "DATASET", "PROFILE", "SYMBOL", "POLICY", "REGISTRY", "CAMPAIGN")
+            ):
+                reason = "FAIL_CLOSED_VALIDATION_RANKING_INPUT_MISMATCH"
+            elif current == "IMMUTABLE_FINALIST_FREEZE" and any(
+                token in reason for token in ("HANDOFF", "FINGERPRINT", "DATASET", "PROFILE", "SYMBOL", "POLICY", "REGISTRY", "CAMPAIGN")
+            ):
+                reason = "FAIL_CLOSED_FINALIST_FREEZE_INPUT_MISMATCH"
+            elif "SYMBOL" in reason:
                 reason = "FAIL_CLOSED_SYMBOL_MISMATCH"
             elif any(token in reason for token in ("HANDOFF", "FINGERPRINT", "DATASET", "PROFILE")):
                 reason = "FAIL_CLOSED_HANDOFF_MISMATCH"
-            current = str(manifest["current_phase"])
             if current in manifest["phase_status"]:
                 manifest["phase_status"][current] = "FAILED"
             return self._finish(root, manifest, status="FAILED", reason=reason)

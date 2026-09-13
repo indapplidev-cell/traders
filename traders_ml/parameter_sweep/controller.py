@@ -314,6 +314,8 @@ class ParameterSweepController:
             "DATA_DRIVEN_RANGE_GENERATION": "Data-Driven Ranges",
             "EXPANDED_AUTOMATIC_SEARCH": "Expanded Search",
             "ADAPTIVE_REFINEMENT": "Adaptive Refinement",
+            "VALIDATION_RANKING": "Validation Ranking",
+            "IMMUTABLE_FINALIST_FREEZE": "Finalist Freeze",
             "COMPLETED": "Completed",
         }
         state.status_text = (

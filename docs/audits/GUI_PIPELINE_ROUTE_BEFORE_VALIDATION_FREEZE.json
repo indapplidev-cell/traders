@@ -1,0 +1,20 @@
+{
+  "pipeline_entrypoint": "ParameterSweepWindow._start -> ParameterSweepController.start_new_run -> ParameterSweepController._start -> SingleSymbolResearchPipeline.run",
+  "current_phase_order": [
+    "SEPARABILITY",
+    "DATA_DRIVEN_RANGE_GENERATION",
+    "EXPANDED_AUTOMATIC_SEARCH",
+    "ADAPTIVE_REFINEMENT",
+    "COMPLETED"
+  ],
+  "current_terminal_phase": "COMPLETED immediately after ADAPTIVE_REFINEMENT",
+  "adaptive_handoff_source": "04_adaptive_refinement/ADAPTIVE_REFINEMENT_HANDOFF.json",
+  "validation_ranking_available_module": "traders_ml.parameter_sweep.validation_ranking.run_validation_ranking",
+  "finalist_freeze_available_module": "traders_ml.parameter_sweep.finalist_freeze.run_finalist_freeze",
+  "current_missing_orchestration_links": [
+    "ADAPTIVE_REFINEMENT_HANDOFF.json -> Validation Ranking",
+    "VALIDATION_RANKING_HANDOFF.json -> Immutable Finalist Freeze",
+    "Validation Ranking and Finalist Freeze manifest/status/progress projection",
+    "Resume guards and terminal campaign semantics for phases 5 and 6"
+  ]
+}

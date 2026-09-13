@@ -1,0 +1,15 @@
+{
+  "canonical_serialization_version": "canonical-json-sort-keys-utf8-v1",
+  "content_hash": "b15aa76736e86fff81f2a12dcc9ae40d16832529c2b137fba635ece8db75d1e3",
+  "dataset_fingerprint_match": true,
+  "duplicate_behavioral_signatures": 0,
+  "freeze_id": "finalist-freeze:v1:b15aa76736e86fff81f2a12dcc9ae40d16832529c2b137fba635ece8db75d1e3",
+  "handoff_match": true,
+  "integrity_status": "PASS",
+  "mutation_detected": false,
+  "profile_match": true,
+  "ranking_policy_match": true,
+  "symbol_match": true,
+  "validation_policy_match": true,
+  "validation_split_match": true
+}

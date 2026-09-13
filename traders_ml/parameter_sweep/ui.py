@@ -173,6 +173,8 @@ class ParameterSweepWindow:
                 "DATA_DRIVEN_RANGE_GENERATION": "Data-Driven Ranges",
                 "EXPANDED_AUTOMATIC_SEARCH": "Expanded Search",
                 "ADAPTIVE_REFINEMENT": "Adaptive Refinement",
+                "VALIDATION_RANKING": "Validation Ranking",
+                "IMMUTABLE_FINALIST_FREEZE": "Finalist Freeze",
             }
             for phase, label in labels.items():
                 summary = state.pipeline_phase_summaries.get(phase, {})
@@ -215,7 +217,7 @@ class ParameterSweepWindow:
         if state.research_mode == ResearchMode.ALL.value:
             phase_values = tuple(state.pipeline_phase_statuses.values())
             finished_phases = sum(value in {"COMPLETED", "LIMITED", "STOPPED", "FAILED"} for value in phase_values)
-            pipeline_progress = 100.0 * finished_phases / 4
+            pipeline_progress = 100.0 * finished_phases / 6
             if state.overall_status == "COMPLETED":
                 pipeline_progress = 100.0
             self.progress.configure(value=pipeline_progress)
