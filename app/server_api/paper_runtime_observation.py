@@ -528,7 +528,8 @@ class ProductionPaperRuntimeObservationSource:
         for key, state, reason in (("wal", pitr.wal_state, pitr.wal_reason_code), ("pitr", pitr.pitr_state, pitr.pitr_reason_code)):
             saved = recovery_domains.get(key)
             saved = dict(saved) if isinstance(saved, dict) else {}
-            saved.update(state=state, reason_code=reason)
+            if not (saved.get("state") == "RECOVERING" and state == "DEGRADED" and reason == "WAL_ARCHIVER_FAILURE"):
+                saved.update(state=state, reason_code=reason)
             recovery_domains[key] = saved
         return PaperRuntimeObservation(
             environment="production",
