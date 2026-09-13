@@ -211,6 +211,10 @@ class PitrLineageObservation:
     lineage_end: datetime | None = None
     contiguous_duration_seconds: int = 0
     physical_gap: bool | None = None
+    wal_state: str = "DEGRADED"
+    wal_reason_code: str = "WAL_ARCHIVE_DESTINATION_UNAVAILABLE"
+    pitr_state: str = "NOT_EVALUATED"
+    pitr_reason_code: str = "PITR_VERIFICATION_PENDING"
 
 
 def _pitr_lineage(
@@ -237,7 +241,7 @@ def _pitr_lineage(
         catalog = _json_object(root / "catalog" / "catalog.json")
         entries = catalog.get("entries")
         if catalog.get("schema") != "TRADERS_ML_BACKUP_CATALOG_V1" or not isinstance(entries, list):
-            return PitrLineageObservation()
+            return PitrLineageObservation(pitr_state="BLOCKED", pitr_reason_code="PITR_BASE_BACKUP_INVALID")
         bases = [
             item for item in entries
             if isinstance(item, dict)
@@ -247,7 +251,7 @@ def _pitr_lineage(
             and item.get("recovery_anchor_valid") is True
         ]
         if not bases:
-            return PitrLineageObservation()
+            return PitrLineageObservation(pitr_state="BLOCKED", pitr_reason_code="PITR_BASE_BACKUP_INVALID")
         base = max(bases, key=lambda item: str(item.get("created_at", "")))
         relative = str(base.get("relative_path", ""))
         base_path = (root / relative)
@@ -277,7 +281,15 @@ def _pitr_lineage(
         window = max(0, int((newest - oldest.astimezone(timezone.utc)).total_seconds()))
         wal_ready = daemon_ready and continuity.base_backup_chain_contiguous
         lineage_valid = continuity.base_backup_chain_contiguous and not continuity.physical_gap
+        wal_reason = "WAL_ARCHIVE_READY" if daemon_ready else (
+            "WAL_ARCHIVE_STALE" if (now - updated.astimezone(timezone.utc)).total_seconds() > MAX_WAL_DAEMON_AGE_SECONDS
+            else "WAL_ARCHIVER_FAILURE")
+        pitr_ready = wal_ready and lineage_valid and window >= MINIMUM_PITR_WINDOW_SECONDS
         return PitrLineageObservation(
+            wal_state="READY" if wal_ready else "DEGRADED",
+            wal_reason_code=wal_reason if continuity.base_backup_chain_contiguous else "PITR_WAL_GAP",
+            pitr_state="BLOCKED" if continuity.physical_gap else ("READY" if pitr_ready else "DEGRADED"),
+            pitr_reason_code=("PITR_WAL_GAP" if continuity.physical_gap else ("PITR_RECOVERY_READY" if pitr_ready else (wal_reason if not daemon_ready else "PITR_VERIFICATION_PENDING"))),
             wal_ready=wal_ready,
             pitr_ready=wal_ready and lineage_valid and window >= MINIMUM_PITR_WINDOW_SECONDS,
             lineage_valid=lineage_valid,
@@ -508,6 +520,16 @@ class ProductionPaperRuntimeObservationSource:
             self._runtime_health_root, now=self._clock()
         )
         automatic_ready = automatic_runtime is not None
+        try:
+            recovery_domains = _volatile_json_object(self._recovery_root / "catalog" / "recovery_readiness.json")
+        except (OSError, ValueError, json.JSONDecodeError):
+            recovery_domains = {}
+        # Fresh canonical facts override persisted state after owner loss/recreate.
+        for key, state, reason in (("wal", pitr.wal_state, pitr.wal_reason_code), ("pitr", pitr.pitr_state, pitr.pitr_reason_code)):
+            saved = recovery_domains.get(key)
+            saved = dict(saved) if isinstance(saved, dict) else {}
+            saved.update(state=state, reason_code=reason)
+            recovery_domains[key] = saved
         return PaperRuntimeObservation(
             environment="production",
             # This is readiness of the bounded operator runtime artifact, not a
@@ -537,6 +559,7 @@ class ProductionPaperRuntimeObservationSource:
                 and automatic_runtime["database"].get("durability_ready") is True
                 and database.runtime_ready
             ),
+            recovery_domains=recovery_domains,
             wal_ready=pitr.wal_ready,
             pitr_ready=pitr.pitr_ready,
             pitr_lineage_valid=pitr.lineage_valid,

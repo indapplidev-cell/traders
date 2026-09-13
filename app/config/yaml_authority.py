@@ -195,6 +195,7 @@ class CollectorPolicy(StrictModel):
 
 
 class WalAckDaemonPolicy(StrictModel):
+    command_timeout_seconds: float = Field(gt=0)
     interval_seconds: int = Field(gt=0)
     minimum_interval_seconds: int = Field(gt=0)
     maximum_interval_seconds: int = Field(gt=0)

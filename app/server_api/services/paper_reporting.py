@@ -75,6 +75,7 @@ class PaperRuntimeObservation:
     operator_runner_running: bool | None = None
     market_data_adapter_ready: bool | None = None
     approval_source_adapter_ready: bool | None = None
+    recovery_domains: dict[str, object] | None = None
     database_runtime_ready: bool = False
     database_durability_ready: bool = False
     wal_ready: bool | None = None
@@ -299,6 +300,7 @@ class PaperReadonlyReportingService:
             paper_reconciliation_status=paper_status,
             market_data_adapter_ready=runtime.market_data_adapter_ready,
             approval_source_adapter_ready=runtime.approval_source_adapter_ready,
+            recovery_domains=runtime.recovery_domains or {},
             database_runtime_ready=runtime.database_runtime_ready,
             database_durability_ready=runtime.database_durability_ready,
             paper_mutation_ready=mutation_ready,

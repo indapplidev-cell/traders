@@ -29,6 +29,7 @@ from app.engine_safety.production_wal_archive import (
 )
 from scripts.production_backup import CONTAINER, SAFE_ROOT, OperationFailure, sync_wal
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.engine_safety.recovery_state import RecoveryState
 
 
 DB_USER = "traders_ml"
@@ -82,7 +83,7 @@ class SafeWalSnapshot:
     finding_codes: tuple[str, ...]
 
 
-def _run(command: list[str], *, timeout: int = 30) -> str:
+def _run(command: list[str], *, timeout: float = _DAEMON_POLICY.command_timeout_seconds) -> str:
     if any("://" in part for part in command):
         raise OperationFailure("PROTECTED_BINDING_OR_URI_IN_COMMAND")
     result = subprocess.run(
@@ -276,7 +277,7 @@ def _publish_daemon_state(
         try:
             atomic_json_write(path, payload)
             return True
-        except PermissionError:
+        except OSError:
             if attempt + 1 < attempts:
                 time.sleep(retry_seconds)
     return False
@@ -425,12 +426,24 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     lock = root / "catalog" / "wal_ack_daemon.pid"
     state = root / "catalog" / "wal_ack_daemon_state.json"
     descriptor = _acquire_daemon_lock(lock)
+    recovery_path = root / "catalog" / "recovery_readiness.json"
+    domains = {"wal": RecoveryState(), "pitr": RecoveryState()}
+    try:
+        previous = json.loads(recovery_path.read_text(encoding="utf-8"))
+        domains = {key: RecoveryState(**previous[key]) for key in domains}
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     try:
         os.close(descriptor)
         while True:
             try:
+                now = datetime.now(timezone.utc)
+                for key, value in domains.items():
+                    if value.state == "DEGRADED":
+                        domains[key] = value.advance("RECOVERING", "PITR_VERIFICATION_PENDING", now, interval_seconds)
+                _publish_daemon_state(recovery_path, {key: value.project() for key, value in domains.items()})
                 payload = _host_ack_daemon_cycle(root, process_id=os.getpid())
-            except (OSError, ValueError, json.JSONDecodeError, OperationFailure) as error:
+            except (OSError, ValueError, json.JSONDecodeError, OperationFailure, subprocess.TimeoutExpired) as error:
                 payload = {
                     "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
                     "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -439,9 +452,16 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
                     "pending_archive_status_count": -1,
                     "export_backlog_count": -1,
                     "published_segment_count_last_cycle": 0,
-                    "error_class": str(error),
+                    "error_class": "WAL_ARCHIVER_FAILURE",
                 }
             _publish_daemon_state(state, payload)
+            # Reuse the exact API lineage verifier; never manufacture a healthy chain.
+            from app.server_api.paper_runtime_observation import _pitr_lineage
+            now = datetime.now(timezone.utc)
+            observed = _pitr_lineage(root, now)
+            domains["wal"] = domains["wal"].advance(observed.wal_state, observed.wal_reason_code, now, interval_seconds)
+            domains["pitr"] = domains["pitr"].advance(observed.pitr_state, observed.pitr_reason_code, now, interval_seconds)
+            _publish_daemon_state(recovery_path, {key: value.project() for key, value in domains.items()})
             time.sleep(interval_seconds)
     finally:
         try:
@@ -478,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
             result = {"status": "STOPPED"}
         print(json.dumps(result, sort_keys=True))
         return 0
-    except (OSError, ValueError, json.JSONDecodeError, OperationFailure) as error:
+    except (OSError, ValueError, json.JSONDecodeError, OperationFailure, subprocess.TimeoutExpired) as error:
         print(json.dumps({"status": "FAILED", "error_class": str(error)}))
         return 2
 

@@ -125,6 +125,7 @@ collector:
   boundary_wait_seconds: 240
   max_part_bytes: 67108864
 wal_ack_daemon:
+  command_timeout_seconds: 30.0
   interval_seconds: 3
   minimum_interval_seconds: 1
   maximum_interval_seconds: 30

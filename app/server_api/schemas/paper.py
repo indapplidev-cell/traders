@@ -50,6 +50,7 @@ class PaperReadiness(BaseModel):
     paper_reconciliation_status: str
     market_data_adapter_ready: bool | None
     approval_source_adapter_ready: bool | None
+    recovery_domains: dict[str, Any] = Field(default_factory=dict)
     database_runtime_ready: bool = False
     database_durability_ready: bool = False
     paper_mutation_ready: bool = False
