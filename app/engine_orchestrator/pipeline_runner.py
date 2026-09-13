@@ -9,6 +9,7 @@ from typing import Any
 
 from app.config.trade_parameters import load_trade_parameters, ResolvedParameterSet
 from app.engine_orchestrator.runtime_parameters import _runtime_parameters
+from app.engine_orchestrator.config_epoch import ConfigurationEpoch
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_analysis.scalping_semantics import project_scalping_analysis_semantics
@@ -99,6 +100,10 @@ class PipelineRunner:
                  resolved_parameter_set: ResolvedParameterSet | None = None) -> None:
         self.config = config
         self.resolved_parameter_set = resolved_parameter_set
+        self.configuration_epoch = (
+            ConfigurationEpoch.capture(resolved_parameter_set)
+            if resolved_parameter_set is not None else None
+        )
         self.runtime_parameters = (
             _runtime_parameters(config.trade_profile, resolved_parameter_set)
             if resolved_parameter_set is not None else config.runtime_parameters
@@ -107,6 +112,7 @@ class PipelineRunner:
         self._cycle_lock = RLock()
         self._cycle_runners = OrderedDict()
         self._parameter_runners = {}
+        self._last_parameter_identity = None
         self._injected_runners = dict(
             analysis_runner=analysis_runner, setup_runner=setup_runner,
             strategy_runner=strategy_runner, risk_runner=risk_runner,
@@ -433,7 +439,7 @@ class PipelineRunner:
                 resolved = self._parameter_loader().resolve_scalping_v2_for_cycle(closed_until_ms)
                 identity = (resolved.id, resolved.resolved_config_hash,
                             resolved.activation_cycle_boundary_ms, resolved.activation_revision)
-                existing = self._parameter_runners.get(identity)
+                existing = self._parameter_runners.get(identity) if identity == self._last_parameter_identity else None
                 if existing is not None:
                     self._cycle_runners[closed_until_ms] = existing
                     if len(self._cycle_runners) > 2016:
@@ -456,6 +462,7 @@ class PipelineRunner:
                 )
                 self._cycle_runners[closed_until_ms] = runner
                 self._parameter_runners[identity] = runner
+                self._last_parameter_identity = identity
                 if len(self._cycle_runners) > 2016:
                     self._cycle_runners.popitem(last=False)
             return self._cycle_runners[closed_until_ms]
@@ -481,6 +488,7 @@ class PipelineRunner:
                 status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
                 final_result=FinalResult.NO_ACTION.value,
                 final_reason=str(exc), error_code="SNAPSHOT_CONTRACT_VIOLATION",
+                analysis_payload=self._profiled_payload({}),
             )
         except SnapshotNotEnoughDataError as exc:
             return PipelineResult(
@@ -490,6 +498,7 @@ class PipelineRunner:
                 status=PipelineStatus.SKIPPED_NOT_ENOUGH_DATA.value,
                 final_result=FinalResult.NO_ACTION.value,
                 final_reason=str(exc), error_code="NOT_ENOUGH_DATA",
+                analysis_payload=self._profiled_payload({}),
                 market_data_payload={"available": exc.counts, "required": exc.required},
             )
 
@@ -508,7 +517,7 @@ class PipelineRunner:
                     else FinalResult.NO_ACTION.value,
                     final_reason=str(_attribute(analysis, "skip_reason") or "analysis did not produce an analyzed snapshot"),
                     market_data_payload=self._market_summary(snapshots),
-                    analysis_payload=json_safe(analysis), analysis_status=str(_attribute(analysis, "status")),
+                    analysis_payload=self._profiled_payload(analysis), analysis_status=str(_attribute(analysis, "status")),
                     module_reasons={"analysis": _reasons(analysis)},
                     module_warnings={"analysis": _warnings(analysis)},
                     **identity,
@@ -682,7 +691,7 @@ class PipelineRunner:
                 error_code="MODULE_ERROR", error_message=f"{type(exc).__name__}: {exc}",
                 **identity,
                 market_data_payload=self._market_summary(snapshots),
-                analysis_payload=json_safe(outputs.get("analysis", {})),
+                analysis_payload=self._profiled_payload(outputs.get("analysis", {})),
                 setup_payload=json_safe(outputs.get("setup", {})),
                 strategy_payload=json_safe(outputs.get("strategy", {})),
                 risk_payload=json_safe(outputs.get("risk", {})),
@@ -737,6 +746,7 @@ class PipelineRunner:
             frozen["operational_policy"] = provenance.get("operational_policy", {})
         return {
             **payload,
+            **({'effective_configuration': self.configuration_epoch.project()} if self.configuration_epoch else {}),
             **({"frozen_parameter_snapshot": frozen} if frozen is not None else {}),
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,

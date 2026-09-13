@@ -59,6 +59,9 @@ _FUNNEL_RESULT_FIELDS: Final = (
 )
 
 
+from app.server_api.effective_configuration import effective_configuration
+
+
 def _projected_result_columns() -> tuple[Any, ...]:
     """Return the causally complete, bounded JSON projection used by the funnel.
 
@@ -1863,6 +1866,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 ) or lifecycle.get("approval_valid_until_ms"),
                 "updated_at_ms": updated_ms, "stage_trace": trace,
                 "downstream_stage_trace": downstream_trace,
+                "effective_configuration": effective_configuration(result),
                 "downstream_current_stage": next(
                     (
                         stage for stage in reversed(CANONICAL_DOWNSTREAM_STAGES)

@@ -316,6 +316,7 @@ class FunnelCandidateStatus(ContractModel):
     updated_at_ms: int = Field(ge=0)
     stage_trace: dict[str, str]
     downstream_stage_trace: dict[str, str] = Field(default_factory=dict)
+    effective_configuration: dict[str, Any] | None = None
     downstream_current_stage: str | None = None
     terminal_reason_code: str | None = None
     downstream_detail: dict[str, Any] = Field(default_factory=dict)

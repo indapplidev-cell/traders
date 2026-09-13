@@ -21,6 +21,7 @@ from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameter
 from app.engine_orchestrator.trade_profile import resolve_trade_profile
 from app.i18n import CATALOG_VERSION
 from app.server_api.errors import ApiError
+from app.server_api.effective_configuration import effective_configuration
 from app.server_api.trading_funnel import (
     CANONICAL_DOWNSTREAM_STAGES,
     STAGES,
@@ -400,6 +401,7 @@ def build_export_record(
         "portfolio_status": downstream_trace["PORTFOLIO_ADMITTED"],
         "final_approval": downstream_trace["FINAL_APPROVAL"],
         "downstream_stage_trace": downstream_trace,
+        "effective_configuration": effective_configuration(result),
         "trade_math": {
             key: _json_scalar(_downstream_detail.get(key))
             for key in math_fields

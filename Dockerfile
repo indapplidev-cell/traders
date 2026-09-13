@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --no-deps . \
         -type d -name __pycache__ -prune -exec rm -rf {} +
 
 ARG TRADERS_RUNTIME_SOURCE_IDENTITY=UNSET
+ENV TRADERS_RUNTIME_SOURCE_IDENTITY=${TRADERS_RUNTIME_SOURCE_IDENTITY}
 LABEL org.opencontainers.image.revision="${TRADERS_RUNTIME_SOURCE_IDENTITY}"
 
 FROM python:3.11-slim AS readonly-api
