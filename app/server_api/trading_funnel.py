@@ -60,6 +60,8 @@ _FUNNEL_RESULT_FIELDS: Final = (
 
 
 from app.server_api.effective_configuration import effective_configuration
+from app.server_api.funnel_state import canonical_stages, serialize_stages
+from app.server_api.funnel_fields import detail_states, market_fields
 
 
 def _projected_result_columns() -> tuple[Any, ...]:
@@ -332,6 +334,8 @@ def _profile_screen_contexts(
         ),
         "terminal_reason": terminal_reason,
     }
+    if row.trade_profile_id == 'trade-5m-v2':
+        profile_analysis.update(market_fields(analysis, analysis_reached=row.analysis_status == 'ANALYZED'))
     setup_status = setup.get("setup_status") or setup.get("status")
     profile_scenario = {
         **base,
@@ -392,6 +396,41 @@ def _status_from_legacy(value: str) -> str:
 
 
 def _downstream_trace(
+    result, legacy_trace, *, scalping, now_ms=None, include_detail=True,
+):
+    trace, detail = _downstream_trace_facts(
+        result, legacy_trace, scalping=scalping, now_ms=now_ms,
+        include_detail=include_detail,
+    )
+    if not scalping:
+        return trace, detail
+    modules = _mapping(getattr(result, 'module_reasons_json', None))
+    reasons = {}
+    for stage, module in (('ANALYSIS_QUALIFIED', 'analysis'), ('STRUCTURAL_SETUP', 'setup'),
+                          ('STRATEGY_ADMITTED', 'strategy'), ('RISK_COMPATIBILITY_ADMITTED', 'risk')):
+        values = _reasons(modules.get(module))
+        reasons[stage] = values[0] if values else None
+    paper = _mapping(getattr(result, 'paper_payload_json', None))
+    diagnostic = _mapping(_mapping(paper.get('paper_context')).get('scalping_geometry_diagnostics'))
+    for stage in CANONICAL_DOWNSTREAM_STAGES[4:]:
+        values = _reasons(modules.get('paper'))
+        reasons[stage] = diagnostic.get('rejection_reason') or diagnostic.get('raw_reason') or (values[0] if values else None)
+    stages = canonical_stages(trace, reasons)
+    trace = {stage.stage_id: stage.status for stage in stages}
+    detail['canonical_stage_trace'] = serialize_stages(stages)
+    epoch = effective_configuration(result)
+    if epoch:
+        detail['trade_parameter_config_hash'] = epoch['config_content_hash']
+        detail['trade_parameter_config_version'] = epoch['parameter_set_version']
+    detail['semantic_states'] = detail_states(detail, trace)
+    for key, stage in (('geometry_status', 'GEOMETRY_VALID'), ('target_status', 'TARGET_VALID'),
+                       ('rr_status', 'RR_PASS')):
+        if key in detail:
+            detail[key] = trace[stage]
+    return trace, detail
+
+
+def _downstream_trace_facts(
     result: OnlinePipelineResultRow | None,
     legacy_trace: Mapping[str, str],
     *,
@@ -1779,7 +1818,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 if status == "PASS":
                     counts[stage] += 1
             for stage, status in downstream_trace.items():
-                if status not in {"NOT_APPLICABLE", "UNAVAILABLE"}:
+                if status not in {"NOT_APPLICABLE", "UNAVAILABLE", "SOURCE_UNAVAILABLE"}:
                     downstream_observed[stage] += 1
                 if status == "PASS":
                     downstream_counts[stage] += 1
@@ -1969,6 +2008,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 "planned_risk_reward": meta.get("planned_risk_reward"),
                 **profile_contexts,
             })
+            if profile.trade_profile_id == 'trade-5m-v2':
+                items[-1]['downstream_detail']['semantic_states'] = detail_states(
+                    items[-1]['downstream_detail'], downstream_trace,
+                )
         materialized_symbols = {item["symbol"] for item in items}
         for symbol in universe.symbols:
             if symbol in materialized_symbols:

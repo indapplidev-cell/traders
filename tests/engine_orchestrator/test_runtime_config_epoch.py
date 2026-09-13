@@ -87,3 +87,29 @@ def test_v1_export_schema_accepts_additive_epoch_via_real_http():
     row = json.loads(response.text)
     assert row['provenance']['export_schema_version'] == 'trading-funnel-export-v1'
     assert row['effective_configuration'] == epoch
+
+
+def test_reactivation_gets_new_epoch_and_retries_keep_original_epoch():
+    current = load_trade_parameters()
+    runner = PipelineRunner(five_minute_config(), CandleRepo(), parameter_loader=lambda: current)
+    boundary = 1_900_000_200_000
+    first = runner.for_cycle(boundary)
+    assert runner.for_cycle(boundary + 300000) is first
+    raw = current.model_dump(mode='python', by_alias=True)
+    raw['profiles']['trade-5m-v2']['economics']['min_net_edge_bps'] = 2.0
+    current = TradeParameters.model_validate(raw)
+    second = runner.for_cycle(boundary + 600000)
+    current = load_trade_parameters()
+    third = runner.for_cycle(boundary + 900000)
+    assert first.configuration_epoch.config_content_hash == third.configuration_epoch.config_content_hash
+    assert first.configuration_epoch.project()['config_epoch_id'] != third.configuration_epoch.project()['config_epoch_id']
+    assert second.configuration_epoch.config_content_hash != first.configuration_epoch.config_content_hash
+    assert runner.for_cycle(boundary) is first
+
+
+def test_conflicting_persisted_snapshots_fail_closed():
+    _, result = _pair(profile='trade-5m-v2')
+    result.analysis_payload_json['effective_configuration'] = {'config_epoch_id': 'a'}
+    result.paper_payload_json['effective_configuration'] = {'config_epoch_id': 'b'}
+    with pytest.raises(ValueError, match='conflicting'):
+        effective_configuration(result)

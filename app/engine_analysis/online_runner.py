@@ -316,6 +316,17 @@ class OnlineAnalysisRunner:
             output = self._invoke_pipeline(snapshot, candles, health.degraded)
             analysis = self._extract_analysis(output)
             analysis_context = dict(analysis.get("analysis_context") or {})
+            if snapshot.timeframe == '5m':
+                # Retain already-calculated descriptive sources for the funnel.
+                # No estimator, threshold, or decision is changed here.
+                composer = getattr(output, 'composer_output', None)
+                matrix = getattr(composer, 'matrix', None)
+                unified = getattr(matrix, 'unified_context', None)
+                if unified is not None:
+                    analysis_context['funnel_descriptive_sources'] = {
+                        'structure_state': unified.altunina_context.structure_direction.value,
+                        'volume_context': unified.volume_context.to_dict(),
+                    }
             analysis_context.update({
                 "runtime_parameter_set_id": self.config.runtime_parameter_set_id,
                 "analysis_runtime_parameters": {

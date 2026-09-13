@@ -1126,10 +1126,12 @@ _FUNNEL_STAGES_RU = {
 RU.update({f"funnel.stage.{key}": value for key, value in _FUNNEL_STAGES_RU.items()})
 EN.update({f"funnel.stage.{key}": value for key, value in _FUNNEL_STAGES_EN.items()})
 _FUNNEL_STATUS_EN = {"PENDING": "Pending", "PASS": "Pass", "REJECTED": "Rejected", "DEFERRED": "Deferred",
+                     "NOT_EVALUATED": "Not evaluated", "SOURCE_UNAVAILABLE": "Source unavailable",
                      "NOT_REACHED": "Stage not reached", "NOT_APPLICABLE": "Not applicable", "UNAVAILABLE": "Unavailable", "ERROR": "Error",
                      "LEGACY_RECORD": "Historical record: metric was not yet applied", "NOT_RECORDED": "Value was not recorded for this trade",
                      "INSUFFICIENT_SAMPLE": "Insufficient statistical sample", "FAILED": "Calculation failed", "AVAILABLE": "Available"}
 _FUNNEL_STATUS_RU = {"PENDING": "Расчёт ожидается", "PASS": "Пройден", "REJECTED": "Отклонён", "DEFERRED": "Отложен",
+                     "NOT_EVALUATED": "Не рассчитывалось", "SOURCE_UNAVAILABLE": "Источник недоступен",
                      "NOT_REACHED": "Этап не достигнут", "NOT_APPLICABLE": "Не применимо", "UNAVAILABLE": "Недоступно", "ERROR": "Ошибка",
                      "LEGACY_RECORD": "Историческая запись: метрика ещё не применялась", "NOT_RECORDED": "Значение не записывалось для этой сделки",
                      "INSUFFICIENT_SAMPLE": "Недостаточная статистическая выборка", "FAILED": "Расчёт завершился ошибкой", "AVAILABLE": "Доступно"}

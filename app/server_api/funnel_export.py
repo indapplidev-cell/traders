@@ -22,6 +22,8 @@ from app.engine_orchestrator.trade_profile import resolve_trade_profile
 from app.i18n import CATALOG_VERSION
 from app.server_api.errors import ApiError
 from app.server_api.effective_configuration import effective_configuration
+from app.server_api.funnel_state import StageResult, compatibility_trace, lifecycle_stages
+from app.server_api.funnel_fields import market_fields, timeframe_states
 from app.server_api.trading_funnel import (
     CANONICAL_DOWNSTREAM_STAGES,
     STAGES,
@@ -206,7 +208,7 @@ def _trace_status(stage: str, value: str, paper: Mapping[str, object]) -> str:
     return value
 
 
-def _canonical_trace(
+def _legacy_15m_trace(
     source: Mapping[str, Any],
     legacy_trace: Mapping[str, str],
     stage_reasons: Mapping[str, str | None],
@@ -328,18 +330,25 @@ def build_export_record(
     runtime = resolve_runtime_parameters(run.trade_profile_id)
     profile = resolve_trade_profile(run.trade_profile_id)
     planned = _mapping(paper.get("shadow_plan")) or paper
-    canonical_trace = _canonical_trace(
-        source, trace, stage_reasons, diagnostic, outcome
-    )
     downstream_trace, _downstream_detail = _downstream_trace(
         result,
         trace,
         scalping=run.trade_profile_id in {"trade-5m-v1", "trade-5m-v2"},
         now_ms=generated_at_ms,
     )
+    stage_records = _mapping(_downstream_detail.get('canonical_stage_trace'))
+    if stage_records:
+        stages = tuple(StageResult(**value) for value in stage_records.values())
+        canonical_trace = compatibility_trace(stages + lifecycle_stages(outcome))
+        first = next((stage for stage in stages if stage.terminal), None)
+        first_stage, first_reason = (first.stage_id, _safe_reason(first.reason_code)) if first else (None, None)
+    else:
+        canonical_trace = _legacy_15m_trace(source, trace, stage_reasons, diagnostic, outcome)
     terminal_reason = _safe_reason(
         _specific_terminal_reason(run, result, downstream_trace)
     )
+    if stage_records and first_stage:
+        terminal_reason = first_reason or terminal_reason
     terminal_stage = next(
         (
             stage for stage in reversed(CANONICAL_DOWNSTREAM_STAGES)
@@ -401,6 +410,7 @@ def build_export_record(
         "portfolio_status": downstream_trace["PORTFOLIO_ADMITTED"],
         "final_approval": downstream_trace["FINAL_APPROVAL"],
         "downstream_stage_trace": downstream_trace,
+        "canonical_stage_trace": stage_records,
         "effective_configuration": effective_configuration(result),
         "trade_math": {
             key: _json_scalar(_downstream_detail.get(key))
@@ -430,8 +440,11 @@ def build_export_record(
             "atr": legacy.get("atr"), "atr_pct": analysis.get("atr_pct"),
             "structure_state": analysis.get("structure_state"), "liquidity_state": analysis.get("liquidity_state"),
             "volume_state": analysis.get("volume_state"),
+            **(market_fields(analysis, analysis_reached=downstream_trace['ANALYSIS_QUALIFIED'] == 'PASS')
+               if run.trade_profile_id == 'trade-5m-v2' else {}),
         },
         "multi_tf_closed_until_ms": _closed_context(result),
+        "multi_tf_semantic_states": timeframe_states(_closed_context(result), tuple(tf for tf, _ in profile.market_data_windows)),
         "funnel_trace": canonical_trace,
         "setup": {
             "setup_type": setup.get("setup_type"), "status": setup.get("setup_status") or setup.get("status"),

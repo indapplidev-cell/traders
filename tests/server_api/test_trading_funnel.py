@@ -551,7 +551,7 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert tuple(value["downstream_stage_order"]) == CANONICAL_DOWNSTREAM_STAGES
     assert item["downstream_stage_trace"]["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
     assert item["downstream_stage_trace"]["RISK_ADMITTED"] == "PASS"
-    assert item["downstream_stage_trace"]["PORTFOLIO_ADMITTED"] == "UNAVAILABLE"
+    assert item["downstream_stage_trace"]["PORTFOLIO_ADMITTED"] == "SOURCE_UNAVAILABLE"
     assert item["downstream_detail"]["strategy_type"] == "SCALP_BREAKOUT_RESEARCH"
     assert item["downstream_detail"]["net_rr"] == "1.6"
     assert item["downstream_detail"]["entry_price"] == "100.25"
@@ -736,7 +736,9 @@ def test_detail_candidates_mirror_current_rows_and_never_leak_historical_geometr
 def test_15m_downstream_is_first_class_and_historical_unknowns_are_honest():
     run = _run("BTCUSDT")
     other = _run("ETHUSDT")
-    value = _project(((run, _result(run)), (other, _result(other))))
+    value = build_projection(((run, _result(run)), (other, _result(other))),
+                             SimpleNamespace(version_id='trading-universe-v2', symbols=SYMBOLS),
+                             NOW_MS, {}, 'trade-15m-v1')
     item = value["current_cycle"]["items"][0]
     trace = item["downstream_stage_trace"]
     assert trace["ANALYSIS_QUALIFIED"] == "PASS"
