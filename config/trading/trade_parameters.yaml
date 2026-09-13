@@ -14,8 +14,12 @@ scalping_v2:
       version: scalping-v2-set-2-v1
       inherits: scalping-v2-set-1
       overrides:
-        geometry.minimum_planned_rr: 0.6
-        geometry.target_min_bps: 60.0
+        # Previous active PAPER forward-test value: 0.6
+        # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
+        geometry.minimum_planned_rr: 1.953403
+        # Previous active PAPER forward-test value: 60.0
+        # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
+        geometry.target_min_bps: 49.163216
         economics.min_ev_reserve_r: 0.05
         exit_policy.stale_position.net_break_even_protection_enabled: true
         exit_policy.stale_position.soft_timeout_seconds: 600
@@ -57,12 +61,16 @@ profiles:
     geometry:
       atr_multiplier: 0.25
       stop_min_bps: 0.0
-      stop_max_bps: 50.0
+      # Previous active PAPER forward-test value: 50.0
+      # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
+      stop_max_bps: 48.496589
       target_policy: SCALPING_NEAREST_VIABLE_TARGET_V3
       target_min_bps: 45.0
       minimum_planned_rr: 0.4
     economics:
-      min_net_edge_bps: 1.0
+      # Previous active PAPER forward-test value: 1.0
+      # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
+      min_net_edge_bps: 73.004386
       min_positive_ev_r: 0.0
       min_ev_reserve_r: 0.0
       bucket_min_sample: 20
