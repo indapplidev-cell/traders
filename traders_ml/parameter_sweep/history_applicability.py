@@ -22,6 +22,7 @@ from app.engine_paper.scalping_shadow import COST_MODEL_VERSION, GEOMETRY_CALCUL
 from app.engine_risk.risk_decision import RiskDecision
 from .result_search import fingerprint, ResultSearchService
 from .search_history import HistoryProvider, TIMEFRAMES
+from .opportunity_registry import ResearchOpportunityRegistry
 
 VERSION = "history-applicability/1"
 SUPPORTED = {
@@ -172,6 +173,7 @@ def assess_boundary(row: dict[str, Any], overrides: dict[str, float], statistics
             return result | {"reason": "RISK_IDENTITY_MISMATCH"}
         runner = ScalpingPaperRunner(runtime_parameters=runtime, cost_source=source,
                                      statistics_source=stats,
+                                     opportunity_registry=ResearchOpportunityRegistry(),
                                      scalping_parameters=_namespace(parameters),
                                      clock_ms=lambda: decision.created_at_ms)
         plan = runner._process(decision)

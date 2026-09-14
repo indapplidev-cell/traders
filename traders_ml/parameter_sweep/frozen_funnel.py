@@ -20,6 +20,7 @@ from .historical_statistics import HistoricalStatistics
 from .history_applicability import HistoricalCostSource
 from .search_history import HistoryProvider, TIMEFRAMES
 from .result_search import fingerprint
+from .opportunity_registry import ResearchOpportunityRegistry
 
 SEARCHABLE_PARAMETERS = frozenset({
     "signal.strategy_minimum_score", "signal.impulse_atr_multiplier",
@@ -142,7 +143,8 @@ class FrozenFunnel:
                         is_closed=True, source="FROZEN_HISTORY"))
             self.repositories[symbol] = CausalCandleRepository(symbol, groups)
         paper = _HistoricalPaperRunner(runtime_parameters=runtime, scalping_parameters=self.resolved.parameters,
-            cost_source=self.inputs, statistics_source=self.inputs, clock_ms=lambda: self.inputs.cutoff)
+            cost_source=self.inputs, statistics_source=self.inputs, clock_ms=lambda: self.inputs.cutoff,
+            opportunity_registry=ResearchOpportunityRegistry())
         self.runner = PipelineRunner(config, self, resolved_parameter_set=self.resolved,
             paper_runner=paper, strategy_cap_cost_source=self.diagnostic_inputs, scalping_statistics_source=self.inputs)
         self.last_boundary = -1

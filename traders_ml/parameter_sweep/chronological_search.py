@@ -130,6 +130,17 @@ def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execu
             if result.paper_status!="PAPER_PLAN_READY":
                 rejections[str(reason)]+=1
                 continue
+            gate=book.portfolio_gate(result)
+            if gate["decision"]!="PASS":
+                rejections[gate["reason_code"]]+=1
+                continue
+            try:
+                calculate_quantity_sizing(symbol=symbol,equity=book.available_capital,
+                    entry=decimal(plan["hypothetical_entry_reference"]),stop=decimal(plan["hypothetical_stop_level"]),
+                    risk_per_trade_bps=decimal(book.runtime.risk_per_trade_bps))
+            except (ValueError,PaperDomainError) as error:
+                rejections[str(error)]+=1
+                continue
             identity=plan["paper_plan_id"]
             candidates.append(Candidate(identity,symbol,SimpleNamespace(
                 risk_score=decimal(result.risk_payload["risk_score"]),planned_risk_reward=decimal(plan["planned_rr"]),
