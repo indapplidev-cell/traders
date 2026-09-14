@@ -47,3 +47,42 @@ def test_frozen_dataset_reload_and_tamper(tmp_path):
     (tmp_path / "HISTORY.jsonl").write_bytes(b'{}\n')
     with pytest.raises(ValueError, match="DATASET_CHECKSUM"):
         HistoryProvider.load(tmp_path)
+
+
+def test_partitions_keep_exit_and_independent_data_out_of_search(tmp_path):
+    rows = [candle(t) for t in range(0, 420000, 60000)]
+    content = b"".join(json.dumps(r).encode() + b"\n" for r in rows)
+    manifest = {"content_sha256": sha256(content).hexdigest(),
+                "intervals": {"search_start_ms": 60000, "search_end_ms": 180000,
+                              "exit_tail_end_ms": 240000, "independent_evaluation": [240000, 360000],
+                              "acquisition_end_ms": 420000}}
+    manifest["fingerprint"] = fingerprint(manifest)
+    (tmp_path / "HISTORY.jsonl").write_bytes(content)
+    (tmp_path / "DATASET_MANIFEST.json").write_text(json.dumps(manifest))
+    assert HistoryProvider.search_view(tmp_path)[1] == rows[:3]
+    for name, expected in [("warmup", rows[:1]), ("search", rows[1:3]),
+                           ("exit_tail", rows[3:4]), ("independent_evaluation", rows[4:6]),
+                           ("independent_exit_tail", rows[6:])]:
+        assert HistoryProvider.partition(tmp_path, name) == expected
+
+
+def test_bundle_rejects_modified_statistics(tmp_path):
+    statistics = {"outcomes": [], "evidence_quality": "ASSUMPTION_BASED"}
+    statistics["fingerprint"] = fingerprint(statistics)
+    encoded = json.dumps(statistics).encode()
+    manifest = {"content_sha256": sha256(b"").hexdigest(),
+                "statistics": {"content_sha256": sha256(encoded).hexdigest(),
+                               "fingerprint": statistics["fingerprint"]}}
+    manifest["fingerprint"] = fingerprint(manifest)
+    (tmp_path / "HISTORY.jsonl").write_bytes(b"")
+    (tmp_path / "STATISTICS.json").write_bytes(encoded)
+    (tmp_path / "DATASET_MANIFEST.json").write_text(json.dumps(manifest))
+    assert HistoryProvider.load(tmp_path)[0] == manifest
+    (tmp_path / "STATISTICS.json").write_bytes(encoded + b" ")
+    with pytest.raises(ValueError, match="STATISTICS_CHECKSUM"):
+        HistoryProvider.load(tmp_path)
+
+
+def test_insufficient_warmup_rejected_before_source_access(tmp_path):
+    with pytest.raises(ValueError, match="WARMUP_BELOW"):
+        HistoryProvider().freeze(None, tmp_path / "uncreated", warmup_bars=1)

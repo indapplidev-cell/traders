@@ -2,7 +2,7 @@ from dataclasses import asdict
 import pytest
 
 from app.engine_paper.scalping_statistics import PaperOutcome
-from traders_ml.parameter_sweep.historical_statistics import HistoricalStatistics
+from traders_ml.parameter_sweep.historical_statistics import HistoricalStatistics, validate_outcome_time
 from traders_ml.parameter_sweep.result_search import fingerprint
 
 
@@ -32,3 +32,19 @@ def test_fingerprint_tampering_rejected():
     p = payload(); p["outcomes"][0]["won"] = False
     with pytest.raises(ValueError, match="FINGERPRINT"):
         HistoricalStatistics(p, 20)
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({}, None),
+    ({"completed_at": "1970-01-01T00:00:01Z"}, "FUTURE_OUTCOME_CANDLE"),
+    ({"completed_at": "1970-01-01T00:02:00"}, "UNDATED_COMPLETION"),
+    ({"closed_candle_path": []}, "OUTCOME_PATH_MISSING"),
+    ({"path_diagnostics": {"missing_open_time_ms": [60000]}}, "OUTCOME_PATH_INCOMPLETE"),
+    ({"closed_candle_path": [{"open_time_ms": 0, "close_time_ms": 1}]}, "INVALID_CANDLE_INTERVAL"),
+    ({"closed_candle_path": [{"open_time_ms": 0, "close_time_ms": 59999}] * 2}, "OUTCOME_PATH_GAPS_OR_DUPLICATES"),
+])
+def test_recorded_causal_outcome_path(change, reason):
+    record = {"completed_at": "1970-01-01T00:02:00Z",
+              "closed_candle_path": [{"open_time_ms": 0, "close_time_ms": 59999},
+                                     {"open_time_ms": 60000, "close_time_ms": 119999}]}
+    assert validate_outcome_time(record | change) == reason

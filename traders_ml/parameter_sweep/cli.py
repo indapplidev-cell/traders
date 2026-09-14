@@ -87,6 +87,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--result-search-resume", type=Path)
     parser.add_argument("--result-search-freeze-history", type=Path,
                         help="Freeze real history for the typed request into a new directory")
+    parser.add_argument("--history-statistics-source", type=Path)
+    parser.add_argument("--history-parameter-set-id")
     parser.add_argument(
         "--range-override", type=Path,
         help="Explicit run-local DATA_DRIVEN_SEARCH_RANGES.json input.",
@@ -105,7 +107,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         if args.result_search_freeze_history:
             from .search_history import HistoryProvider
             request = ResultSearchService.request(json.loads(args.result_search_request.read_text(encoding="utf-8")))
-            manifest = HistoryProvider().freeze(request, args.result_search_freeze_history)
+            manifest = HistoryProvider().freeze(request, args.result_search_freeze_history,
+                statistics_source=args.history_statistics_source, parameter_set_id=args.history_parameter_set_id)
             print(json.dumps(manifest, indent=2))
             if manifest["outcome"] == "BLOCKED_DATA":
                 raise SystemExit(2)

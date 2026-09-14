@@ -192,6 +192,11 @@ def assess_boundary(row: dict[str, Any], overrides: dict[str, float], statistics
             result["statistics_trace"] = stats.trace
         if diagnostic.get("evaluator_inputs", {}).get("ev_evaluator_reached"):
             if stats is not None:
+                if stats.quality == "HISTORICAL_VERIFIED":
+                    return result | {"state": "PREFIX_VERIFIED" if diagnostic.get("valid_plan") else "VERIFIED_REJECTION",
+                        "reason": "DOWNSTREAM_PORTFOLIO_AND_LIFECYCLE_REQUIRED" if diagnostic.get("valid_plan") else diagnostic.get("rejection_reason"),
+                        "statistics_fingerprint": stats.fingerprint,
+                        "statistics_quality": stats.quality}
                 return result | {"state": "STATISTICS_REPLAYED_NOT_CERTIFIED",
                     "replayed_decision": "ADMITTED" if diagnostic.get("valid_plan") else "REJECTED",
                     "reason": "HISTORICAL_STATISTICS_AVAILABILITY_NOT_CERTIFIED",
@@ -229,7 +234,9 @@ def baseline_parity(row: dict[str, Any], replay: dict[str, Any]) -> bool:
 def assess_dataset(directory: Path, combinations: list[dict[str, float]], statistics: dict | None = None) -> dict[str, Any]:
     if not combinations or len(combinations) > 100:
         raise ValueError("ASSESSMENT_REQUIRES_1_TO_100_COMBINATIONS")
-    manifest, rows = HistoryProvider.load(directory)
+    manifest, rows = HistoryProvider.search_view(directory)
+    if statistics is None and manifest.get("statistics"):
+        statistics = json.loads((directory / "STATISTICS.json").read_text())
     if statistics is not None:
         from .historical_statistics import HistoricalStatistics
         statistics = HistoricalStatistics(statistics, 0)
