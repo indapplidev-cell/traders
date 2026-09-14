@@ -8,7 +8,7 @@ import time
 import optuna
 from optuna.trial import TrialState
 
-from .result_search import fingerprint, ResultSearchService, ENGINE_VERSION
+from .result_search import fingerprint, ResultSearchService, ENGINE_VERSION, ResearchStorageBudgetExceeded
 from .locking import SingleRunLock
 
 
@@ -55,7 +55,7 @@ class SearchOptimizer:
         self.manifest["fingerprint"]=fingerprint(self.manifest)
 
     def run(self, evaluator, validator, *, max_trials, max_wall_time, storage_budget_bytes,
-            artifact_budget_bytes=None, cancel=lambda:False, on_result=None, artifacts=None):
+            artifact_budget_bytes=None, cancel=lambda:False, on_result=None, artifacts=None, finalize=None):
         if max_trials<1 or max_wall_time<=0 or storage_budget_bytes<4096:
             raise ValueError("INVALID_SEARCH_BUDGET")
         artifact_budget_bytes=artifact_budget_bytes or storage_budget_bytes
@@ -76,8 +76,13 @@ class SearchOptimizer:
             study=optuna.create_study(storage="sqlite:///"+(self.directory/"study.sqlite3").resolve().as_posix(),
                 study_name=self.manifest["fingerprint"],load_if_exists=True,direction="maximize")
             try:
-                return self._loop(study,evaluator,validator,max_trials,max_wall_time,storage_budget_bytes,
-                                  artifact_budget_bytes,cancel,on_result)
+                try:
+                    result=self._loop(study,evaluator,validator,max_trials,max_wall_time,storage_budget_bytes,
+                                      artifact_budget_bytes,cancel,on_result)
+                except ResearchStorageBudgetExceeded:
+                    result={'outcome':'STORAGE_BUDGET','found':False,
+                        'completed_trials':len(study.get_trials(states=(TrialState.COMPLETE,)))}
+                return finalize(result) if finalize else result
             finally:
                 study._storage.remove_session()
                 backend=getattr(study._storage,"_backend",study._storage)
@@ -91,6 +96,14 @@ class SearchOptimizer:
             saved=read_trial(self.directory/f"trial_{completed_trial.number:06d}.json")
             if saved["objective"]!=completed_trial.value or saved["configuration_hash"]!=completed_trial.user_attrs.get("configuration_hash"):
                 raise ValueError("TRIAL_LEDGER_MISMATCH")
+            if on_result and on_result(saved):
+                finished=study.get_trials(states=(TrialState.COMPLETE,))
+                result={'outcome':'CANDIDATE_HANDOFF','completed_trials':len(finished),
+                    'unique_configurations':len({t.user_attrs.get('configuration_hash') for t in finished}),
+                    'unique_behaviors':len({t.user_attrs.get('behavior_hash') for t in finished}),
+                    'elapsed_seconds':elapsed+time.monotonic()-started,'found':False,'manifest_fingerprint':self.manifest['fingerprint']}
+                ResultSearchService._write(checkpoint,result)
+                return result
         keys=list(self.domains)
         baseline={k:self.baseline[k] for k in keys}
         grid=None

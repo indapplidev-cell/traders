@@ -9,7 +9,7 @@ from dataclasses import replace, asdict
 from pathlib import Path
 import json
 
-from app.config.trade_parameters import ScalpingV2Parameters, ResolvedParameterSet
+from app.config.trade_parameters import ScalpingV2Parameters, ResolvedParameterSet, frozen_parameter_hash
 from app.engine_market_data.candle import Candle
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
@@ -53,8 +53,7 @@ def resolve_frozen_configuration(frozen: dict, overrides: dict) -> ResolvedParam
     runtime = frozen["runtime_parameters"]
     return ResolvedParameterSet(id=runtime["named_parameter_set_id"],
         label=runtime["parameter_set_label"], version=runtime["parameter_set_version"],
-        parameters=parameters, resolved_config_hash=fingerprint({"schema": "frozen-search-configuration/1",
-            "source_authority_hash": frozen["resolved_config_hash"], "parameters": parameters.model_dump(mode="json")}),
+        parameters=parameters, resolved_config_hash=frozen_parameter_hash(parameters,frozen["resolved_config_hash"]),
         activation_cycle_boundary_ms=runtime["activation_cycle_boundary_ms"],
         activation_revision=runtime["activation_revision"], previous_parameter_set="FROZEN_RESEARCH",
         switched_at_utc="FROZEN_RESEARCH", provenance={})

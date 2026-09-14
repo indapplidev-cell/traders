@@ -81,3 +81,13 @@ def test_waiting_last_grid_trial_survives_restart(tmp_path,monkeypatch):
         run(create(tmp_path),4)
     monkeypatch.setattr(optuna.study.Study,'ask',original)
     assert run(create(tmp_path),4)["completed_trials"]==4
+
+
+def test_target_callback_stops_new_trials_and_recovers_before_scheduling(tmp_path):
+    calls=[]
+    search=create(tmp_path)
+    kwargs={'max_trials':20,'max_wall_time':60,'storage_budget_bytes':4000000,
+            'on_result':lambda r:True}
+    assert search.run(lambda p:(calls.append(p) or evaluate(p)),lambda p:p,**kwargs)['completed_trials']==1
+    assert search.run(lambda p:(calls.append(p) or evaluate(p)),lambda p:p,**kwargs)['completed_trials']==1
+    assert len(calls)==1

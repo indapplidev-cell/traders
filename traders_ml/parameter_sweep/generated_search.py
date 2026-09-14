@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 import time
 
-from .result_search import SearchRequest, ResultSearchService, ENGINE_VERSION
+from .result_search import SearchRequest, ResultSearchService, ENGINE_VERSION, ResearchStorageBudgetExceeded
 from .search_parameters import generate_space,SPECS
 from .search_history import HistoryProvider
 from .frozen_funnel import resolve_frozen_configuration, _FrozenOrchestratorConfig
@@ -12,6 +12,7 @@ from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
 from .opportunity_registry import ResearchOpportunityRegistry
 from .chronological_search import simulate
 from .search_optimizer import SearchOptimizer
+from .finding_verifier import FindingVerifier
 
 
 def run_campaign(request: SearchRequest,dataset: Path,output: Path,*,mode="auto",cancel=lambda:False,on_result=None):
@@ -53,11 +54,31 @@ def run_campaign(request: SearchRequest,dataset: Path,output: Path,*,mode="auto"
     prior=output/"OPTIMIZER_STATUS.json"
     used=json.loads(prior.read_text()).get("elapsed_seconds",0) if prior.exists() else 0
     deadline=time.monotonic()+max(0,request.max_wall_time-used)
+    should_stop=lambda:cancel() or time.monotonic()>=deadline
+    verifier=FindingVerifier(output,dataset,request,should_stop=should_stop)
+    def accept(record):
+        target=verifier.accept(record)
+        if on_result:on_result(record)
+        return target
+    def finalize(result):
+        report_ok=True
+        try:entries=verifier.report()
+        except ResearchStorageBudgetExceeded:
+            entries=verifier.published()
+            result['outcome']='STORAGE_BUDGET'
+            report_ok=False
+        result.update(found=bool(entries),verified_configurations=len(entries),exports=[str((output/f"candidate_{e['configuration']}.yaml").resolve()) for e in entries])
+        if report_ok and len(entries)>=request.target_config_count:result['outcome']='FOUND'
+        ResultSearchService._write(output/'STATUS.json',result|{'execution_state':'TERMINAL'})
+        return result
     return optimizer.run(lambda p:simulate(dataset,p,request.initial_capital,
-        should_stop=lambda:cancel() or time.monotonic()>=deadline),validator,max_trials=request.max_trials,
+        should_stop=should_stop,on_profitable_close=lambda t:verifier.discover(p,t)),validator,max_trials=request.max_trials,
         max_wall_time=request.max_wall_time,storage_budget_bytes=request.storage_budget_bytes,
-        artifact_budget_bytes=request.artifact_budget_bytes,cancel=cancel,on_result=on_result,
-        artifacts={"GENERATED_SPACE.json":space,"REQUEST.json":request.model_dump(mode="json")})
+        artifact_budget_bytes=request.artifact_budget_bytes,cancel=cancel,on_result=accept,finalize=finalize,
+        artifacts={"GENERATED_SPACE.json":space,"REQUEST.json":request.model_dump(mode="json"),
+            "SEARCH_MANIFEST.json":{"request":request.model_dump(mode='json'),'dataset':manifest['fingerprint'],
+                'dataset_path':str(dataset.resolve()),'engine':ENGINE_VERSION,'space':space['fingerprint'],
+                'frozen_baseline':frozen,'original_baseline_hash':request.baseline_hash}})
 
 
 def main():

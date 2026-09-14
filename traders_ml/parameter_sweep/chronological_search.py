@@ -23,7 +23,7 @@ class Candidate:
 
 
 def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execution_costs: dict | None = None,
-             should_stop=lambda:False):
+             should_stop=lambda:False, on_profitable_close=None):
     """Assumptions must be supplied explicitly; never promoted to verified data.
 
     Exact execution-quantity/exit-time costs are distinct from the admission
@@ -54,7 +54,11 @@ def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execu
                 if c is None:
                     blockers.append({"symbol":symbol,"boundary":boundary,"reason":"POSITION_CANDLE_MISSING"})
                     return _result(funnel,book,events,blockers,rejections,assumed_execution_costs)
+                previous_closed=len(book.closed)
                 book.advance(symbol,c)
+                if on_profitable_close:
+                    for trade in book.closed[previous_closed:]:
+                        if Decimal(trade['net_pnl'])>0:on_profitable_close(trade)
         for symbol, candidate in list(pending.items()):
             if candidate.result.closed_until_ms+60000>boundary:
                 continue

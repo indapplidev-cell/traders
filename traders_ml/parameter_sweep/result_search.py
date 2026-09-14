@@ -23,8 +23,12 @@ from .universe import validate_parameter_sweep_symbol
 
 CONTRACT_VERSION = "result-search/1"
 REGISTRY_VERSION = "result-search-registry/4-causal-domains"
-ENGINE_VERSION = "result-search-engine/3-chronological"
+ENGINE_VERSION = "result-search-engine/4-verified-export"
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class ResearchStorageBudgetExceeded(RuntimeError):
+    pass
 
 
 def fingerprint(value: Any) -> str:
@@ -143,7 +147,7 @@ def deployment_diagnostics() -> dict[str, Any]:
             "module_dirty": bool(git("status", "--porcelain", "--", str(Path(__file__).resolve()))),
             "capabilities": ["TYPED_REQUEST", "RESUME_GUARD", "DURABLE_VERIFIED_RESULT_CONTRACT",
                              "FROZEN_HISTORY", "SHARED_CHRONOLOGICAL_SIMULATOR",
-                             "GENERATED_COMBINATION_OPTIMIZER"],
+                             "GENERATED_COMBINATION_OPTIMIZER", "VERIFIED_INACTIVE_YAML_EXPORT"],
             "search_execution_available": False}
 
 

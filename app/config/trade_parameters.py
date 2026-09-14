@@ -285,6 +285,15 @@ def _unit_for(path: str) -> str:
     return "dimensionless"
 
 
+def frozen_parameter_hash(parameters: ScalpingV2Parameters, source_authority_hash: str) -> str:
+    """Explicit offline identity; default live resolution retains its authority hash."""
+    if len(source_authority_hash)!=64 or any(c not in '0123456789abcdef' for c in source_authority_hash):
+        raise ValueError('INVALID_FROZEN_AUTHORITY_HASH')
+    payload={'schema':'frozen-search-configuration/1','source_authority_hash':source_authority_hash,
+             'parameters':parameters.model_dump(mode='json')}
+    return sha256(json.dumps(payload,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+
+
 class TradeParameters(StrictModel):
     schema_version: Literal[1]
     config_version: str = Field(min_length=1)
@@ -309,7 +318,7 @@ class TradeParameters(StrictModel):
         return authority_hash({"trade_parameters": parameters.model_dump(mode="json")})
 
     def resolve_scalping_v2_parameter_set(
-        self, parameter_set_id: str | None = None,
+        self, parameter_set_id: str | None = None, *, frozen_source_authority_hash: str | None = None,
     ) -> ResolvedParameterSet:
         selected = parameter_set_id or self.scalping_v2.paper.active_parameter_set
         definitions = {item.id: item for item in self.scalping_v2.parameter_sets.values()}
@@ -355,7 +364,8 @@ class TradeParameters(StrictModel):
         return ResolvedParameterSet(
             id=definition.id, label=definition.label, version=definition.version,
             parameters=parameters,
-            resolved_config_hash=self._semantic_hash(parameters),
+            resolved_config_hash=(self._semantic_hash(parameters) if frozen_source_authority_hash is None else
+                                  frozen_parameter_hash(parameters, frozen_source_authority_hash)),
             activation_cycle_boundary_ms=self.scalping_v2.paper.activation_cycle_boundary_ms,
             activation_revision=self.scalping_v2.paper.activation_revision,
             previous_parameter_set=self.scalping_v2.paper.previous_parameter_set,

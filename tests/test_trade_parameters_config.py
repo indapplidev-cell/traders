@@ -4,6 +4,7 @@ import subprocess
 import sys
 
 import pytest
+import yaml
 
 from app.config.trade_parameters import (
     ACTIVE_SCALPING_V2_PARAMETER_SET, CONFIG_PATH, SCALPING_V2,
@@ -20,7 +21,8 @@ def test_authoritative_config_loads_and_drives_active_named_set():
     runtime = resolve_runtime_parameters("trade-5m-v2")
     assert runtime.risk_per_trade_bps == SCALPING_V2.risk.risk_per_trade_bps == 5
     assert runtime.portfolio_max_concurrent_positions == SCALPING_V2.risk.max_open_positions == 2
-    assert runtime.minimum_planned_rr == SCALPING_V2.geometry.minimum_planned_rr == 0.6
+    declared=yaml.safe_load(CONFIG_PATH.read_text(encoding='utf-8'))['scalping_v2']['parameter_sets']['set_2']['overrides']
+    assert runtime.minimum_planned_rr == SCALPING_V2.geometry.minimum_planned_rr == declared['geometry.minimum_planned_rr']
     assert runtime.impulse_absolute_threshold_pct == 3.0
     assert runtime.impulse_atr_multiplier == 2.5
     assert runtime.parameter_set_id == "scalping-v2-set-2"
@@ -57,9 +59,10 @@ def test_named_sets_inherit_exact_overrides_and_preserve_baseline():
     assert len(baseline.resolved_config_hash) == 64
     assert interim.resolved_config_hash != baseline.resolved_config_hash
     assert baseline.parameters == TRADE_PARAMETERS.profiles.trade_5m_v2
-    assert interim.parameters.geometry.minimum_planned_rr == 0.6
+    declared=yaml.safe_load(CONFIG_PATH.read_text(encoding='utf-8'))['scalping_v2']['parameter_sets']['set_2']['overrides']
+    assert interim.parameters.geometry.minimum_planned_rr == declared['geometry.minimum_planned_rr']
     assert interim.parameters.risk.risk_per_trade_bps == 5
-    assert interim.parameters.geometry.target_min_bps == 60
+    assert interim.parameters.geometry.target_min_bps == declared['geometry.target_min_bps']
     assert interim.parameters.economics.min_ev_reserve_r == 0.05
     assert interim.parameters.exit_policy.stale_position.hard_timeout_seconds == 1200
     assert interim.parameters.costs == baseline.parameters.costs
@@ -100,10 +103,9 @@ def test_selector_switch_rollback_cutoff_and_fail_closed(tmp_path: Path):
         load_trade_parameters(unknown_path).resolve_scalping_v2_parameter_set()
 
     invalid_path = tmp_path / "invalid.yaml"
-    invalid_path.write_text(source.replace(
-        "geometry.minimum_planned_rr: 0.6",
-        "geometry.minimum_planned_rr: -1",
-    ), encoding="utf-8")
+    invalid=yaml.safe_load(source)
+    invalid['scalping_v2']['parameter_sets']['set_2']['overrides']['geometry.minimum_planned_rr']=-1
+    invalid_path.write_text(yaml.safe_dump(invalid),encoding='utf-8')
     with pytest.raises(RuntimeError, match="INVALID_PARAMETER_SET"):
         load_trade_parameters(invalid_path).resolve_scalping_v2_parameter_set()
 

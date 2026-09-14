@@ -12,6 +12,9 @@ from tests.engine_orchestrator_01_helpers import BOUNDARY, CandleRepo, component
 
 def configuration(active="scalping-v2-set-1", previous="scalping-v2-set-1", cutoff=BOUNDARY):
     raw = deepcopy(TRADE_PARAMETERS.model_dump(mode="python", by_alias=True))
+    # Controlled switch fixture: independent of subsequent production experiments.
+    raw['scalping_v2']['parameter_sets']['set_2']['overrides'].update({
+        'geometry.minimum_planned_rr':0.6,'geometry.target_min_bps':60})
     raw["scalping_v2"]["paper"].update(
         active_parameter_set=active, previous_parameter_set=previous,
         activation_cycle_boundary_ms=cutoff,
