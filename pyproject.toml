@@ -30,6 +30,7 @@ traders-operator-control-mobile = "app.operator_control.runtime:mobile_main"
 traders-operator-control-deploy = "app.operator_control.deployment:main"
 
 [project.optional-dependencies]
+research = ["optuna==4.5.0"]
 dev = [
     "pytest>=9.0.0",
 ]

@@ -22,7 +22,8 @@ class Candidate:
     result: object
 
 
-def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execution_costs: dict | None = None):
+def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execution_costs: dict | None = None,
+             should_stop=lambda:False):
     """Assumptions must be supplied explicitly; never promoted to verified data.
 
     Exact execution-quantity/exit-time costs are distinct from the admission
@@ -43,6 +44,9 @@ def simulate(directory: Path, overrides: dict, initial_capital, *, assumed_execu
     pending = {}
     events, blockers, rejections = [], [], Counter()
     for boundary in range(start, tail+1, 60000):
+        if should_stop():
+            blockers.append({"reason":"TRIAL_INTERRUPTED_BY_BUDGET_OR_CANCEL","boundary":boundary})
+            return _result(funnel,book,events,blockers,rejections,assumed_execution_costs)
         for symbol in sorted(tuple(book.positions)):
             p=book.positions[symbol]
             if p.cursor+60000<=boundary:

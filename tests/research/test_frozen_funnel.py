@@ -27,6 +27,7 @@ def test_trial_configuration_is_isolated_from_frozen_source(frozen):
 @pytest.mark.parametrize("key,value,consumer", [
     ("signal.strategy_minimum_score", 20, "risk_minimum_strategy_score"),
     ("signal.impulse_atr_multiplier", 0.5, "impulse_atr_multiplier"),
+    ("signal.impulse_absolute_threshold_pct", 0.5, "impulse_absolute_threshold_pct"),
     ("signal.regime_lookback_candles", 30, "regime_lookback_candles"),
     ("signal.confirmation_window_candles", 3, "confirmation_window_candles"),
     ("geometry.atr_multiplier", 0.5, "geometry_atr_buffer_multiplier"),
