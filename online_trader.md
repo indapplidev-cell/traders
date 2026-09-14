@@ -3,16 +3,16 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = c361ca76e1241463fc0471a13e1c8587853e2f30
+STATUS_AS_OF_COMMIT = 2601ebe1edf87381705aa257818878ce2f4af5a1
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-14T05:28:00.730767+00:00
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_ACCEPTANCE
-FILES_CHANGED = traders_ml/parameter_sweep/cli.py; traders_ml/parameter_sweep/historical_statistics.py; traders_ml/parameter_sweep/history_applicability.py; traders_ml/parameter_sweep/search_history.py; tests/research/test_historical_statistics.py; tests/research/test_result_search_history.py; scripts/result_search_history_acceptance.py; docs/research/scalping_v2_parameter_sweep.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_ACCEPTANCE.json; docs/audits/BLOCK_02_REQUEST.json; docs/audits/BLOCK_02_COMBINATIONS.json; online_trader.md
+RECONCILED_AT_UTC = 2026-09-14T14:57:45.397517+00:00
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03
+FILES_CHANGED = traders_ml/parameter_sweep/frozen_funnel.py; traders_ml/parameter_sweep/historical_execution.py; traders_ml/parameter_sweep/chronological_search.py; traders_ml/parameter_sweep/opportunity_registry.py; traders_ml/parameter_sweep/history_applicability.py; traders_ml/parameter_sweep/result_search.py; tests/research/test_frozen_funnel.py; tests/research/test_historical_execution.py; tests/research/test_chronological_search.py; tests/research/test_research_opportunity_registry.py; scripts/result_search_simulator_acceptance.py; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_ACCEPTANCE.json; docs/research/scalping_v2_parameter_sweep.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = READONLY_SOURCEc9c7085_OPERATOR_SOURCE71844a8_RUNNING_RESTART0; ORCHESTRATOR5M_SOURCE8e629b1_UNCHANGED; ACK_PID24540_ABSENT_HEARTBEAT_STALE; DB_RUNNING
-PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_8f5e39fc1486da52cb4593843e71bb727785b978; CURRENT_DOCUMENT_PENDING_PUSH
+PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_033eca2bd1fa48e5f1d2754ef21b58fa79a9e111; CURRENT_DOCUMENT_PENDING_PUSH
 STATUS_CONFIDENCE = FAIL_CLOSED_BLOCK3_RECURRENT_ACK_OWNER_LOSS; BLOCK1_AND_BLOCK2_PASS; PAPER_TRUE_DB_DURABILITY_TRUE_RECOVERY_FALSE_LIVEFALSE
 
 # Состояние проекта traders-ml
@@ -32,6 +32,31 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = NEW_CONFIG_EPOCH_2026_09_13T19_30_41_NO_72H_SOAK_STARTED_OR_ACCEPTED; PRIOR_EPOCH_SOAK_NOT_INHERITED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Result-search block 03 — chronological simulator acceptance
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03
+FINAL_VERDICT = IMPLEMENTATION_AND_INSTALLED_ACCEPTANCE_PASS
+RESEARCH_NEXT = BLOCK04_PARAMETER_REGISTRY_GENERATOR_AND_OPTUNA
+ENGINE = result-search-engine/3-chronological
+ACTUAL = ALL10_SYMBOLS_480BOUNDARIES_BASELINE_PARITY480_NO_TRADES_NET0; SCORE100_CHANGES255_DECISIONS; STOP60_REQUIRES23_MISSING_COSTS
+IMPLEMENTATION = SHARED_PIPELINE_FROM_CANDLES_EXPLICIT_CONFIG_SHARED_SELECTOR_SIZING_PORTFOLIO_EXITS_ACCOUNTING_TRIAL_LOCAL_STATE
+VALIDATION = 300PASS_COMPILEPASS; 34_AFFECTED_VERSION_TESTS_PASS; FRESH_BASELINE_IDENTICAL
+DEPLOYMENT_SOURCE = dc42c237dcbef3da97bb900a0def0e7af318f753
+FULL_REAL_DATA_PROFITABLE_TRADE = NOT_FOUND
+LIMITATION = MISSING_EXECUTION_QUANTITY_AND_EXIT_TIME_COSTS_BLOCK_ONLY_REACHED_PATHS; ASSUMPTIONS_NOT_PROMOTED; TTL30_EXPIRES_BEFORE_CLOSED_MINUTE_FILL
+SEVEN_BLOCK_STATUS_AT_RECONCILIATION = BLOCK01_PASS_BLOCK02_PASS_BLOCK03_ENGINEERING_AND_DEPLOYMENT_PASS_FINAL_PUSH_GATE_PENDING_BLOCK04_TO07_NOT_ACCEPTED
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_ACCEPTANCE.json
+SAFETY = NO_PRODUCTION_WRITES_NO_RESTART_NO_ORDERS_LIVE_NOT_ENABLED_YAML_UNCHANGED
+```
+
+The adapter now reconstructs the funnel instead of filtering stored trade PnL.
+The shared opportunity rules run in memory; the production registry file is not
+read or written by research. Synthetic lifecycle profit tests are engineering
+evidence only. Historical profitable-trade acceptance remains unfulfilled.
+The primary ACK owner blocker and module percentages are unchanged. Earlier
+research next-actions below are historical and superseded by this section.
 
 ## Result-search block 02 — installed history acceptance
 
