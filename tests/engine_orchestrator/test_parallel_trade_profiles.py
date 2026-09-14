@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+from app.config.trade_parameters import TRADE_PARAMETERS
 from app.engine_orchestrator.closed_window_detector import ClosedWindowDetector
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
@@ -37,7 +38,9 @@ def test_profiles_are_explicit_and_5m_is_the_only_runtime_default():
     assert config.trade_profile_id == DEFAULT_TRADE_PROFILE_ID
     assert config.primary_timeframe == "5m"
     assert TRADE_15M_PROFILE.minimum_planned_rr == 1.5
-    assert TRADE_5M_V2_PROFILE.minimum_planned_rr == 0.6
+    assert TRADE_5M_V2_PROFILE.minimum_planned_rr == (
+        TRADE_PARAMETERS.resolve_scalping_v2_parameter_set().parameters.geometry.minimum_planned_rr
+    )
     assert TRADE_5M_V2_PROFILE.analysis_history_candles != TRADE_15M_PROFILE.analysis_history_candles
     assert TRADE_5M_V2_PROFILE.atr_lookback_candles != TRADE_15M_PROFILE.atr_lookback_candles
     assert TRADE_5M_V2_PROFILE.mode == "PRODUCTION_SEARCH"

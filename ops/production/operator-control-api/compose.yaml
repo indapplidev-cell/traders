@@ -44,6 +44,10 @@ services:
       - traders_control_api_token
     volumes:
       - type: bind
+        source: ../../../config/trading
+        target: /service/config/trading
+        read_only: true
+      - type: bind
         source: D:/disk_E/game_projects/traders/production_control/paper
         target: /run/traders-control
       - type: bind

@@ -37,6 +37,7 @@ from app.server_api.paper_runtime_observation import (
     load_production_identity,
 )
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.config.trading_config_manager import get_trading_config_manager
 
 
 APPLICATION_NAME = "traders-readonly-api"
@@ -264,6 +265,7 @@ def create_runtime_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        config_manager = get_trading_config_manager()
         try:
             with engine.connect() as connection:
                 mode = connection.exec_driver_sql(
@@ -278,6 +280,7 @@ def create_runtime_app() -> FastAPI:
                 )
             yield
         finally:
+            config_manager.stop()
             engine.dispose()
 
     app = create_app(

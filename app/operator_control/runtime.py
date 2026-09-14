@@ -249,6 +249,8 @@ def create_runtime_app(
         outcome_diagnostics = PostgresOutcomeDiagnosticsProcessor(sessions)
         market_data_adapter = PaperProductionMarketDataInputAdapter(sessions)
         scalping = resolve_runtime_parameters("trade-5m-v2")
+        from app.config.trading_config_manager import get_trading_config_manager
+        scalping_config = get_trading_config_manager().get_active_snapshot().resolved.parameters
         scalping_cost_source = BinancePublicScalpingCostSource(
             client=BinancePublicRestClient(
                 max_retries=0, request_timeout_seconds=4.0
@@ -261,7 +263,7 @@ def create_runtime_app(
             entry_slippage_bps=float(scalping.economics_entry_slippage_bps),
             exit_slippage_bps=float(scalping.economics_exit_slippage_bps),
             adverse_fill_reserve_bps=float(
-                SCALPING_V2.costs.adverse_fill_reserve_bps
+                scalping_config.costs.adverse_fill_reserve_bps
             ),
         )
         entry_refinement = ScalpingEntryRefinementService(

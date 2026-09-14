@@ -15,10 +15,10 @@ def test_active_global_parameters_reach_real_consumers():
     resolved = load_trade_parameters().resolve_scalping_v2_parameter_set()
     runner = PipelineRunner(five_minute_config(), CandleRepo(), resolved_parameter_set=resolved)
     config = runner.paper_runner.geometry_config
-    assert config.minimum_positive_edge_bps == 73.004386
-    assert config.production_rr_floor == 1.953403
-    assert config.stop_envelope_bps == 48.496589
-    assert config.minimum_target_diagnostic_bps == 49.163216
+    assert config.minimum_positive_edge_bps == resolved.parameters.economics.min_net_edge_bps
+    assert config.production_rr_floor == resolved.parameters.geometry.minimum_planned_rr
+    assert config.stop_envelope_bps == resolved.parameters.geometry.stop_max_bps
+    assert config.minimum_target_diagnostic_bps == resolved.parameters.geometry.target_min_bps
     snapshot = runner._profiled_payload({})['frozen_parameter_snapshot']['parameters']
     assert snapshot['economics.min_net_edge_bps']['value'] == config.minimum_positive_edge_bps
     assert snapshot['geometry.minimum_planned_rr']['value'] == config.production_rr_floor

@@ -36,6 +36,10 @@ services:
       TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: "/run/traders-commission/binance-account-commission.json"
     volumes:
       - type: bind
+        source: ../../../config/trading
+        target: /service/config/trading
+        read_only: true
+      - type: bind
         source: D:/disk_E/game_projects/traders/production_control/paper
         target: /run/traders-control
         read_only: true

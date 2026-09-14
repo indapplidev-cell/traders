@@ -8,6 +8,7 @@ from threading import RLock
 from typing import Any
 
 from app.config.trade_parameters import load_trade_parameters, ResolvedParameterSet
+from app.config.trading_config_manager import get_trading_config_manager
 from app.engine_orchestrator.runtime_parameters import _runtime_parameters
 from app.engine_orchestrator.config_epoch import ConfigurationEpoch
 
@@ -109,6 +110,13 @@ class PipelineRunner:
             if resolved_parameter_set is not None else config.runtime_parameters
         )
         self._parameter_loader = parameter_loader or load_trade_parameters
+        self._config_manager = (
+            get_trading_config_manager()
+            if parameter_loader is None
+            and resolved_parameter_set is None
+            and config.trade_profile_id == "trade-5m-v2"
+            else None
+        )
         self._cycle_lock = RLock()
         self._cycle_runners = OrderedDict()
         self._parameter_runners = {}
@@ -428,15 +436,19 @@ class PipelineRunner:
     def for_cycle(self, closed_until_ms: int):
         """Freeze one atomic YAML read for every symbol/retry at this boundary.
 
-        Deploy/reload is operator managed; no mutable API selector is added.
-        A replacement file is read only when a new boundary first arrives.
+        Valid replacements are staged by the canonical config manager and are
+        activated only when a new boundary first arrives.
         The cache covers seven days of 5m boundaries, beyond the catch-up scope.
         """
         if self.resolved_parameter_set is not None or self.config.trade_profile_id != "trade-5m-v2":
             return self
         with self._cycle_lock:
             if closed_until_ms not in self._cycle_runners:
-                resolved = self._parameter_loader().resolve_scalping_v2_for_cycle(closed_until_ms)
+                resolved = (
+                    self._config_manager.snapshot_for_cycle(closed_until_ms).resolved
+                    if self._config_manager is not None
+                    else self._parameter_loader().resolve_scalping_v2_for_cycle(closed_until_ms)
+                )
                 identity = (resolved.id, resolved.resolved_config_hash,
                             resolved.activation_cycle_boundary_ms, resolved.activation_revision)
                 existing = self._parameter_runners.get(identity) if identity == self._last_parameter_identity else None

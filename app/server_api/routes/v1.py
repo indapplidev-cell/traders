@@ -25,6 +25,7 @@ from app.server_api.schemas.i18n import I18nCatalog, I18nManifest
 from app.i18n import catalog_payload, manifest_payload
 from app.server_api.errors import ApiError
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.config.trading_config_manager import get_trading_config_manager
 
 
 SymbolPath = Annotated[str, Path(pattern=r"^[A-Z0-9]{5,20}$")]
@@ -70,6 +71,11 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     @router.get("/trading-universe", response_model=TradingUniverseEnvelope, operation_id="getTradingUniverse", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
     def get_trading_universe() -> TradingUniverseEnvelope:
         return service.trading_universe()
+
+    @router.get("/trading/config", operation_id="getTradingConfig")
+    def get_trading_config() -> dict:
+        """Current canonical effective config and reload diagnostics."""
+        return get_trading_config_manager().status()
 
     @router.get("/trading/funnel", response_model=TradingFunnelEnvelope, operation_id="getTradingFunnel", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
     def get_trading_funnel(

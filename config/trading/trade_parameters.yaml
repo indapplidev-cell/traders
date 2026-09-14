@@ -1,5 +1,10 @@
 schema_version: 1
 config_version: scalping-v2-baseline-1
+reload:
+  poll_interval_seconds: 0.25
+  debounce_seconds: 0.20
+  stability_seconds: 0.10
+  activation_timeframe_seconds: 300
 scalping_v2:
   parameter_sets:
     set_1:
@@ -16,11 +21,14 @@ scalping_v2:
       overrides:
         # Previous active PAPER forward-test value: 0.6
         # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
-        geometry.minimum_planned_rr: 1.953403
+        # geometry.minimum_planned_rr: 1.953403
+        geometry.minimum_planned_rr: 0.458508
         # Previous active PAPER forward-test value: 60.0
         # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
-        geometry.target_min_bps: 49.163216
-        economics.min_ev_reserve_r: 0.05
+        # geometry.target_min_bps: 49.163216
+        geometry.target_min_bps: 29.846762
+        # economics.min_ev_reserve_r: 0.05
+        economics.min_ev_reserve_r: 0.0
         exit_policy.stale_position.net_break_even_protection_enabled: true
         exit_policy.stale_position.soft_timeout_seconds: 600
         exit_policy.stale_position.hard_timeout_seconds: 1200
@@ -57,20 +65,23 @@ profiles:
       confirmation_window_candles: 1
       volume_baseline_candles: 12
       regime_lookback_candles: 24
-      strategy_minimum_score: 55.0
+      # strategy_minimum_score: 55.0
+      strategy_minimum_score: 87.7902
     geometry:
       atr_multiplier: 0.25
       stop_min_bps: 0.0
       # Previous active PAPER forward-test value: 50.0
       # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
-      stop_max_bps: 48.496589
+      # stop_max_bps: 48.496589
+      stop_max_bps: 9.198173
       target_policy: SCALPING_NEAREST_VIABLE_TARGET_V3
       target_min_bps: 45.0
       minimum_planned_rr: 0.4
     economics:
       # Previous active PAPER forward-test value: 1.0
       # Replaced by config_id: fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5
-      min_net_edge_bps: 73.004386
+      # min_net_edge_bps: 73.004386
+      min_net_edge_bps: 0.0
       min_positive_ev_r: 0.0
       min_ev_reserve_r: 0.0
       bucket_min_sample: 20

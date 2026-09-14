@@ -360,13 +360,15 @@ class PostgresStalePositionShadowService:
 
 
 def stale_position_capability() -> dict[str, object]:
-    policy = SCALPING_V2.exit_policy.stale_position
+    from app.config.trading_config_manager import get_trading_config_manager
+    snapshot = get_trading_config_manager().get_active_snapshot()
+    policy = snapshot.resolved.parameters.exit_policy.stale_position
     return {
         "capability": "STALE_POSITION_SHADOW",
         "runtime_active": bool(policy.enabled),
         "mode": policy.mode,
         "policy_version": POLICY_VERSION,
-        "config_hash": TRADE_PARAMETERS.config_hash,
+        "config_hash": snapshot.config.config_hash,
         "policy": policy.model_dump(mode="json"),
         "latest": None,
     }

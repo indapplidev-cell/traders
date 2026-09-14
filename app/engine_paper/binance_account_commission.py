@@ -320,7 +320,8 @@ class BinanceAccountCommissionManager:
         )
 
     def ensure_fresh(self, *, force: bool = False) -> RefreshResult:
-        policy = SCALPING_V2.costs.commission
+        from app.config.trading_config_manager import get_trading_config_manager
+        policy = get_trading_config_manager().get_active_snapshot().resolved.parameters.costs.commission
         now = self._clock().astimezone(timezone.utc)
         cached, age = self._cached()
         if not force and cached is not None and age is not None and age < policy.refresh_interval_seconds:
@@ -391,6 +392,8 @@ class BinanceAccountCommissionManager:
 
 
 def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
+    from app.config.trading_config_manager import get_trading_config_manager
+    commission = get_trading_config_manager().get_active_snapshot().resolved.parameters.costs.commission
     selected = path or Path(os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", ""))
     try:
         payload = json.loads(selected.read_text(encoding="utf-8"))
@@ -400,7 +403,7 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             payload.get("snapshot_type") == SNAPSHOT_TYPE
             and payload.get("real_account_data") is True
             and payload.get("provider_version") == PROVIDER_VERSION
-            and age <= SCALPING_V2.costs.commission.max_snapshot_age_seconds
+            and age <= commission.max_snapshot_age_seconds
         )
         symbols = payload.get("symbols", {}) if isinstance(payload.get("symbols"), Mapping) else {}
         return {

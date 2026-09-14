@@ -101,16 +101,26 @@ class RuntimeProfileParameters:
     resolved_config_hash: str | None = None
     activation_cycle_boundary_ms: int | None = None
     activation_revision: str | None = None
+    config_generation: int | None = None
+    config_loaded_at: str | None = None
+    config_activated_at: str | None = None
+    config_source_path: str | None = None
+    trade_parameter_config_version: str | None = None
+    trade_parameter_config_hash: str | None = None
+    authoritative_parameters: dict | None = None
 
     def __post_init__(self) -> None:
         profile = resolve_trade_profile(self.profile_id)
         if self.trigger_timeframe != profile.trigger_timeframe or self.mode != profile.mode:
             raise ValueError("runtime parameter identity/profile mismatch")
-        if self.market_data_required_timeframes != tuple(
-            timeframe for timeframe, _ in profile.market_data_windows
-        ) or self.market_data_context_windows != profile.market_data_windows:
+        if self.profile_id != TradeProfileId.TRADE_5M_V2.value and (
+            self.market_data_required_timeframes != tuple(
+                timeframe for timeframe, _ in profile.market_data_windows
+            )
+            or self.market_data_context_windows != profile.market_data_windows
+        ):
             raise ValueError("runtime market-data/profile identity mismatch")
-        if (
+        if self.profile_id != TradeProfileId.TRADE_5M_V2.value and (
             self.bounded_book_depth_limit != profile.book_depth_limit
             or self.microstructure_max_age_ms != profile.microstructure_max_age_ms
             or self.vwap_reference_notional != profile.vwap_reference_notional
@@ -233,6 +243,13 @@ class RuntimeProfileParameters:
                 "exit_time_stop_shadow_cohorts_minutes",
                 "exit_adaptive_rules_production_enabled",
                 "opportunity_reentry_enabled",
+                "config_generation",
+                "config_loaded_at",
+                "config_activated_at",
+                "config_source_path",
+                "trade_parameter_config_version",
+                "trade_parameter_config_hash",
+                "authoritative_parameters",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -249,13 +266,22 @@ class RuntimeProfileParameters:
             "resolved_config_hash": self.resolved_config_hash,
             "activation_cycle_boundary_ms": self.activation_cycle_boundary_ms,
             "activation_revision": self.activation_revision,
-            "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
-            "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
+            "config_generation": self.config_generation,
+            "config_loaded_at": self.config_loaded_at,
+            "config_activated_at": self.config_activated_at,
+            "config_source_path": self.config_source_path,
+            "trade_parameter_config_version": (
+                self.trade_parameter_config_version or TRADE_PARAMETERS.config_version
+            ),
+            "trade_parameter_config_hash": (
+                self.trade_parameter_config_hash or TRADE_PARAMETERS.config_hash
+            ),
         }
         if self.profile_id == TradeProfileId.TRADE_5M_V2.value:
-            result["authoritative_parameters"] = parameter_snapshot(
-                ACTIVE_SCALPING_V2_PARAMETER_SET
-            )["parameters"]
+            result["authoritative_parameters"] = (
+                self.authoritative_parameters
+                or parameter_snapshot(ACTIVE_SCALPING_V2_PARAMETER_SET)["parameters"]
+            )
             result["runtime_parameters"] = {
                 key: {
                     "value": value,
@@ -342,7 +368,9 @@ def _runtime_parameters(
     SCALPING_V2 = selected.parameters
     ACTIVE_SCALPING_V2_PARAMETER_SET = selected
     if resolved is not None:
-        profile = replace(profile, minimum_planned_rr=SCALPING_V2.geometry.minimum_planned_rr)
+        profile = resolve_trade_profile(
+            profile.trade_profile_id, scalping_parameters=SCALPING_V2
+        )
     is_scalping = profile.trade_mode == "SCALPING"
     is_v2 = profile.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
     declared = RUNTIME_POLICY.runtime_parameters
@@ -461,6 +489,13 @@ def _runtime_parameters(
             ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms if is_v2 else None
         ),
         activation_revision=(ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision if is_v2 else None),
+        config_generation=(ACTIVE_SCALPING_V2_PARAMETER_SET.config_generation if is_v2 else None),
+        config_loaded_at=(ACTIVE_SCALPING_V2_PARAMETER_SET.loaded_at if is_v2 else None),
+        config_activated_at=(ACTIVE_SCALPING_V2_PARAMETER_SET.activated_at if is_v2 else None),
+        config_source_path=(ACTIVE_SCALPING_V2_PARAMETER_SET.source_path if is_v2 else None),
+        trade_parameter_config_version=(ACTIVE_SCALPING_V2_PARAMETER_SET.trade_config_version if is_v2 else None),
+        trade_parameter_config_hash=(ACTIVE_SCALPING_V2_PARAMETER_SET.trade_config_hash if is_v2 else None),
+        authoritative_parameters=(parameter_snapshot(ACTIVE_SCALPING_V2_PARAMETER_SET)["parameters"] if is_v2 else None),
     )
 
 
@@ -479,6 +514,10 @@ def resolve_runtime_parameters(
     registry: Mapping[str, RuntimeProfileParameters] = RUNTIME_PROFILE_PARAMETERS,
 ) -> RuntimeProfileParameters:
     """Resolve explicitly and fail closed; there is no profile/default fallback."""
+    if str(profile_id) == TradeProfileId.TRADE_5M_V2.value and registry is RUNTIME_PROFILE_PARAMETERS:
+        from app.config.trading_config_manager import get_trading_config_manager
+        resolved = get_trading_config_manager().get_active_snapshot().resolved
+        return _runtime_parameters(resolve_trade_profile(str(profile_id)), resolved)
     try:
         parameters = registry[str(profile_id)]
     except KeyError as exc:

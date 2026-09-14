@@ -102,13 +102,14 @@ class TradeSearchProfile:
             raise ValueError("shadow search cannot create PAPER commands or positions")
 
 
-def _profile_from_yaml(profile_id: str) -> TradeSearchProfile:
+def _profile_from_yaml(profile_id: str, scalping_parameters=None) -> TradeSearchProfile:
     source = RUNTIME_POLICY.profiles[profile_id]
     is_v2 = profile_id == TradeProfileId.TRADE_5M_V2.value
-    signal = SCALPING_V2.signal if is_v2 else None
-    costs = SCALPING_V2.costs if is_v2 else None
-    lifecycle = SCALPING_V2.lifecycle if is_v2 else None
-    geometry = SCALPING_V2.geometry if is_v2 else None
+    scalping = (scalping_parameters or SCALPING_V2) if is_v2 else None
+    signal = scalping.signal if scalping else None
+    costs = scalping.costs if scalping else None
+    lifecycle = scalping.lifecycle if scalping else None
+    geometry = scalping.geometry if scalping else None
     return TradeSearchProfile(
         trade_profile_id=profile_id,
         trade_mode=source.trade_mode,
@@ -173,8 +174,12 @@ TRADE_5M_CONTEXT_MINIMUM_WINDOWS: Final = MappingProxyType(
 )
 
 
-def resolve_trade_profile(value: str | TradeProfileId | None = None) -> TradeSearchProfile:
+def resolve_trade_profile(
+    value: str | TradeProfileId | None = None, *, scalping_parameters=None,
+) -> TradeSearchProfile:
     profile_id = DEFAULT_TRADE_PROFILE_ID if value is None else str(value)
+    if profile_id == TradeProfileId.TRADE_5M_V2.value and scalping_parameters is not None:
+        return _profile_from_yaml(profile_id, scalping_parameters)
     try:
         return TRADE_PROFILES[profile_id]
     except KeyError as exc:

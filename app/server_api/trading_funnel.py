@@ -46,6 +46,7 @@ from app.db.paper_models import (
 from app.config.trade_parameters import (
     ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS,
 )
+from app.config.trading_config_manager import get_trading_config_manager
 from app.engine_paper.binance_account_commission import commission_runtime_status
 from app.engine_paper.stale_position_shadow import stale_position_runtime_projection
 
@@ -1756,6 +1757,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                      production_eligibility_by_run: Mapping[str, object] | None = None,
                      lifecycle_by_run: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
     profile = resolve_trade_profile(trade_profile_id)
+    active_config = get_trading_config_manager().get_active_snapshot()
+    active_set = active_config.resolved
+    active_parameters = active_set.parameters
     boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
     max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
     eligible_by_run = eligible_by_run or {}
@@ -2330,7 +2334,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         str(item["probability_bucket"])
         for item in authority_rows if item.get("probability_bucket")
     }
-    required_samples = SCALPING_V2.economics.bucket_min_sample
+    required_samples = active_parameters.economics.bucket_min_sample
     ready_buckets = {
         str(item["probability_bucket"])
         for item in authority_rows
@@ -2351,14 +2355,18 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     return {
         "projection_version": PROJECTION_VERSION,
         "trade_profile_id": profile.trade_profile_id,
-        "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
-        "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
-        "active_parameter_set": ACTIVE_SCALPING_V2_PARAMETER_SET.id,
-        "active_parameter_set_label": ACTIVE_SCALPING_V2_PARAMETER_SET.label,
-        "active_parameter_set_version": ACTIVE_SCALPING_V2_PARAMETER_SET.version,
-        "resolved_config_hash": ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash,
-        "activation_cycle_boundary_ms": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms,
-        "activation_revision": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision,
+        "trade_parameter_config_version": active_config.config.config_version,
+        "trade_parameter_config_hash": active_config.config.config_hash,
+        "active_parameter_set": active_set.id,
+        "active_parameter_set_label": active_set.label,
+        "active_parameter_set_version": active_set.version,
+        "resolved_config_hash": active_set.resolved_config_hash,
+        "activation_cycle_boundary_ms": active_config.activation_boundary_ms,
+        "activation_revision": active_set.activation_revision,
+        "config_generation": active_config.generation,
+        "config_loaded_at": active_config.loaded_at,
+        "config_activated_at": active_config.activated_at,
+        "config_status": get_trading_config_manager().status(),
         "commission_authority": (
             commission_runtime_status()
             if profile.trade_profile_id == "trade-5m-v2" else {

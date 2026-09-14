@@ -63,7 +63,7 @@ def test_named_sets_inherit_exact_overrides_and_preserve_baseline():
     assert interim.parameters.geometry.minimum_planned_rr == declared['geometry.minimum_planned_rr']
     assert interim.parameters.risk.risk_per_trade_bps == 5
     assert interim.parameters.geometry.target_min_bps == declared['geometry.target_min_bps']
-    assert interim.parameters.economics.min_ev_reserve_r == 0.05
+    assert interim.parameters.economics.min_ev_reserve_r == declared['economics.min_ev_reserve_r']
     assert interim.parameters.exit_policy.stale_position.hard_timeout_seconds == 1200
     assert interim.parameters.costs == baseline.parameters.costs
     assert interim.parameters.risk.max_open_positions == baseline.parameters.risk.max_open_positions
@@ -127,10 +127,21 @@ def test_packaged_runtime_can_bind_authoritative_config_path(tmp_path: Path):
     assert Path(completed.stdout.strip()) == runtime_config
 
 
-def test_all_production_images_copy_and_bind_authoritative_config():
+def test_all_relevant_production_services_bind_authoritative_config_read_only():
     dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+    composes = [
+        root / "docker-compose.yml",
+        root / "ops/production/readonly-api/compose.yaml",
+        root / "ops/production/operator-control-api/compose.yaml",
+    ]
 
+    # Image copies remain a bootstrap/test fallback, never production authority.
     assert dockerfile.count("COPY config ./config") == 3
     assert dockerfile.count(
         "TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml"
     ) == 3
+    for compose in composes:
+        source = compose.read_text(encoding="utf-8")
+        assert "/service/config/trading" in source
+        assert (":ro" in source or "read_only: true" in source)

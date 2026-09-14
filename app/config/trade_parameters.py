@@ -29,6 +29,15 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class ReloadParameters(StrictModel):
+    """Bounded file-change detection policy owned by the runtime YAML."""
+
+    poll_interval_seconds: float = Field(gt=0, le=60)
+    debounce_seconds: float = Field(ge=0, le=60)
+    stability_seconds: float = Field(ge=0, le=60)
+    activation_timeframe_seconds: int = Field(gt=0)
+
+
 class SignalParameters(StrictModel):
     timeframe: Literal["5m"]
     required_timeframes: tuple[str, ...]
@@ -229,6 +238,12 @@ class ResolvedParameterSet:
     previous_parameter_set: str
     switched_at_utc: str
     provenance: dict[str, str]
+    config_generation: int | None = None
+    loaded_at: str | None = None
+    activated_at: str | None = None
+    source_path: str | None = None
+    trade_config_version: str | None = None
+    trade_config_hash: str | None = None
 
 
 class ParameterSource(StrEnum):
@@ -297,6 +312,7 @@ def frozen_parameter_hash(parameters: ScalpingV2Parameters, source_authority_has
 class TradeParameters(StrictModel):
     schema_version: Literal[1]
     config_version: str = Field(min_length=1)
+    reload: ReloadParameters
     profiles: TradingProfiles
     scalping_v2: ScalpingV2SetArchitecture
 
@@ -371,6 +387,8 @@ class TradeParameters(StrictModel):
             previous_parameter_set=self.scalping_v2.paper.previous_parameter_set,
             switched_at_utc=self.scalping_v2.paper.switched_at_utc,
             provenance=provenance,
+            trade_config_version=self.config_version,
+            trade_config_hash=self.config_hash,
         )
 
     def resolve_scalping_v2_for_cycle(self, cycle_boundary_ms: int) -> ResolvedParameterSet:
@@ -443,5 +461,6 @@ SCALPING_V2 = ACTIVE_SCALPING_V2_PARAMETER_SET.parameters
 
 __all__ = (
     "ACTIVE_SCALPING_V2_PARAMETER_SET", "CONFIG_PATH", "ResolvedParameterSet",
-    "SCALPING_V2", "TRADE_PARAMETERS", "TradeParameters", "load_trade_parameters",
+    "ReloadParameters", "SCALPING_V2", "TRADE_PARAMETERS", "TradeParameters",
+    "load_trade_parameters",
 )
