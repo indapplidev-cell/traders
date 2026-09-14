@@ -156,6 +156,14 @@ class PresentationState:
 
 
 class ParameterSweepController:
+    @staticmethod
+    def prepare_result_search(values: Mapping[str, Any], output_root: Path,
+                              dataset_hash: str, *, resume: Path | None = None) -> Path:
+        """Internal result-search adapter, using exactly the CLI service contract."""
+        from .result_search import ResultSearchService
+        service = ResultSearchService()
+        return service.prepare(service.request(values), output_root, dataset_hash, resume=resume)
+
     def __init__(self, config_path: Path, output_root: Path) -> None:
         self.config_path = config_path
         self.output_root = output_root

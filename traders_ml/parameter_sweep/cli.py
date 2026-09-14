@@ -80,6 +80,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--to", dest="to_value")
     parser.add_argument("--database-url", help="Explicit dev/test/admin override only")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--result-search-request", type=Path,
+                        help="Internal result-search foundation: prepare typed JSON request; does not run legacy search")
+    parser.add_argument("--result-search-diagnostics", action="store_true")
+    parser.add_argument("--result-search-dataset-hash")
+    parser.add_argument("--result-search-resume", type=Path)
     parser.add_argument(
         "--range-override", type=Path,
         help="Explicit run-local DATA_DRIVEN_SEARCH_RANGES.json input.",
@@ -89,6 +94,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if args.result_search_diagnostics or args.result_search_request:
+        import json
+        from .result_search import ResultSearchService, deployment_diagnostics
+        if args.result_search_diagnostics:
+            print(json.dumps(deployment_diagnostics(), indent=2))
+            return
+        if not args.result_search_dataset_hash:
+            raise SystemExit("RESULT_SEARCH_DATASET_HASH_REQUIRED")
+        service = ResultSearchService()
+        request = service.request(json.loads(args.result_search_request.read_text(encoding="utf-8")))
+        run = service.prepare(request, args.output_root, args.result_search_dataset_hash,
+                              resume=args.result_search_resume)
+        print(json.dumps({"run": str(run), "state": "PREPARED", "search_executed": False}))
+        return
     if args.migrate_v1:
         target = args.migration_target or args.migrate_v1.with_name(args.migrate_v1.name + "-v2")
         report = migrate_v1_run(args.migrate_v1, target, dry_run=args.dry_run)

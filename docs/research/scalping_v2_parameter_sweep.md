@@ -1,5 +1,32 @@
 # Scalping v2 Parameter Sweep
 
+## Result-driven refactor: block 01 internal foundation
+
+The existing GUI and research modes below remain legacy workflows. They do not
+implement the result-driven search acceptance. The new shared
+`ResultSearchService` currently prepares typed requests and guards durable result
+publication; it does not yet schedule simulations. Its controller adapter and CLI
+use the same request parser. GUI controls will be integrated in block 06.
+
+Checkout deployment uses `D:\disk_E\game_projects\traders\traders-ml` and
+`C:\Program Files\Python311\python.exe`. Inspect the loaded version in a fresh
+process:
+
+```powershell
+python -m traders_ml.parameter_sweep --result-search-diagnostics
+python -m traders_ml.parameter_sweep --result-search-request request.json --result-search-dataset-hash <sha256> --output-root artifacts/result_search
+python -m traders_ml.parameter_sweep --result-search-request request.json --result-search-dataset-hash <sha256> --result-search-resume artifacts/result_search/<run-id>
+```
+
+Preparation returns `PREPARED`, never a search success. Requests specify UTC
+start/end/cutoff, symbols and scope, capital, baseline hash, parameter domains,
+constraints, seed, finite trial/time/artifact/storage budgets and data/execution
+modes. The default target is one verified configuration with at least one valid
+closed trade whose net PnL after costs is positive. Statistical certification is
+separate. Open trades, PATH_END, positive gross with negative net and unverified
+historical PnL do not qualify. Full simulation and YAML export are not installed
+by this foundation block.
+
 Parameter Sweep is an offline, read-only research tool implemented by the
 authoritative `traders_ml/parameter_sweep/` package. The GUI and CLI are thin
 front ends over the same headless engine.
