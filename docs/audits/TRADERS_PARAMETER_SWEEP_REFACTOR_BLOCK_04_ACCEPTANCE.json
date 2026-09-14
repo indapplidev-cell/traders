@@ -1,0 +1,195 @@
+{
+  "acceptance": "PASS",
+  "checked_at_utc": "2026-09-14T15:26:54.690249+00:00",
+  "deployment": {
+    "capabilities": [
+      "TYPED_REQUEST",
+      "RESUME_GUARD",
+      "DURABLE_VERIFIED_RESULT_CONTRACT",
+      "FROZEN_HISTORY",
+      "SHARED_CHRONOLOGICAL_SIMULATOR",
+      "GENERATED_COMBINATION_OPTIMIZER"
+    ],
+    "checkout": "D:\\disk_E\\game_projects\\traders\\traders-ml",
+    "contract": "result-search/1",
+    "engine": "result-search-engine/3-chronological",
+    "interpreter": "C:\\Program Files\\Python311\\python.exe",
+    "module": "D:\\disk_E\\game_projects\\traders\\traders-ml\\traders_ml\\parameter_sweep\\result_search.py",
+    "module_dirty": false,
+    "module_sha256": "ba5eda2b627dcc908429a428014971fe39ef932695472cc79fbaa3fd254ce3eb",
+    "pid": 19872,
+    "registry": "result-search-registry/4-causal-domains",
+    "search_execution_available": false,
+    "source_commit": "591bc7fdfa5965ad0271d9642528b574b77deb33"
+  },
+  "request": {
+    "artifact_budget_bytes": 64000000,
+    "baseline_hash": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+    "constraints": [],
+    "data_cutoff": "2026-09-14T00:00:00Z",
+    "data_mode": "HISTORICAL_VERIFIED",
+    "end": "2026-09-13T23:00:00Z",
+    "execution_mode": "CAUSAL_OHLC_STOP_FIRST",
+    "initial_capital": 100.0,
+    "max_trials": 5,
+    "max_wall_time": 600.0,
+    "parameters": {},
+    "profile": "trade-5m-v2",
+    "scope": "GLOBAL",
+    "seed": 20260914,
+    "start": "2026-09-13T19:00:00Z",
+    "storage_budget_bytes": 128000000,
+    "success_criterion": "VALID_CLOSED_TRADE_NET_PNL_GT_ZERO",
+    "symbols": [
+      "ADAUSDT",
+      "AVAXUSDT",
+      "BNBUSDT",
+      "BTCUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "LINKUSDT",
+      "SOLUSDT",
+      "SUIUSDT",
+      "XRPUSDT"
+    ],
+    "target_config_count": 1,
+    "version": "result-search/1"
+  },
+  "resume_status": {
+    "completed_trials": 5,
+    "elapsed_seconds": 143.34299999999348,
+    "found": false,
+    "manifest_fingerprint": "78025ef2e4744041f06aacc395cfd22399698a808e27408d3e95ebc4f340c1ea",
+    "outcome": "NOT_FOUND_WITHIN_BUDGET",
+    "unique_behaviors": 4,
+    "unique_configurations": 4
+  },
+  "safety_hashes": {
+    "config\\trading\\trade_parameters.yaml": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+    "reports\\runtime\\scalping_opportunities.json": "20421fe4e9c859f6aa6bee6699b855f2f4fd1d86d1952ff1c7858721277ae357"
+  },
+  "sha256": {
+    "trial_000000.json": "dc918642694fa03c605c74c6c98de94aafc6658690c121b0369237b48cfe5b2b",
+    "trial_000001.json": "246f08076f8d71e033a8ed028aa4878416fbba37e01a8ace9046df58b88a104d",
+    "trial_000002.json": "83f1b784e9bdcd44caa1bfc0263c47b5e15bb38659378508ba72e5cc9cbed460",
+    "trial_000003.json": "a3498226f98457840eb0c9290a2440dc49be378caa44825da9f69bf1a8cf87a0",
+    "trial_000004.json": "4040b3ed0cd1276eb61e4343a6174e4855b471ede7afb240469f4430331af8df"
+  },
+  "sql": {
+    "alembic": "0031_scalping_parameter_sets",
+    "read_only": "on"
+  },
+  "status": {
+    "completed_trials": 5,
+    "elapsed_seconds": 143.25,
+    "found": false,
+    "manifest_fingerprint": "78025ef2e4744041f06aacc395cfd22399698a808e27408d3e95ebc4f340c1ea",
+    "outcome": "NOT_FOUND_WITHIN_BUDGET",
+    "unique_behaviors": 4,
+    "unique_configurations": 4
+  },
+  "tests": "307 passed; 48 affected after constraint fixes; 1 frozen registry test",
+  "trading_yaml_sha256": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+  "trials": [
+    {
+      "blockers": 0,
+      "closed_trades": 0,
+      "configuration_hash": "604610d36d698c46e4a30eaa7561d73bcaaf14059b7f2d6bb40943167fd271cd",
+      "events": 480,
+      "net_pnl": "0",
+      "number": 0,
+      "proposal": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.atr_multiplier": 0.25,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589,
+        "signal.confirmation_window_candles": 1,
+        "signal.impulse_absolute_threshold_pct": 3.0,
+        "signal.impulse_atr_multiplier": 2.5,
+        "signal.regime_lookback_candles": 24,
+        "signal.strategy_minimum_score": 55.0
+      },
+      "result": "SIMULATED"
+    },
+    {
+      "blockers": 0,
+      "closed_trades": 0,
+      "configuration_hash": "5d6c1c9922babf50e8b807b27680cea9ece6ee0b13336726f6bec92300063d74",
+      "events": 480,
+      "net_pnl": "0",
+      "number": 1,
+      "proposal": {
+        "economics.min_net_edge_bps": 0.95769005,
+        "geometry.atr_multiplier": 0.25,
+        "geometry.minimum_planned_rr": 0.20906217,
+        "geometry.stop_max_bps": 9.85360085,
+        "signal.confirmation_window_candles": 1,
+        "signal.impulse_absolute_threshold_pct": 0.0095769,
+        "signal.impulse_atr_multiplier": 0.12121212,
+        "signal.regime_lookback_candles": 16,
+        "signal.strategy_minimum_score": 55.0
+      },
+      "result": "SIMULATED"
+    },
+    {
+      "blockers": 60,
+      "closed_trades": 0,
+      "configuration_hash": "79cd2777a0997fdfef91098b478fd6710ded2a41afb8b8798bc0b264c17c8a40",
+      "events": 480,
+      "net_pnl": "0",
+      "number": 2,
+      "proposal": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.atr_multiplier": 1.0,
+        "geometry.minimum_planned_rr": 2.66666667,
+        "geometry.stop_max_bps": 149.4182438,
+        "signal.confirmation_window_candles": 8,
+        "signal.impulse_absolute_threshold_pct": 3.0,
+        "signal.impulse_atr_multiplier": 2.5,
+        "signal.regime_lookback_candles": 64,
+        "signal.strategy_minimum_score": 87.75
+      },
+      "result": "BLOCKED_DATA"
+    },
+    {
+      "blockers": 0,
+      "closed_trades": 0,
+      "configuration_hash": "3ef6d08a80e74bae1521e4631b796a7b119ad82cef311e1ebbdf7f496c942882",
+      "events": 480,
+      "net_pnl": "0",
+      "number": 3,
+      "proposal": {
+        "economics.min_net_edge_bps": 5.88711458,
+        "geometry.atr_multiplier": 0.5,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589,
+        "signal.confirmation_window_candles": 2,
+        "signal.impulse_absolute_threshold_pct": 0.2016882,
+        "signal.impulse_atr_multiplier": 0.53571429,
+        "signal.regime_lookback_candles": 24,
+        "signal.strategy_minimum_score": 55.0
+      },
+      "result": "SIMULATED"
+    },
+    {
+      "blockers": 0,
+      "closed_trades": 0,
+      "configuration_hash": "604610d36d698c46e4a30eaa7561d73bcaaf14059b7f2d6bb40943167fd271cd",
+      "events": 480,
+      "net_pnl": "0",
+      "number": 4,
+      "proposal": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.atr_multiplier": 0.25,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589,
+        "signal.confirmation_window_candles": 1,
+        "signal.impulse_absolute_threshold_pct": 3.0,
+        "signal.impulse_atr_multiplier": 2.5,
+        "signal.regime_lookback_candles": 24,
+        "signal.strategy_minimum_score": 55.0
+      },
+      "result": "SIMULATED"
+    }
+  ]
+}

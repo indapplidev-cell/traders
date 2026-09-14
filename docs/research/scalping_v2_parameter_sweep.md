@@ -282,3 +282,21 @@ production expiry/next-closed-minute contract and SHADOW timeout semantics.
 A 30-second entry validity does not survive a fill requiring the minute close.
 Open tails are incomplete, not PATH_END wins. Research opportunity state is in
 memory and never loads or persists the production file.
+
+## Generated combinations (block 04)
+
+Install the optional research dependency with `python -m pip install -e ".[research]"`.
+Run `python -m traders_ml.parameter_sweep.generated_search --request <request.json> --dataset <frozen-dir> --output <campaign-dir>`.
+Repeat the same command to resume. The request, dataset, registry, engine, seed
+and domains must match. Budget changes are a new campaign, not an implicit resume.
+The internal command runs baseline and generated combinations through the shared
+simulator; durable FOUND/export publication follows in block 05. Full user-facing
+GUI/CLI integration follows in block 06.
+
+Optuna TPE uses one deterministic worker and local SQLite. Small finite spaces
+use exhaustive enumeration; `--mode tpe` and `--mode exhaustive` select explicitly.
+Generated values use search-only observations and declared runtime discrete
+constraints. `GENERATED_SPACE.json` explains searchable/frozen parameters;
+`trial_*.json` preserve proposals, resolved configurations and complete outcomes.
+`OPTIMIZER_STATUS.json` reports elapsed budget, completed/unique trials and stop
+reason. Missing reached inputs remain explicit BLOCKED_DATA trials, not profits.
