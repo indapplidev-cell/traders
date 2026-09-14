@@ -234,3 +234,22 @@ quantity/notional, policy, source and causal receipt timing. Missing inputs bloc
 only the combinations that demand them. Reaching probability returns
 HISTORICAL_PROBABILITY_HIERARCHY_REQUIRED; empty statistics are not a proven rejection.
 No PnL, portfolio acceptance, configuration export or LIVE readiness is certified.
+
+## Historical statistics continuation
+
+Freeze the actual production statistical sources without production writes:
+
+```powershell
+python -m traders_ml.parameter_sweep.historical_statistics --source reports/calibration/scalping-v2-probability-set2 --parameter-set-id scalping-v2-set-2 --output artifacts/result_search_applicability_01/new_statistics.json
+python -m traders_ml.parameter_sweep.history_applicability --dataset artifacts/result_search_applicability_01/dataset --combinations artifacts/result_search_applicability_01/combinations.json --statistics artifacts/result_search_applicability_01/new_statistics.json --output artifacts/result_search_applicability_01/new_statistics_assessment.json
+```
+
+Outputs must not exist. Outcomes are frozen with fingerprints and source checksums;
+future and undated outcomes are excluded before the production hierarchy builder.
+Statistics are cached immutably per assessment, with fresh per-boundary trace.
+The collector writes completed_at before appending/fsync, and does not retain a
+per-record reader-visibility timestamp or exact historical membership ledger.
+Therefore replay based on outcome completion time is reported separately from
+certified historical source availability. A replayed rejection is not promoted
+to complete HISTORICAL_VERIFIED trade simulation. No statistical test threshold,
+commission, risk or production configuration is relaxed by this adapter.

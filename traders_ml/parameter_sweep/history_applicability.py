@@ -132,7 +132,7 @@ def _namespace(values: dict[str, Any]) -> SimpleNamespace:
     return convert(nested)
 
 
-def assess_boundary(row: dict[str, Any], overrides: dict[str, float]) -> dict[str, Any]:
+def assess_boundary(row: dict[str, Any], overrides: dict[str, float], statistics: dict | None = None) -> dict[str, Any]:
     """No cross-boundary state; unchanged upstream decisions are explicit inputs."""
     result = {"symbol": row["symbol"], "boundary": row["closed_until_ms"], "run_id": row["run_id"],
               "state": "BLOCKED", "cost_requirement": "UNKNOWN", "reason": None}
@@ -159,6 +159,10 @@ def assess_boundary(row: dict[str, Any], overrides: dict[str, float]) -> dict[st
             return tuple(immutable(v) for v in value) if isinstance(value, list) else value
         runtime = RuntimeProfileParameters(**{k: immutable(v) for k, v in runtime_values.items()})
         source = HistoricalCostSource(row, runtime, parameters)
+        from .historical_statistics import HistoricalStatistics
+        cutoff = int((row.get("geometry") or {}).get("decision_cutoff_timestamp_ms") or row["closed_until_ms"])
+        stats = (None if statistics is None else statistics.at(cutoff)
+                 if isinstance(statistics, HistoricalStatistics) else HistoricalStatistics(statistics, cutoff))
         risk = row["risk"]
         if any(risk.get(k) for k in ("future_bars_used", "is_executable", "is_trade_signal", "execution_approved",
                                      "order_approved", "position_size_approved")):
@@ -167,6 +171,7 @@ def assess_boundary(row: dict[str, Any], overrides: dict[str, float]) -> dict[st
         if decision.symbol != row["symbol"] or decision.closed_until_ms != row["closed_until_ms"]:
             return result | {"reason": "RISK_IDENTITY_MISMATCH"}
         runner = ScalpingPaperRunner(runtime_parameters=runtime, cost_source=source,
+                                     statistics_source=stats,
                                      scalping_parameters=_namespace(parameters),
                                      clock_ms=lambda: decision.created_at_ms)
         plan = runner._process(decision)
@@ -183,7 +188,15 @@ def assess_boundary(row: dict[str, Any], overrides: dict[str, float]) -> dict[st
             return result | {"reason": source.blocker}
         if source.requested:
             result["cost_requirement"] = "VERIFIED_SAME_INPUT_SNAPSHOT"
+        if stats is not None:
+            result["statistics_trace"] = stats.trace
         if diagnostic.get("evaluator_inputs", {}).get("ev_evaluator_reached"):
+            if stats is not None:
+                return result | {"state": "STATISTICS_REPLAYED_NOT_CERTIFIED",
+                    "replayed_decision": "ADMITTED" if diagnostic.get("valid_plan") else "REJECTED",
+                    "reason": "HISTORICAL_STATISTICS_AVAILABILITY_NOT_CERTIFIED",
+                    "replayed_reason": diagnostic.get("rejection_reason"),
+                    "statistics_fingerprint": stats.fingerprint}
             # None statistics is never evidence for an actual probability rejection.
             return result | {"state": "PREFIX_VERIFIED", "stage": "PROBABILITY",
                              "reason": "HISTORICAL_PROBABILITY_HIERARCHY_REQUIRED"}
@@ -213,10 +226,13 @@ def baseline_parity(row: dict[str, Any], replay: dict[str, Any]) -> bool:
     return replay["reason"] == row.get("paper_status")
 
 
-def assess_dataset(directory: Path, combinations: list[dict[str, float]]) -> dict[str, Any]:
+def assess_dataset(directory: Path, combinations: list[dict[str, float]], statistics: dict | None = None) -> dict[str, Any]:
     if not combinations or len(combinations) > 100:
         raise ValueError("ASSESSMENT_REQUIRES_1_TO_100_COMBINATIONS")
     manifest, rows = HistoryProvider.load(directory)
+    if statistics is not None:
+        from .historical_statistics import HistoricalStatistics
+        statistics = HistoricalStatistics(statistics, 0)
     boundaries = [r for r in rows if r["kind"] == "PERSISTED_BOUNDARY"]
     if not boundaries:
         raise ValueError("NO_BOUNDARIES_FOR_FROZEN_UPSTREAM_ASSESSMENT")
@@ -238,7 +254,7 @@ def assess_dataset(directory: Path, combinations: list[dict[str, float]]) -> dic
         details = []
         epochs: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in boundaries:
-            check = assess_boundary(row, overrides)
+            check = assess_boundary(row, overrides, statistics)
             base = baseline[row["run_id"] + ":" + row["symbol"]]
             parity = baseline_parity(row, base)
             check["baseline_parity"] = "PASS" if parity else "UNPROVEN"
@@ -281,10 +297,12 @@ def main():
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--combinations", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--statistics", type=Path)
     args = parser.parse_args()
     if args.output.exists():
         parser.error("output must not exist")
-    result = assess_dataset(args.dataset, json.loads(args.combinations.read_text()))
+    result = assess_dataset(args.dataset, json.loads(args.combinations.read_text()),
+                           None if args.statistics is None else json.loads(args.statistics.read_text()))
     ResultSearchService._write(args.output, result)
     print(json.dumps({"output": str(args.output), "combinations": len(result["combinations"]),
                       "scope": result["scope"], "full_trade_simulation_verified": False}))
