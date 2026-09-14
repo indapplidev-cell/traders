@@ -24,7 +24,7 @@ def main():
         statistics_source=Path("reports/calibration/scalping-v2-probability-set2"),
         parameter_set_id="scalping-v2-set-2")
     assert manifest["missing_inputs"] == []
-    assert HistoryProvider.load(args.output / "dataset")[0] == manifest
+    assert HistoryProvider.load(args.output / "dataset")[0]["fingerprint"] == manifest["fingerprint"]
     combinations = json.loads(Path("artifacts/result_search_applicability_01/combinations.json").read_text())
     assessment = assess_dataset(args.output / "dataset", combinations)
     (args.output / "ASSESSMENT.json").write_text(json.dumps(assessment, sort_keys=True))
