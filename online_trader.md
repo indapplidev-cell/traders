@@ -3,16 +3,16 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 95b3899bffeea2a923c0a138ef03493db8b4d77b
+STATUS_AS_OF_COMMIT = e6521af77cc8c096d0834bf6d9197d006ced4ab2
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-14T15:27:56.705590+00:00
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04
-FILES_CHANGED = pyproject.toml; traders_ml/parameter_sweep/result_search.py; traders_ml/parameter_sweep/chronological_search.py; traders_ml/parameter_sweep/search_parameters.py; traders_ml/parameter_sweep/search_optimizer.py; traders_ml/parameter_sweep/generated_search.py; tests/research/test_search_optimizer.py; tests/research/test_search_parameters.py; tests/research/test_frozen_funnel.py; scripts/result_search_optimizer_acceptance.py; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_ACCEPTANCE.json; docs/research/scalping_v2_parameter_sweep.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-14T15:43:28.836223+00:00
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05
+FILES_CHANGED = app/config/trade_parameters.py; traders_ml/parameter_sweep/frozen_funnel.py; traders_ml/parameter_sweep/result_search.py; traders_ml/parameter_sweep/chronological_search.py; traders_ml/parameter_sweep/generated_search.py; traders_ml/parameter_sweep/search_optimizer.py; traders_ml/parameter_sweep/finding_verifier.py; tests/research/test_finding_verifier.py; tests/research/test_search_optimizer.py; tests/test_trade_parameters_config.py; tests/engine_orchestrator/test_parameter_set_cycle_binding.py; scripts/result_search_verifier_acceptance.py; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05_ACCEPTANCE.json; docs/research/scalping_v2_parameter_sweep.md; online_trader.md.
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = READONLY_SOURCEc9c7085_OPERATOR_SOURCE71844a8_RUNNING_RESTART0; ORCHESTRATOR5M_SOURCE8e629b1_UNCHANGED; ACK_PID24540_ABSENT_HEARTBEAT_STALE; DB_RUNNING
-PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_2d5eaf3363a607db295f18108843f16f20e62452; CURRENT_DOCUMENT_PENDING_PUSH
+PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_89a67a4b98e888119b0c6927e912c8e45565c74c; CURRENT_DOCUMENT_PENDING_PUSH
 STATUS_CONFIDENCE = FAIL_CLOSED_BLOCK3_RECURRENT_ACK_OWNER_LOSS; BLOCK1_AND_BLOCK2_PASS; PAPER_TRUE_DB_DURABILITY_TRUE_RECOVERY_FALSE_LIVEFALSE
 
 # Состояние проекта traders-ml
@@ -32,6 +32,30 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = NEW_CONFIG_EPOCH_2026_09_13T19_30_41_NO_72H_SOAK_STARTED_OR_ACCEPTED; PRIOR_EPOCH_SOAK_NOT_INHERITED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Result-search block 05 — installed verifier acceptance
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05
+FINAL_VERDICT = ENGINEERING_AND_INSTALLED_ACCEPTANCE_PASS_FINAL_PUSH_GATE_PENDING
+RESEARCH_NEXT = BLOCK06_COMMON_GUI_CLI_SERVICE_AND_REAL_TK_ACCEPTANCE
+IMPLEMENTATION = DURABLE_CANDIDATE_EXACT_EXPORTED_YAML_REPLAY_VERIFIED_INDEX_TARGET_K_CANCEL_CRASH_RECOVERY
+ENGINE = result-search-engine/4-verified-export
+ACTUAL = REAL_BASELINE480_DECISIONS_ZERO_TRADES_NET0_FOUND_FALSE; FULL_NATIVE_YAML_ROUNDTRIP_IDENTICAL
+VALIDATION = 331PASS; FRESH_INSTALLED_VERIFIER_OPTIMIZER17PASS; COMPILEPASS
+DEPLOYMENT_SOURCE = 9e6e13d62e471bb84c082171f4a04997d57d2913
+POSITIVE_EXPORT_EVIDENCE = SYNTHETIC_ENGINEERING_ONLY_NOT_HISTORICAL_PROFIT
+SEVEN_BLOCK_STATUS_AT_RECONCILIATION = BLOCK01_TO04_PASS_BLOCK05_ENGINEERING_AND_DEPLOYMENT_PASS_FINAL_PUSH_GATE_PENDING_BLOCK06_TO07_NOT_ACCEPTED
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05_ACCEPTANCE.json
+SAFETY = NO_PRODUCTION_WRITES_NO_RESTART_NO_ORDERS_LIVE_NOT_ENABLED_YAML_UNCHANGED
+```
+
+Exports preserve the full frozen baseline and risk. The native loader/resolver's
+explicit frozen context reproduces the simulation hash; default production
+resolution remains unchanged. Profitable fixture exports validate engineering
+only. Independent validation and LIVE readiness are not established. The primary
+ACK owner blocker and module percentages remain unchanged; older research
+next-actions below are superseded by this section.
 
 ## Result-search block 04 — installed optimizer acceptance
 
