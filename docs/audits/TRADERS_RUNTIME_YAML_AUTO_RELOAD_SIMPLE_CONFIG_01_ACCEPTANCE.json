@@ -1,0 +1,74 @@
+{
+  "task": "TRADERS_RUNTIME_YAML_AUTO_RELOAD_SIMPLE_CONFIG_01",
+  "final_status": "PASS",
+  "final_verdict": "PASS_RUNTIME_YAML_AUTO_RELOAD_SIMPLE_CONFIG",
+  "implementation_commit": "d2dbc70bace89d7231ac4b9e8186bb1957d4fea0",
+  "config_source": {
+    "host": "D:/disk_E/game_projects/traders/traders-ml/config/trading/trade_parameters.yaml",
+    "container": "/service/config/trading/trade_parameters.yaml",
+    "mount": "READ_ONLY_BIND"
+  },
+  "runtime_acceptance": {
+    "old_generation": 1789427508931184700,
+    "temporary_generation": 1789427846471808700,
+    "restored_generation": 1789428229078626900,
+    "old_effective_minimum_planned_rr": 0.458508,
+    "temporary_effective_minimum_planned_rr": 0.459508,
+    "restored_effective_minimum_planned_rr": 0.458508,
+    "temporary_boundary_ms": 1789428000000,
+    "restored_boundary_ms": 1789428300000,
+    "temporary_runtime_rows": 10,
+    "restored_runtime_rows": 10,
+    "runtime_status": "COMPLETED",
+    "generation_count_per_cycle": 1,
+    "order_approved_count": 0,
+    "position_opened_count": 0,
+    "build_after_value_save": false,
+    "container_recreate_after_value_save": false,
+    "service_restart_after_value_save": false,
+    "container_restart_counts": {
+      "online_orchestrator_5m": 0,
+      "readonly_api": 0,
+      "operator_control_api": 0
+    }
+  },
+  "final_parity": {
+    "generation": 1789428229078626900,
+    "active_parameter_set": "scalping-v2-set-2",
+    "resolved_config_hash": "5b94ebeca35565f6bde052247da25f93827b9886cb67b404328dedc09577d318",
+    "runtime_minimum_planned_rr": 0.458508,
+    "api_minimum_planned_rr": 0.458508,
+    "runtime_api_equal": true,
+    "runtime_api_desktop_hash_equal": true,
+    "orchestrator_api_operator_generation_equal": true
+  },
+  "desktop": {
+    "pid": 4516,
+    "hwnd": 10421362,
+    "preflight": "PASS",
+    "capture_mode": "FULL_DESKTOP_CROPPED_BY_HWND",
+    "temporary_config_capture_sha256": "DCCD928DAE5D9758C798DE756692FFE1A36A319F228983CFE1A6FDD22CB6E9C2",
+    "restored_config_capture_sha256": "762BBEDEA2A38ADEA1AFED99CE9C548325BBBADC842B45F534E39FA681DF753B",
+    "f5_without_restart": true,
+    "live_allowed": false
+  },
+  "validation": {
+    "focused_tests": "71 passed",
+    "compile": "PASS",
+    "compose_root": "PASS",
+    "compose_readonly_api": "PASS",
+    "compose_operator_control_api": "PASS",
+    "invalid_last_known_good": "PASS_FOCUSED",
+    "invalid_to_valid_recovery": "PASS_FOCUSED",
+    "atomic_replace": "PASS_FOCUSED",
+    "rapid_save_final_wins": "PASS_FOCUSED",
+    "service_restart_latest_yaml": "PASS_FOCUSED"
+  },
+  "safety": {
+    "mode": "PAPER",
+    "live_allowed": false,
+    "binance_real_order_calls": 0,
+    "fifteen_minute_profile_changed": false,
+    "trading_formulas_changed": false
+  }
+}
