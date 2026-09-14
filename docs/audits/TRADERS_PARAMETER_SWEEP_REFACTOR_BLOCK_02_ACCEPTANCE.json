@@ -1,0 +1,2102 @@
+{
+  "assessment_sha256": "72b62a8390bf275654dd67c7c1ffd728d26f842eab356c0d9d2d47379388eb17",
+  "boundary_coverage": {
+    "duplicate_boundaries": 0,
+    "expected_boundaries": 480,
+    "extra_boundaries": 0,
+    "missing_boundaries": 0,
+    "observed_boundaries": 480
+  },
+  "combinations": [
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {},
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 70,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 12,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "6b51e2c3f5a85470f550ed7226d4c41599937737d1c76f128b4b3955ad7ab8e5",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 70,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 12,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 81,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 1,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "40f3bf420cf9fe08ff1ee7c548926c66c3162323dcc357b1f96ef82651870a50",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 81,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 1,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "f74310aa8bef0222d8171855dcd7f283e9b63da2739237f3ea6c64d7cd75381a",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 70,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 12,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "fcba02e06f73a04ccdb59952167cfa866130c6b2cfdefb5e2dd0b7e3acd37ad5",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 70,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 12,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 81,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 1,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "ae85bc3634ddc8e398023919a7c048ead04874924c25d4c7bfe0148eaf81ca4c",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 81,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 1,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "91a31d6e2d3835343b6b220597f4c8e1f1dceb17711d807fa21657ede2c27f31",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "7af9a72cfc8f59a79f07204ad414342dba555b0ea2a63f522ffe41c141b6c32a",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "e69e28fd23862801aaa97623346429f5928384f26d7e4b2f68cce203180bf982",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 379,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "6cb41c02a5039f5e01ba5803d4ecf8a3435dd65e04fbcafc285d240f860f9213",
+      "cost_requirements": {
+        "NOT_REQUIRED": 379,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 101
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 30.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 82,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 19,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 154
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "77bfc121c2fab83cb57bbf7e32e100d45bc7baae4d4213cad0779964d340bf98",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "fd247eb53faeb65a59c6ba31ce0b7308ab6b7f5da7d8491f5dbb1b46cc62ca9f",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "ced26b093c9c3142cec047c606b08d24640b31a68ef281f753add3f4e65c1ceb",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "c3f75e7062417b30466998adf1b73c7e2d4b35050d6c4bd5a86f05f484bbcf4a",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "2370077b2a0776d3ebf6761632cc80cf3fbce7c0c36a5dcd1ecf4f3bbc16d8b4",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "bf89058cfdf0e8bf9ec7fbcd73453b811478b258215d3f93fe29c45556d499a3",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "fa07ed2b7b47356b71d3f8cf51b356b84b925f53011286423236d3e2be51eee9",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "4ea498e9f85beda790679c8216b3fb1b37243840d5e1196e050c7ad7ad94f704",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": true,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": true,
+          "cost_requirements": {
+            "NOT_REQUIRED": 319,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+          },
+          "rows": 480,
+          "states": {
+            "VERIFIED_REJECTION": 480
+          }
+        }
+      },
+      "combination_id": "000f4a783bc96442519f67ae44e9247139c58bbb5e0877f817d8db5a9b1e4ad4",
+      "cost_requirements": {
+        "NOT_REQUIRED": 319,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 48.496589
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94
+      },
+      "rows": 480,
+      "states": {
+        "VERIFIED_REJECTION": 480
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "8f64ad359e74cb2301fbdcf661ed4018dffa645f3756ede368c89b67ce72e318",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "10bd18aadbf637541af4eaf7df2f573a82ea034a5c0d22508c41f958aa5da400",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "ea4130b6abe700467ff8558467a447eb76267898420db6a6bb86678f5733209d",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 1.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "545cee9b709c32a2190374a93df45f847bc866aa3ee5a6fa4946257a3503bedf",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 105,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 26,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "af2844c5a282e9f98bc0ac9cccd3b7c93d2299b9fb66b142691526c584a7c8ba",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 128,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 3,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "b513664f408f298dcbcccd92fa1e2b2273bbaeabe11fac075acd7df14eb1cfc5",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 20.0,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "da0207a4671e7eb0f0c07ca15c45a1d6e90f163aec7c64055ef3d524ae322d3b",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 0.6,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "56808db900b002eee7d1cd970852017c0bf75be238b1346b99cb5c7c32c219c9",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.2,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 129,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": 2,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    },
+    {
+      "admission_prefix_complete": false,
+      "by_baseline": {
+        "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092": {
+          "admission_prefix_complete": false,
+          "cost_requirements": {
+            "NOT_REQUIRED": 296,
+            "REQUIRED": 23,
+            "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+          },
+          "full_trade_simulation_verified": false,
+          "reasons": {
+            "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+            "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+            "NO_PLAN": 225,
+            "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+            "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+          },
+          "rows": 480,
+          "states": {
+            "BLOCKED": 23,
+            "VERIFIED_REJECTION": 457
+          }
+        }
+      },
+      "combination_id": "9bb6553f56427ea160c7fae0ff7348e353d6b02a866fdf3fddfb303a0147ed4d",
+      "cost_requirements": {
+        "NOT_REQUIRED": 296,
+        "REQUIRED": 23,
+        "VERIFIED_SAME_INPUT_SNAPSHOT": 161
+      },
+      "full_trade_simulation_verified": false,
+      "overrides": {
+        "economics.min_net_edge_bps": 73.004386,
+        "geometry.minimum_planned_rr": 1.953403,
+        "geometry.stop_max_bps": 60.0
+      },
+      "reasons": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71
+      },
+      "rows": 480,
+      "states": {
+        "BLOCKED": 23,
+        "VERIFIED_REJECTION": 457
+      }
+    }
+  ],
+  "dataset": {
+    "alembic": "0031_scalping_parameter_sets",
+    "bytes": 40731063,
+    "conditional_input_requirements": [
+      "ADAUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "ADAUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "AVAXUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "AVAXUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "BNBUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "BNBUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "BTCUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "BTCUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "DOGEUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "DOGEUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "ETHUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "ETHUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "LINKUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "LINKUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "SOLUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "SOLUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "SUIUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "SUIUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED",
+      "XRPUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "XRPUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED"
+    ],
+    "config_epochs": [
+      "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092",
+      "a208402e386c3fa8c7527a5c5e18b66c3ff866cbf0f48b8c8ad2a82befe228d5",
+      "fcd0b25eae1b086846c5d758717292eada574cf7df848930f6c275a707567a79"
+    ],
+    "content_sha256": "1974957f915d0eca0348d31258a4e630a1d47ceaeea66186ebdb45beff71f14b",
+    "coverage": {
+      "ADAUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ADAUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ADAUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ADAUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ADAUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 23,
+        "raw_depth_snapshots": 0
+      },
+      "AVAXUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "AVAXUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "AVAXUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "AVAXUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "AVAXUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 9,
+        "raw_depth_snapshots": 0
+      },
+      "BNBUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BNBUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BNBUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BNBUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BNBUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 10,
+        "raw_depth_snapshots": 0
+      },
+      "BTCUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 5,
+        "raw_depth_snapshots": 0
+      },
+      "DOGEUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "DOGEUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "DOGEUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "DOGEUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "DOGEUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 20,
+        "raw_depth_snapshots": 0
+      },
+      "ETHUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ETHUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ETHUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ETHUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "ETHUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 20,
+        "raw_depth_snapshots": 0
+      },
+      "LINKUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "LINKUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "LINKUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "LINKUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "LINKUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 19,
+        "raw_depth_snapshots": 0
+      },
+      "SOLUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SOLUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SOLUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SOLUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SOLUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 19,
+        "raw_depth_snapshots": 0
+      },
+      "SUIUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SUIUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SUIUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SUIUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "SUIUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 16,
+        "raw_depth_snapshots": 0
+      },
+      "XRPUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "XRPUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "XRPUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "XRPUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "XRPUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 20,
+        "raw_depth_snapshots": 0
+      }
+    },
+    "evidence_quality": "HISTORICAL_VERIFIED",
+    "fingerprint": "a890247e7f011691c1a50344a72edd1354907ff72f7f7748237d6fdc40989a72",
+    "intervals": {
+      "acquisition_end_ms": 1789344000000,
+      "data_cutoff_ms": 1789344000000,
+      "exit_tail_end_ms": 1789344000000,
+      "independent_evaluation": null,
+      "search_end_ms": 1789340400000,
+      "search_start_ms": 1789326000000,
+      "warmup_bars_per_timeframe": 200
+    },
+    "missing_inputs": [],
+    "outcome": "READY_FOR_COMBINATION_ASSESSMENT",
+    "quality_scope": "CLOSED_MARKET_HISTORY_AND_RECORDED_SNAPSHOTS; REQUIRED_INPUTS_CHECKED_PER_COMBINATION",
+    "request_hash": "6a6c794f294e203563aff596ed0c548df96dbc660aefb45b23c96f81e589b9fd",
+    "requested_data_mode": "HISTORICAL_VERIFIED",
+    "required_warmup_windows": {
+      "15m": 64,
+      "1h": 50,
+      "1m": 60,
+      "5m": 120
+    },
+    "rows": 12330,
+    "schema": "result-search-history/3",
+    "source": "PROJECT_PROTECTED_READONLY_DATABASE",
+    "source_tables": [
+      "alembic_version",
+      "candles_15m",
+      "candles_1d",
+      "candles_1h",
+      "candles_1m",
+      "candles_4h",
+      "candles_5m",
+      "market_data_sync_state",
+      "online_pipeline_results",
+      "online_pipeline_runs",
+      "paper_account_baselines",
+      "paper_continuous_control",
+      "paper_continuous_control_events",
+      "paper_execution_commands",
+      "paper_exit_decisions",
+      "paper_exit_evaluation_cursors",
+      "paper_fills",
+      "paper_first_canary_sessions",
+      "paper_journal_entries",
+      "paper_order_events",
+      "paper_orders",
+      "paper_plan_execution_outcomes",
+      "paper_positions",
+      "paper_simulation_policies",
+      "scalping_opportunities",
+      "scalping_outcome_diagnostics",
+      "scalping_stale_position_shadow_diagnostics",
+      "trading_universe_runtime_state"
+    ],
+    "statistics": {
+      "bytes": 311835,
+      "content_sha256": "66328e9bbae6afbcf31068fd48137a321e08dc3eeb0e86bb32887daed03b7a3a",
+      "evidence_quality": "HISTORICAL_VERIFIED",
+      "fingerprint": "96eb3c4f027883e69794ae9343d67a9d23f1f191189e76ff0c0a262436dcaf47"
+    },
+    "symbols": [
+      "ADAUSDT",
+      "AVAXUSDT",
+      "BNBUSDT",
+      "BTCUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "LINKUSDT",
+      "SOLUSDT",
+      "SUIUSDT",
+      "XRPUSDT"
+    ]
+  },
+  "dataset_hard_blockers": [],
+  "deployment": {
+    "capabilities": [
+      "TYPED_REQUEST",
+      "RESUME_GUARD",
+      "DURABLE_VERIFIED_RESULT_CONTRACT"
+    ],
+    "checkout": "D:\\disk_E\\game_projects\\traders\\traders-ml",
+    "contract": "result-search/1",
+    "engine": "result-search-engine/1-foundation",
+    "interpreter": "C:\\Program Files\\Python311\\python.exe",
+    "module": "D:\\disk_E\\game_projects\\traders\\traders-ml\\traders_ml\\parameter_sweep\\result_search.py",
+    "module_dirty": false,
+    "module_sha256": "1367beee5ff81f8624044a94dfd5633a4bfeb34afbf42194a6e063afc7f41112",
+    "pid": 6140,
+    "registry": "result-search-registry/1-foundation",
+    "search_execution_available": false,
+    "source_commit": "2e3e2ffe1252aa741a62420d726bcf19bb8c3cc0"
+  },
+  "full_trade_simulation": false,
+  "independent": {
+    "alembic": "0031_scalping_parameter_sets",
+    "bytes": 3980075,
+    "conditional_input_requirements": [
+      "BTCUSDT:DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS",
+      "BTCUSDT:COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED"
+    ],
+    "config_epochs": [
+      "786150d22035f20b7d4a56b2e3ee27ee29c829ea44d70de1a6a6258001b47092",
+      "a208402e386c3fa8c7527a5c5e18b66c3ff866cbf0f48b8c8ad2a82befe228d5",
+      "fcd0b25eae1b086846c5d758717292eada574cf7df848930f6c275a707567a79"
+    ],
+    "content_sha256": "57c92445b057f5f1556f5dcccc55969fb9ea3d68473ca1aac514ae645e9f817c",
+    "coverage": {
+      "BTCUSDT:15m": {
+        "count": 220,
+        "duplicates": 0,
+        "first_open": 1789146000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:1h": {
+        "count": 205,
+        "duplicates": 0,
+        "first_open": 1788606000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:1m": {
+        "count": 500,
+        "duplicates": 0,
+        "first_open": 1789314000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:5m": {
+        "count": 260,
+        "duplicates": 0,
+        "first_open": 1789266000000,
+        "future_rows": 0,
+        "gaps": 0,
+        "invalid_candles": 0,
+        "last_close": 1789343999999,
+        "start_missing": false,
+        "tail_missing": false
+      },
+      "BTCUSDT:cost_evidence": {
+        "boundaries": 48,
+        "derived_cost_snapshots": 5,
+        "raw_depth_snapshots": 0
+      }
+    },
+    "evidence_quality": "HISTORICAL_VERIFIED",
+    "fingerprint": "d4aea5325cc115e144cb71ee813a1abee9076adb75fb319b20e43f95b7b06cf2",
+    "intervals": {
+      "acquisition_end_ms": 1789344000000,
+      "data_cutoff_ms": 1789344000000,
+      "exit_tail_end_ms": 1789333200000,
+      "independent_evaluation": [
+        1789333200000,
+        1789340400000
+      ],
+      "search_end_ms": 1789329600000,
+      "search_start_ms": 1789326000000,
+      "warmup_bars_per_timeframe": 200
+    },
+    "missing_inputs": [],
+    "outcome": "READY_FOR_COMBINATION_ASSESSMENT",
+    "quality_scope": "CLOSED_MARKET_HISTORY_AND_RECORDED_SNAPSHOTS; REQUIRED_INPUTS_CHECKED_PER_COMBINATION",
+    "request_hash": "247abb964e3a5971ab814e2700cf6c1c91b49e1e6dd49709fef791c520846f76",
+    "requested_data_mode": "HISTORICAL_VERIFIED",
+    "required_warmup_windows": {
+      "15m": 64,
+      "1h": 50,
+      "1m": 60,
+      "5m": 120
+    },
+    "rows": 1233,
+    "schema": "result-search-history/3",
+    "source": "PROJECT_PROTECTED_READONLY_DATABASE",
+    "source_tables": [
+      "alembic_version",
+      "candles_15m",
+      "candles_1d",
+      "candles_1h",
+      "candles_1m",
+      "candles_4h",
+      "candles_5m",
+      "market_data_sync_state",
+      "online_pipeline_results",
+      "online_pipeline_runs",
+      "paper_account_baselines",
+      "paper_continuous_control",
+      "paper_continuous_control_events",
+      "paper_execution_commands",
+      "paper_exit_decisions",
+      "paper_exit_evaluation_cursors",
+      "paper_fills",
+      "paper_first_canary_sessions",
+      "paper_journal_entries",
+      "paper_order_events",
+      "paper_orders",
+      "paper_plan_execution_outcomes",
+      "paper_positions",
+      "paper_simulation_policies",
+      "scalping_opportunities",
+      "scalping_outcome_diagnostics",
+      "scalping_stale_position_shadow_diagnostics",
+      "trading_universe_runtime_state"
+    ],
+    "symbols": [
+      "BTCUSDT"
+    ]
+  },
+  "partition_counts": {
+    "exit_tail": 89,
+    "independent_evaluation": 178,
+    "independent_exit_tail": 77,
+    "search": 89,
+    "warmup": 800
+  },
+  "sql": {
+    "alembic": "0031_scalping_parameter_sets",
+    "btc_paper_positions": 0,
+    "read_only": "on"
+  },
+  "statistics": {
+    "availability_basis": "EVENT_TIME_COMPLETED_OUTCOMES_WITH_CLOSED_PATH_VALIDATION",
+    "causal_validation": {
+      "excluded_reasons": {
+        "OUTCOME_PATH_INCOMPLETE": 4
+      },
+      "invalid_causal_records": 4,
+      "records": 4619
+    },
+    "evidence_quality": "HISTORICAL_VERIFIED",
+    "fingerprint": "96eb3c4f027883e69794ae9343d67a9d23f1f191189e76ff0c0a262436dcaf47",
+    "historical_source_completeness": "ALL_DECLARED_ARCHIVE_PARTS_CHECKED_EXCLUSIONS_RECORDED",
+    "paper_count": 53,
+    "parameter_set_id": "scalping-v2-set-2",
+    "prospective_count": 643,
+    "quality_scope": "CAUSAL_EVENT_TIME_STATISTICS_NOT_EXACT_PRODUCTION_READER_STATE",
+    "schema": "historical-statistics/2",
+    "source_version": "postgres-paper-plus-causal-prospective-v2"
+  },
+  "trading_yaml_sha256": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+  "verdict": "HISTORY_ACCEPTANCE_PASS"
+}

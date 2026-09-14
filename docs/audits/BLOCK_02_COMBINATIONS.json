@@ -1,0 +1,138 @@
+[
+  {},
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 30.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 48.496589,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 1.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 20.0,
+    "geometry.minimum_planned_rr": 1.953403
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 0.6
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.2
+  },
+  {
+    "geometry.stop_max_bps": 60.0,
+    "economics.min_net_edge_bps": 73.004386,
+    "geometry.minimum_planned_rr": 1.953403
+  }
+]

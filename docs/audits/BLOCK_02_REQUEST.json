@@ -1,0 +1,33 @@
+{
+  "version": "result-search/1",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "LINKUSDT",
+    "DOGEUSDT",
+    "ADAUSDT",
+    "AVAXUSDT",
+    "SUIUSDT"
+  ],
+  "scope": "GLOBAL",
+  "profile": "trade-5m-v2",
+  "start": "2026-09-13T19:00:00Z",
+  "end": "2026-09-13T23:00:00Z",
+  "data_cutoff": "2026-09-14T00:00:00Z",
+  "initial_capital": 100.0,
+  "baseline_hash": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+  "parameters": {},
+  "constraints": [],
+  "seed": 20260914,
+  "max_trials": 100,
+  "max_wall_time": 600.0,
+  "artifact_budget_bytes": 64000000,
+  "storage_budget_bytes": 128000000,
+  "target_config_count": 1,
+  "success_criterion": "VALID_CLOSED_TRADE_NET_PNL_GT_ZERO",
+  "data_mode": "HISTORICAL_VERIFIED",
+  "execution_mode": "CAUSAL_OHLC_STOP_FIRST"
+}

@@ -1,87 +1,77 @@
 # Result-driven parameter sweep — block 02
 
-FINAL_VERDICT = BLOCKED_DATA
-BLOCK_PASS = false
+FINAL_VERDICT = HISTORY_ACCEPTANCE_PASS
+BLOCK_PASS = conditional on final documentation/push gate recorded in task handoff
 
-Implemented bounded read-only HistoryProvider: four closed-candle timeframes,
-per-timeframe warmup, search interval and exit tail; all persisted pipeline
-boundaries independent of setup status or PAPER positions; immutable output
-paths; byte/row ceilings; content and manifest fingerprints; gap, duplicate,
-OHLC validity and causal-window checks; exact missing-input diagnostics.
-The CLI exposes the provider via --result-search-freeze-history and exits 2 for
-BLOCKED_DATA while preserving evidence. No production writes or live substitutions.
+This report supersedes the original blanket cost blocker and the later requirement
+for an exact historical filesystem membership ledger. Neither is a prerequisite
+for the requested causal historical provider. It does not certify arbitrary
+combinations with missing required market inputs.
 
-Actual acceptance: all 10 current universe symbols, 2026-09-13 19:00–23:00 UTC,
-200 warmup candles per timeframe and exit tail through 2026-09-14 00:00 UTC.
-11,850 candles plus 480 persisted boundaries, 12,330 records, 6,165,973 bytes.
-Candles: no gaps, duplicates, invalid OHLC, missing warmup/tail or future rows.
-Derived historical cost fields present on 161/480 boundaries; missing on 319.
-Raw bid/ask depth ladders: 0/480. This is not a claim that every conceivable
-historical interval or external archive was exhausted.
+| Requirement | Verified result |
+| --- | --- |
+| Real symbol history, independent of old positions/setups | All 10 symbols; 11,850 candles and 480 unfiltered boundaries; BTCUSDT has zero PAPER positions |
+| Authoritative warmup | 200 bars each timeframe; required windows 1m=60, 5m=120, 15m=64, 1h=50; insufficient request rejected |
+| Read-only source | Protected database binding; transaction_read_only=on; Alembic 0031_scalping_parameter_sets |
+| Frozen identities | Schema 3, content/statistics checksums, manifest fingerprint, source tables, configuration epochs and coverage |
+| Causal statistics | Production hierarchy builder; completed outcomes filtered before each decision; future/undated outcomes excluded |
+| Outcome provenance | 4,619 archive records checked against closed candle paths; four incomplete paths excluded; 643 compatible prospective outcomes plus 53 PAPER outcomes, filtered by parameter set |
+| Quality | HISTORICAL_VERIFIED is scoped to checked closed market history and event-time statistics; ASSUMPTION_BASED remains distinct; required costs checked per combination |
+| Intervals | Warmup/search/exit tail and optional independent evaluation/exit tail; overlap rejected before extraction; search view excludes exit and independent data |
+| Diagnostics | Missing candles/tail, duplicates, invalid OHLC, budgets, tampering and missing required snapshots have explicit failures |
+| Fresh installed acceptance | PASS, PID 6140, direct checkout, Python 3.11, clean committed source |
 
-Concrete blocker: the existing configured sources cannot support arbitrary
-recomputed early-stage entries throughout this period with HISTORICAL_VERIFIED
-execution inputs. The runtime cost source estimates depth for reference_notional
-/ entry, and persists derived VWAP/cost diagnostics instead of full depth ladders.
-Those derived snapshots may support their original input/quantity, but do not
-prove another entry price/quantity. On most boundaries even these inputs were
-not evaluated. Restricting to formerly admitted setups or supplying current books
-would not meet the requested history-wide recomputation contract.
+Main real interval: 2026-09-13 19:00–23:00 UTC, exit tail through
+2026-09-14 00:00 UTC. No claim of 30 days of supported history.
+Independent split acceptance uses BTCUSDT: search 19:00–20:00, exit tail
+20:00–21:00, evaluation 21:00–23:00, evaluation exit tail 23:00–00:00 UTC.
+There are no candle gaps, duplicates or truncated tails in these acquisitions.
 
-Corroboration: current public schema has no separate historical book/commission
-snapshot tables; scalping_shadow.py retains bid/ask/VWAP/reference_quantity fields
-but no depth arrays; scalping_paper_runner.py loads live REST book/depth and current
-commission authority. historical_reconstruction.py already exposes unavailable
-historical cost sources explicitly. Source code observations were checked against
-fresh actual DB extraction, not accepted from old reports alone.
+Statistics availability means recorded completed event time validated against the
+candles determining the outcome, not the exact instant a production reader saw
+an appended file. This is an explicit research event-time contract. No current
+live market value is substituted; no assumed probability is invented.
 
-BTCUSDT has zero old PAPER positions, yet acquired 1,185 candles and 48 boundaries.
-Missing old positions did not block history. Existing PAPER data was not replayed
-or filtered into a claimed new trade. No search trials or profitable finds exist.
+28 evaluations contain a separate baseline and the 27-value grid (one equivalent
+baseline): 18 of the 27 grid configurations have all admission rejections verified;
+nine require unavailable cost snapshots on 23 newly reached boundaries. Baseline
+parity remains 480/480. This is admission-prefix evidence, not a completed trade
+simulator. Raw depth is still unavailable; arbitrary entry/quantity changes cannot
+reuse incompatible derived costs. Block 03 must preserve these requirements.
 
-Limitations: engine-specific warmup certification, historical commission/depth
-and as-of probability authority integration, assumption-based execution, optional
-independent-evaluation splitting and full lifecycle support are not completed.
-The provider never labels this incomplete dataset HISTORICAL_VERIFIED. No PASS
-is claimed merely because engineering tests and a fail-closed smoke pass.
+Tests: 69 passed (history, statistics, applicability, search contract and production
+statistics); compile PASS; diff check PASS. A separate fresh process reloaded the
+committed acceptance dataset and verified its fingerprint.
 
-Tests: history+contract 33 passed; committed history+contract+CLI/GUI v2 35 passed;
-compile and diff check passed. Fresh separate reload verified the same dataset
-fingerprint. This is dataset reproduction, NOT independent trade replay.
-
-Deployment source = 6d555c521a179da929375526b29534950300500a
-Method = direct checkout D:/disk_E/game_projects/traders/traders-ml
+Deployment source = 2e3e2ffe1252aa741a62420d726bcf19bb8c3cc0
+Implementation source = 5b7d9335e789bd53e1eb69305a96855d9c9ae83d
+Checkout = D:/disk_E/game_projects/traders/traders-ml
 Interpreter = C:/Program Files/Python311/python.exe
-Fresh diagnostics PID = 6672, module_dirty=false
-History module SHA256 = d5ae924a12417d8d7b64009211e57e3a88073a7b36ccbbd0f3fc514b7650101a
-Fresh installed CLI actual-data smoke exit = 2, BLOCKED_DATA (expected).
-Deployment of acquisition is verified; full block acceptance remains BLOCKED.
-No production component was changed or restarted.
+Dataset = artifacts/result_search_block02_committed_acceptance_v2/dataset
+Fingerprint = a890247e7f011691c1a50344a72edd1354907ff72f7f7748237d6fdc40989a72
+Evidence = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_ACCEPTANCE.json
+Trading YAML SHA256 = 70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499
+Safety = no production mutations, restarts, order actions or LIVE activation.
 
-Local dataset = artifacts/result_search_refactor/block02/dataset_universe_committed
-Content SHA256 = 51bb20a3783eb2f54e2ec0b68e873072cb4cf89cc3e978580ed4b5e3fb207385
-Dataset fingerprint = f368b03cb32d88658c171213a5deb2f69a207e761c3d9dcd5f86acc56920f346
-Request = artifacts/result_search_refactor/block02/request_global.json
-Tracked manifest = docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_MANIFEST.json
-Reproduce extraction into a NEW directory with the documented CLI request flag.
-Reload original data with HistoryProvider.load(Path(local_dataset)) to verify
-content/manifest identity. Mutable DB re-extraction is not promised identical.
-Large history files are local only; no credentials were saved or committed.
+Reproduce in a new output directory:
+`python -m scripts.result_search_history_acceptance --output artifacts/block02_new_acceptance`
+The script uses the existing local request and combinations; copies are retained
+in BLOCK_02_REQUEST.json and BLOCK_02_COMBINATIONS.json beside this report.
+Mutable source extraction may have a different fingerprint; frozen reload must match.
+Large datasets and archive contents are local only.
 
-FILES_CHANGED = traders_ml/parameter_sweep/search_history.py;
-traders_ml/parameter_sweep/cli.py; tests/research/test_result_search_history.py;
-docs/research/scalping_v2_parameter_sweep.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_01_FINAL.md;
+FILES_CHANGED = traders_ml/parameter_sweep/cli.py;
+traders_ml/parameter_sweep/historical_statistics.py;
+traders_ml/parameter_sweep/history_applicability.py;
+traders_ml/parameter_sweep/search_history.py;
+tests/research/test_historical_statistics.py; tests/research/test_result_search_history.py;
+scripts/result_search_history_acceptance.py; docs/research/scalping_v2_parameter_sweep.md;
 docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_FINAL.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_MANIFEST.json;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_FINAL.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_FINAL.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_05_FINAL.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_06_FINAL.md;
-docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_07_FINAL.md; online_trader.md
+docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_02_ACCEPTANCE.json;
+docs/audits/BLOCK_02_REQUEST.json; docs/audits/BLOCK_02_COMBINATIONS.json; online_trader.md.
 
-Project-state evidence commit: git log -1 --format=%H -- this file.
+Project-state evidence commit: git log -1 --format=%H -- this report.
 Documentation commit: git log -1 --format=%H -- online_trader.md.
-Final push and fresh remote identity are recorded in the task handoff.
-Next stage: supply historical causal inputs and complete block 02; do not start
-block 03 before BLOCK_02_PASS. Primary project ACK owner blocker is unchanged.
+Final remote verification is performed after the documentation commit; transport
+values belong to the final handoff. Next stage: BLOCK 03 full chronological
+shared simulator. Primary ACK owner blocker and module percentages are unchanged.

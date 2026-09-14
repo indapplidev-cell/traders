@@ -216,7 +216,7 @@ is never activated by Parameter Sweep.
 
 ## Combination-specific historical applicability
 
-History schema 2 separates candle coverage blockers from conditional cost-input
+History schema 3 separates candle coverage blockers from conditional cost-input
 requirements. Missing cost snapshots or raw depth do not reject the entire dataset.
 Use the frozen dataset with retained risk decisions and frozen parameter values:
 
@@ -247,9 +247,21 @@ python -m traders_ml.parameter_sweep.history_applicability --dataset artifacts/r
 Outputs must not exist. Outcomes are frozen with fingerprints and source checksums;
 future and undated outcomes are excluded before the production hierarchy builder.
 Statistics are cached immutably per assessment, with fresh per-boundary trace.
-The collector writes completed_at before appending/fsync, and does not retain a
-per-record reader-visibility timestamp or exact historical membership ledger.
-Therefore replay based on outcome completion time is reported separately from
-certified historical source availability. A replayed rejection is not promoted
-to complete HISTORICAL_VERIFIED trade simulation. No statistical test threshold,
-commission, risk or production configuration is relaxed by this adapter.
+Historical statistics schema 2 validates completed_at against the recorded closed
+candle path, excludes missing/gapped/future evidence, and records exclusion counts.
+Its HISTORICAL_VERIFIED scope is causal event-time statistics, not an exact copy of
+the production reader filesystem at each instant. The latter is not required for
+this historical simulation contract. No statistical threshold, commission, risk
+or production configuration is relaxed. An admission rejection is not a trade.
+
+HistoryProvider.freeze accepts statistics_source/parameter_set_id and an optional
+independent_interval. The bundled statistics checksum participates in dataset
+identity. HistoryProvider.partition exposes warmup, search, exit_tail,
+independent_evaluation and independent_exit_tail. search_view deliberately excludes
+exit and independent intervals before range generation. Each decision must use
+causal_window with its own cutoff. The configured 200-bar warmup exceeds the current
+shared orchestrator minimum windows; insufficient warmup is rejected.
+
+Fresh installed history acceptance:
+`python -m scripts.result_search_history_acceptance --output artifacts/block02_new_acceptance`
+Full trade simulation, optimization and result exports remain subsequent blocks.
