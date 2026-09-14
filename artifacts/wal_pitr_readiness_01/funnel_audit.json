@@ -1,0 +1,100 @@
+{
+  "rows": 20,
+  "cycles": {
+    "2026-09-13T20:35:00+00:00": 10,
+    "2026-09-13T20:40:00+00:00": 10
+  },
+  "symbols": [
+    "ADAUSDT",
+    "AVAXUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "LINKUSDT",
+    "SOLUSDT",
+    "SUIUSDT",
+    "XRPUSDT"
+  ],
+  "trace_mismatch_count": 0,
+  "mismatches": [],
+  "every_row_provenance_valid": true,
+  "missing_projection_stages": [],
+  "epoch_ids": [
+    "d05f23b0f460e0ff3aa2f68ba893d40f0be42b7901d231c3547f4fde3a378a8f"
+  ],
+  "mapping": [
+    {
+      "canonical_stage": "ANALYSIS_QUALIFIED",
+      "downstream_field": "ANALYSIS_QUALIFIED",
+      "funnel_field": "analysis",
+      "desktop_field": "downstream_stage_trace.ANALYSIS_QUALIFIED"
+    },
+    {
+      "canonical_stage": "STRUCTURAL_SETUP",
+      "downstream_field": "STRUCTURAL_SETUP",
+      "funnel_field": "setup",
+      "desktop_field": "downstream_stage_trace.STRUCTURAL_SETUP"
+    },
+    {
+      "canonical_stage": "STRATEGY_ADMITTED",
+      "downstream_field": "STRATEGY_ADMITTED",
+      "funnel_field": "strategy",
+      "desktop_field": "downstream_stage_trace.STRATEGY_ADMITTED"
+    },
+    {
+      "canonical_stage": "RISK_COMPATIBILITY_ADMITTED",
+      "downstream_field": "RISK_COMPATIBILITY_ADMITTED",
+      "funnel_field": "risk_compatibility",
+      "desktop_field": "downstream_stage_trace.RISK_COMPATIBILITY_ADMITTED"
+    },
+    {
+      "canonical_stage": "GEOMETRY_VALID",
+      "downstream_field": "GEOMETRY_VALID",
+      "funnel_field": "geometry",
+      "desktop_field": "downstream_stage_trace.GEOMETRY_VALID"
+    },
+    {
+      "canonical_stage": "TARGET_VALID",
+      "downstream_field": "TARGET_VALID",
+      "funnel_field": "target_actionability",
+      "desktop_field": "downstream_stage_trace.TARGET_VALID"
+    },
+    {
+      "canonical_stage": "NET_COST_PASS",
+      "downstream_field": "NET_COST_PASS",
+      "funnel_field": "cost",
+      "desktop_field": "downstream_stage_trace.NET_COST_PASS"
+    },
+    {
+      "canonical_stage": "RR_PASS",
+      "downstream_field": "RR_PASS",
+      "funnel_field": "rr",
+      "desktop_field": "downstream_stage_trace.RR_PASS"
+    },
+    {
+      "canonical_stage": "RISK_ADMITTED",
+      "downstream_field": "RISK_ADMITTED",
+      "funnel_field": "risk",
+      "desktop_field": "downstream_stage_trace.RISK_ADMITTED"
+    },
+    {
+      "canonical_stage": "PORTFOLIO_ADMITTED",
+      "downstream_field": "PORTFOLIO_ADMITTED",
+      "funnel_field": "portfolio",
+      "desktop_field": "downstream_stage_trace.PORTFOLIO_ADMITTED"
+    },
+    {
+      "canonical_stage": "FINAL_APPROVAL",
+      "downstream_field": "FINAL_APPROVAL",
+      "funnel_field": "final_approval",
+      "desktop_field": "downstream_stage_trace.FINAL_APPROVAL"
+    },
+    {
+      "canonical_stage": "PAPER_PLAN",
+      "downstream_field": "PAPER_PLAN",
+      "funnel_field": "paper_plan",
+      "desktop_field": "downstream_stage_trace.PAPER_PLAN"
+    }
+  ]
+}

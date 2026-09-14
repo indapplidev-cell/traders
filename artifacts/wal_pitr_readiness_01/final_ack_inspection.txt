@@ -1,0 +1,3 @@
+{"error_class":"NONE","export_backlog_count":0,"heartbeat_age_seconds":1882,"heartbeat_healthy":false,"lock_present":true,"pending_archive_status_count":0,"process_alive":false,"process_id":24540,"process_identity_match":false,"state_pid_match":true,"state_status":"RUNNING"}
+COMMAND_LINE_VALUE_OUTPUT=NO
+SECRET_VALUE_OUTPUT=NO

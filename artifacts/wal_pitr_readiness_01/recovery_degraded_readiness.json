@@ -1,0 +1,208 @@
+{
+  "api_version": "v1",
+  "paper_reporting_api_version": 1,
+  "generated_at": "2026-09-13T20:39:30.003Z",
+  "data": {
+    "environment": "production",
+    "mode": "PAPER",
+    "paper_schema_expected": "0030_paper_recovery_close",
+    "paper_schema_ready": true,
+    "status": "READY",
+    "paper_runtime_enabled": true,
+    "paper_daemon_enabled": true,
+    "paper_scheduler_enabled": true,
+    "paper_control_state": "CONTINUOUS_ARMED",
+    "paper_control_effective_state": "CONTINUOUS_ARMED",
+    "paper_control_generation": 12,
+    "paper_control_health": "HEALTHY",
+    "paper_canary_id": null,
+    "paper_canary_status": null,
+    "live_allowed": false,
+    "account_baseline_persistence_ready": true,
+    "account_baseline_exists": true,
+    "account_baseline_valid": true,
+    "accounting_reconciliation_status": "HEALTHY",
+    "paper_reconciliation_status": "HEALTHY",
+    "market_data_adapter_ready": true,
+    "approval_source_adapter_ready": true,
+    "readiness_domains": {
+      "database": {
+        "state": "READY",
+        "reason_code": "DATABASE_RUNTIME"
+      },
+      "durability": {
+        "state": "READY",
+        "reason_code": "DATABASE_DURABILITY"
+      },
+      "paper_mutations": {
+        "state": "READY",
+        "reason_code": "PAPER_MUTATION"
+      },
+      "schema": {
+        "state": "READY",
+        "reason_code": "DATABASE_SCHEMA"
+      },
+      "wal": {
+        "state": "DEGRADED",
+        "reason_code": "WAL_ARCHIVE_STALE"
+      },
+      "pitr": {
+        "state": "DEGRADED",
+        "reason_code": "WAL_ARCHIVE_STALE"
+      },
+      "backup_recovery": {
+        "state": "DEGRADED",
+        "reason_code": "BACKUP_RECOVERY"
+      },
+      "continuous_paper": {
+        "state": "BLOCKED",
+        "reason_code": "CONTINUOUS_PAPER"
+      },
+      "arm": {
+        "state": "BLOCKED",
+        "reason_code": "ARM_READINESS"
+      },
+      "live": {
+        "state": "BLOCKED",
+        "reason_code": "LIVE_DISABLED"
+      }
+    },
+    "recovery_domains": {
+      "wal": {
+        "state": "DEGRADED",
+        "reason_code": "WAL_ARCHIVE_STALE"
+      },
+      "pitr": {
+        "state": "DEGRADED",
+        "reason_code": "WAL_ARCHIVE_STALE"
+      }
+    },
+    "database_runtime_ready": true,
+    "database_durability_ready": true,
+    "paper_mutation_ready": true,
+    "backup_recovery_ready": false,
+    "live_durability_ready": false,
+    "wal_ready": false,
+    "pitr_ready": false,
+    "pitr_lineage_valid": true,
+    "pitr_lineage_start": "2026-08-11T07:54:19.615Z",
+    "pitr_lineage_end": "2026-09-11T18:16:28.000Z",
+    "pitr_contiguous_duration_seconds": 2715728,
+    "pitr_physical_gap": false,
+    "canary_command_limit": null,
+    "canary_command_count": null,
+    "canary_command_remaining": null,
+    "canary_command_budget_exhausted": null,
+    "canary_open_position_limit": null,
+    "canary_open_position_count": null,
+    "canary_open_position_remaining": null,
+    "canary_open_position_budget_exhausted": null,
+    "canary_closed_trade_count": null,
+    "current_approval_availability": "NO_TRADE_SIGNAL",
+    "current_mutation_ready": true,
+    "current_mutation_denial_reasons": [],
+    "authority_mode": "CONTINUOUS",
+    "control_mode_version": 1,
+    "budget_policy_version": "scalping-v2-continuous-paper-statistics-v2",
+    "budget_policy_source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+    "budget_enforcement_mode": "PAPER_STATISTICS_ONLY",
+    "risk_per_trade_value": "5.0",
+    "risk_per_trade_unit": "equity_basis_points",
+    "risk_per_trade_source": "SCALPING_V2_RUNTIME_PARAMETERS/risk_per_trade_bps",
+    "daily_loss_formula": "SUM(ABS(net_pnl)) WHERE closed_trade AND net_pnl < 0; UNIQUE(position_id)",
+    "daily_risk_formula": "SUM(scalping_v2.risk_per_trade_bps) PER UNIQUE(command_id)",
+    "budget_day": "2026-09-13",
+    "budget_reset_at": "2026-09-14T00:00:00Z",
+    "daily_command_budget_value": 0,
+    "daily_command_budget_limit": null,
+    "daily_command_budget_unit": "trade_count",
+    "daily_command_budget_source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+    "daily_risk_used": "0.0000000000",
+    "daily_risk_limit": null,
+    "daily_risk_unit": "equity_basis_points",
+    "daily_risk_source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+    "daily_realized_loss_used": "0.000000000000000000",
+    "daily_realized_loss_limit": null,
+    "daily_realized_loss_unit": "USDT",
+    "daily_realized_loss_source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+    "loss_streak_used": 0,
+    "loss_streak_limit": null,
+    "loss_streak_source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+    "risk_pause": false,
+    "daily_command_budget": null,
+    "commands_used_today": 0,
+    "daily_realized_loss_budget": null,
+    "realized_pnl_today": "0.000000000000000000",
+    "realized_loss_today": "0.000000000000000000",
+    "daily_risk_budget_bps": null,
+    "risk_used_today_bps": "0.0000000000",
+    "max_consecutive_losses": null,
+    "loss_streak": 0,
+    "risk_pause_reason": null,
+    "budget_semantics": {
+      "daily_command_budget": {
+        "unit": "trade_count",
+        "source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "commands_used_today": {
+        "unit": "trade_count",
+        "source": "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "daily_realized_loss_budget": {
+        "unit": "USDT",
+        "source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "realized_pnl_today": {
+        "unit": "USDT",
+        "source": "CLOSED_PAPER_TRADE_NET_PNL",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "realized_loss_today": {
+        "unit": "USDT",
+        "source": "CLOSED_PAPER_TRADE_NET_LOSS",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "daily_risk_budget_bps": {
+        "unit": "equity_basis_points",
+        "source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "risk_used_today_bps": {
+        "unit": "equity_basis_points",
+        "source": "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "max_consecutive_losses": {
+        "unit": "closed_trade_count",
+        "source": "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      },
+      "loss_streak": {
+        "unit": "closed_trade_count",
+        "source": "CLOSED_PAPER_TRADE_NET_PNL",
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": "2026-09-13T20:39:25.513644Z"
+      }
+    }
+  }
+}

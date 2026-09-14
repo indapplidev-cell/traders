@@ -1,0 +1,20 @@
+{
+  "pitr": {
+    "degraded_since": null,
+    "last_failure_at": "2026-09-13T21:06:14.405143+00:00",
+    "last_success_at": "2026-09-13T23:44:53.648726+00:00",
+    "next_recheck_at": "2026-09-13T23:44:56.648726+00:00",
+    "reason_code": "PITR_RECOVERY_READY",
+    "recovered_at": "2026-09-13T21:06:33.332018+00:00",
+    "state": "READY"
+  },
+  "wal": {
+    "degraded_since": null,
+    "last_failure_at": "2026-09-13T21:06:14.405143+00:00",
+    "last_success_at": "2026-09-13T23:44:53.648726+00:00",
+    "next_recheck_at": "2026-09-13T23:44:56.648726+00:00",
+    "reason_code": "WAL_ARCHIVE_READY",
+    "recovered_at": "2026-09-13T21:06:33.332018+00:00",
+    "state": "READY"
+  }
+}

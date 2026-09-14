@@ -1,0 +1,82 @@
+{
+  "automation_desktop": "Default",
+  "automation_integrity": "MEDIUM",
+  "automation_pid": 14516,
+  "automation_session_id": 1,
+  "automation_window_station": "WinSta0",
+  "blockers": [],
+  "browser_process_count": 15,
+  "capture": {
+    "capture_mode": "FULL_DESKTOP_CROPPED_BY_HWND",
+    "crop_rect": [
+      78,
+      78,
+      1294,
+      877
+    ],
+    "cropped_window_path": "C:\\Users\\ZENOL\\AppData\\Local\\Temp\\traders-desktop-acceptance\\traders-hwnd-ab02ba-20260913T204304Z.bmp",
+    "cropped_window_sha256": "7A117BDC37BC5653D5213F95281A032272AF809762E8C9595258E08DE54D29F1",
+    "desktop_bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "full_desktop_path": "C:\\Users\\ZENOL\\AppData\\Local\\Temp\\traders-desktop-acceptance\\traders-full-desktop-20260913T204304Z.bmp",
+    "full_desktop_sha256": "C0B81CEBED13906BAF93143DE17908F6F666688DFE1E0D0E4401D3E8C3DA2F8E",
+    "window_rect": [
+      78,
+      78,
+      1294,
+      877
+    ]
+  },
+  "coordinate_mapping": "PHYSICAL_SCREEN_PIXELS_WIN32_RECT_EQUALS_GDI_CAPTURE",
+  "desktop_scale": 1.0,
+  "dpi_awareness_mode": "PER_MONITOR_AWARE",
+  "foreground_activation": true,
+  "full_desktop_capture": "PASS",
+  "hwnd_discovery": "PASS",
+  "input_desktop": "Default",
+  "input_desktop_matches": true,
+  "integrity_compatible": true,
+  "passed": true,
+  "process": {
+    "exe_path": "C:\\Program Files\\Python311\\python.exe",
+    "name": "python.exe",
+    "pid": 24488,
+    "session_id": 1
+  },
+  "same_desktop": true,
+  "same_session": true,
+  "traders_desktop": "Default",
+  "traders_integrity": "MEDIUM",
+  "traders_window_station": "WinSta0",
+  "uia_failure_non_blocking": true,
+  "uia_required": false,
+  "window": {
+    "client_rect": [
+      86,
+      109,
+      1286,
+      869
+    ],
+    "desktop": "Default",
+    "dpi": 96,
+    "hwnd": 11207354,
+    "minimized": false,
+    "owner_hwnd": 0,
+    "pid": 24488,
+    "rect": [
+      78,
+      78,
+      1294,
+      877
+    ],
+    "responsive": true,
+    "thread_id": 3996,
+    "title": "\u041a\u043b\u0438\u0435\u043d\u0442 Traders",
+    "tool_window": false,
+    "visible": true
+  }
+}
