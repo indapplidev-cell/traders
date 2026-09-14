@@ -51,6 +51,8 @@ class HistoricalExecution:
     """No DB session or order service; only immutable calculation contracts."""
     def __init__(self, capital, runtime):
         self.balance = decimal(capital)
+        if not self.balance.is_finite() or self.balance<=0:
+            raise ValueError("POSITIVE_FINITE_INITIAL_CAPITAL_REQUIRED")
         self.runtime = runtime
         self.positions = {}
         self.closed = []
@@ -141,5 +143,6 @@ class HistoricalExecution:
     def summary(self):
         return {"balance": str(self.balance), "closed_trades": self.closed,
                 "open_positions": list(self.positions),
+                "open_position_entry_fees":str(sum((p.entry_fee for p in self.positions.values()),Decimal(0))),
                 "net_pnl": str(sum((decimal(t["net_pnl"]) for t in self.closed), Decimal(0))),
                 "terminal": "INCOMPLETE_EXIT_TAIL" if self.positions else "COMPLETE"}

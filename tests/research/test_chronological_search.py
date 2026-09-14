@@ -69,3 +69,12 @@ def test_expired_command_does_not_require_execution_costs(monkeypatch,tmp_path):
     result=engine.simulate(tmp_path,{},1000)
     assert not result["blockers"] and not result["closed_trades"]
     assert result["rejections"]["COMMAND_EXPIRED_BEFORE_ELIGIBLE_CANDLE_CLOSE"]==1
+
+
+def test_assumed_input_quality_is_not_promoted(monkeypatch,tmp_path):
+    class Assumed(FixtureFunnel):
+        def __init__(self,*args):
+            super().__init__(*args)
+            self.manifest["evidence_quality"]="ASSUMPTION_BASED"
+    monkeypatch.setattr(engine,"FrozenFunnel",Assumed)
+    assert engine.simulate(tmp_path,{},1000)["quality"]=="ASSUMPTION_BASED"

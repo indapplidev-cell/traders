@@ -160,7 +160,7 @@ def _result(funnel,book,events,blockers,rejections,assumptions):
         blockers.append({"reason":"INCOMPLETE_EXIT_TAIL","symbols":summary["open_positions"]})
     return {"schema":"chronological-research/1", "dataset_fingerprint":funnel.manifest["fingerprint"],
         "configuration_fingerprint":funnel.resolved.resolved_config_hash,
-        "quality":"ASSUMPTION_BASED" if assumptions is not None else "HISTORICAL_VERIFIED",
+        "quality":"ASSUMPTION_BASED" if assumptions is not None else funnel.manifest.get("evidence_quality","UNVERIFIED"),
         "execution_assumptions":assumptions,"blockers":blockers,"events":events,
         "rejections":dict(rejections),"result":"BLOCKED_DATA" if blockers else "SIMULATED",
         "has_profitable_closed_trade":not blockers and any(Decimal(t["net_pnl"])>0 for t in summary["closed_trades"]),**summary}
