@@ -3,16 +3,16 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2601ebe1edf87381705aa257818878ce2f4af5a1
+STATUS_AS_OF_COMMIT = 95b3899bffeea2a923c0a138ef03493db8b4d77b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-14T14:57:45.397517+00:00
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03
-FILES_CHANGED = traders_ml/parameter_sweep/frozen_funnel.py; traders_ml/parameter_sweep/historical_execution.py; traders_ml/parameter_sweep/chronological_search.py; traders_ml/parameter_sweep/opportunity_registry.py; traders_ml/parameter_sweep/history_applicability.py; traders_ml/parameter_sweep/result_search.py; tests/research/test_frozen_funnel.py; tests/research/test_historical_execution.py; tests/research/test_chronological_search.py; tests/research/test_research_opportunity_registry.py; scripts/result_search_simulator_acceptance.py; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_03_ACCEPTANCE.json; docs/research/scalping_v2_parameter_sweep.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-14T15:27:56.705590+00:00
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04
+FILES_CHANGED = pyproject.toml; traders_ml/parameter_sweep/result_search.py; traders_ml/parameter_sweep/chronological_search.py; traders_ml/parameter_sweep/search_parameters.py; traders_ml/parameter_sweep/search_optimizer.py; traders_ml/parameter_sweep/generated_search.py; tests/research/test_search_optimizer.py; tests/research/test_search_parameters.py; tests/research/test_frozen_funnel.py; scripts/result_search_optimizer_acceptance.py; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_ACCEPTANCE.json; docs/research/scalping_v2_parameter_sweep.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = READONLY_SOURCEc9c7085_OPERATOR_SOURCE71844a8_RUNNING_RESTART0; ORCHESTRATOR5M_SOURCE8e629b1_UNCHANGED; ACK_PID24540_ABSENT_HEARTBEAT_STALE; DB_RUNNING
-PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_033eca2bd1fa48e5f1d2754ef21b58fa79a9e111; CURRENT_DOCUMENT_PENDING_PUSH
+PUSH_STATE_AT_RECONCILIATION = PREVIOUS_REMOTE_2d5eaf3363a607db295f18108843f16f20e62452; CURRENT_DOCUMENT_PENDING_PUSH
 STATUS_CONFIDENCE = FAIL_CLOSED_BLOCK3_RECURRENT_ACK_OWNER_LOSS; BLOCK1_AND_BLOCK2_PASS; PAPER_TRUE_DB_DURABILITY_TRUE_RECOVERY_FALSE_LIVEFALSE
 
 # Состояние проекта traders-ml
@@ -32,6 +32,28 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = NEW_CONFIG_EPOCH_2026_09_13T19_30_41_NO_72H_SOAK_STARTED_OR_ACCEPTED; PRIOR_EPOCH_SOAK_NOT_INHERITED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Result-search block 04 — installed optimizer acceptance
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04
+FINAL_VERDICT = ENGINEERING_AND_INSTALLED_ACCEPTANCE_PASS_FINAL_PUSH_GATE_PENDING
+RESEARCH_NEXT = BLOCK05_FINDING_VERIFIER_AND_DURABLE_EXPORT
+IMPLEMENTATION = NINE_PARAMETERS_FIVE_FAMILIES_SEARCH_ONLY_DOMAINS_BASELINE_FIRST_TPE_OR_EXHAUSTIVE_LOCAL_SQLITE_RESUME
+ACTUAL = ALL10_SYMBOLS_5TRIALS_4UNIQUE_CONFIGS_4BEHAVIORS; THREE_COMPLETE_NO_TRADE_CONFIGS_ONE_REQUIRES60_COST_INPUTS
+VALIDATION = 307PASS; 48_AFFECTED_POST_FIX_PASS; 1_REGISTRY_TEST_PASS; COMPILEPASS; FRESH_INSTALLED_RESUME_CHECKSUMS_IDENTICAL
+DEPLOYMENT_SOURCE = 591bc7fdfa5965ad0271d9642528b574b77deb33
+FULL_REAL_DATA_PROFITABLE_TRADE = NOT_FOUND_NET0
+SEVEN_BLOCK_STATUS_AT_RECONCILIATION = BLOCK01_TO03_PASS_BLOCK04_ENGINEERING_AND_DEPLOYMENT_PASS_FINAL_PUSH_GATE_PENDING_BLOCK05_TO07_NOT_ACCEPTED
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_FINAL.md; docs/audits/TRADERS_PARAMETER_SWEEP_REFACTOR_BLOCK_04_ACCEPTANCE.json
+SAFETY = NO_PRODUCTION_WRITES_NO_RESTART_NO_ORDERS_LIVE_NOT_ENABLED_YAML_UNCHANGED; READONLY_SQL_ON_ALEMBIC0031
+```
+
+The optimizer now executes generated configurations on frozen candles. Its trial
+ledger is durable and resumable, including pending trials and a crash after atomic
+result persistence. Candidate replay/export remains block 05. No historical
+profitable trade is claimed. The primary ACK owner blocker and percentages remain
+unchanged; older research next-actions below are superseded by this section.
 
 ## Result-search block 03 — chronological simulator acceptance
 
