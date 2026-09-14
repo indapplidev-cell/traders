@@ -300,3 +300,18 @@ constraints. `GENERATED_SPACE.json` explains searchable/frozen parameters;
 `trial_*.json` preserve proposals, resolved configurations and complete outcomes.
 `OPTIMIZER_STATUS.json` reports elapsed budget, completed/unique trials and stop
 reason. Missing reached inputs remain explicit BLOCKED_DATA trials, not profits.
+
+## Verified inactive exports (block 05)
+
+The generated-search command now verifies candidates before publishing FOUND.
+`STATUS.json` is the terminal result; `SUCCESSFUL_CONFIGS.json` lists verified
+configurations with full-period PnL and win/loss counts. An empty list is not success.
+The YAML contains the frozen baseline, risk and candidate values. The production
+loader and resolver validate it in an explicit frozen-authority context.
+
+Replay a published configuration in a fresh process with
+`python -m traders_ml.parameter_sweep.finding_verifier --directory <campaign-dir> --candidate <configuration-hash>`.
+The frozen dataset must remain at the path recorded in SEARCH_MANIFEST.json.
+No export activates trading. One profitable trade does not establish robustness,
+independent profitability or deployment readiness. Full GUI/CLI integration is
+the next block.

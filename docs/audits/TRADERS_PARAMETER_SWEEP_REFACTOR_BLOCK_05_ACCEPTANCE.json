@@ -1,0 +1,49 @@
+{
+  "acceptance": "PASS_ENGINEERING_NO_HISTORICAL_FINDING",
+  "checked_at_utc": "2026-09-14T15:42:39.567797+00:00",
+  "deployment": {
+    "capabilities": [
+      "TYPED_REQUEST",
+      "RESUME_GUARD",
+      "DURABLE_VERIFIED_RESULT_CONTRACT",
+      "FROZEN_HISTORY",
+      "SHARED_CHRONOLOGICAL_SIMULATOR",
+      "GENERATED_COMBINATION_OPTIMIZER",
+      "VERIFIED_INACTIVE_YAML_EXPORT"
+    ],
+    "checkout": "D:\\disk_E\\game_projects\\traders\\traders-ml",
+    "contract": "result-search/1",
+    "engine": "result-search-engine/4-verified-export",
+    "interpreter": "C:\\Program Files\\Python311\\python.exe",
+    "module": "D:\\disk_E\\game_projects\\traders\\traders-ml\\traders_ml\\parameter_sweep\\result_search.py",
+    "module_dirty": false,
+    "module_sha256": "37aaafdeb8cd92d1759676ce0ea1bbdd36a489d8a8c5eebd87d4ffd9066dda1c",
+    "pid": 3812,
+    "registry": "result-search-registry/4-causal-domains",
+    "search_execution_available": false,
+    "source_commit": "9e6e13d62e471bb84c082171f4a04997d57d2913"
+  },
+  "engineering_tests_sha256": "2557da1a91e6c7306776c0d1687340badc94b05ea6400678c17552c3d775fe4f",
+  "positive_export_tests": "SEE_FRESH_PYTEST_EVIDENCE_SYNTHETIC_ONLY",
+  "real_closed_trades": 0,
+  "real_net_pnl": "0",
+  "replay_fingerprint": "01953f93ce79aa7713de194fdd90b71e771bbe45813dbacaa2ba5b4f2f3b8b85",
+  "result": {
+    "completed_trials": 1,
+    "elapsed_seconds": 33.29700000002049,
+    "exports": [],
+    "found": false,
+    "manifest_fingerprint": "2acbe06516c8deca48f0e845758215588561da1a85b2ef6882d1ae5c6c00a55a",
+    "outcome": "NOT_FOUND_WITHIN_BUDGET",
+    "unique_behaviors": 1,
+    "unique_configurations": 1,
+    "verified_configurations": 0
+  },
+  "roundtrip_hash": "f0e0e112e312bc1c4d792c6efa89ed85b96e5b89b836ed5168443bfe99227431",
+  "safety_hashes": {
+    "config\\trading\\trade_parameters.yaml": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+    "reports\\runtime\\scalping_opportunities.json": "20421fe4e9c859f6aa6bee6699b855f2f4fd1d86d1952ff1c7858721277ae357"
+  },
+  "tests": "331 PASS; fresh installed verifier/optimizer 17 PASS",
+  "trading_yaml_sha256": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499"
+}
