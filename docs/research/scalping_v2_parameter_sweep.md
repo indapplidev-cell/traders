@@ -27,6 +27,21 @@ separate. Open trades, PATH_END, positive gross with negative net and unverified
 historical PnL do not qualify. Full simulation and YAML export are not installed
 by this foundation block.
 
+Block 02 adds bounded read-only candle/snapshot acquisition, independent of old
+PAPER positions, with checksums, coverage and causal closed-candle windows:
+
+```powershell
+python -m traders_ml.parameter_sweep --result-search-request request.json --result-search-freeze-history artifacts/result_search/new_dataset
+```
+
+The directory must not exist. A `BLOCKED_DATA` manifest returns exit code 2 and
+preserves the acquired evidence. Missing historical costs/depth are not replaced
+with live values or silently certified. Default warmup is 200 candles per
+timeframe and exit tail is one hour, bounded by the request cutoff. These are
+acquisition defaults; engine-specific warmup/lifecycle certification is still
+required. Reload with `HistoryProvider.load(Path(...))` verifies both content and
+manifest fingerprints. No replay command is available until block 03.
+
 Parameter Sweep is an offline, read-only research tool implemented by the
 authoritative `traders_ml/parameter_sweep/` package. The GUI and CLI are thin
 front ends over the same headless engine.
