@@ -265,3 +265,20 @@ shared orchestrator minimum windows; insufficient warmup is rejected.
 Fresh installed history acceptance:
 `python -m scripts.result_search_history_acceptance --output artifacts/block02_new_acceptance`
 Full trade simulation, optimization and result exports remain subsequent blocks.
+
+## Chronological simulator (block 03)
+
+The internal headless trial now uses the shared PipelineRunner from frozen candles,
+then the shared selector, quantity, portfolio, fill-price/fee and exit calculations.
+Use `python -m traders_ml.parameter_sweep.chronological_search --dataset <frozen-dir> --overrides <json-file> --capital 100 --output <new-json-file>`.
+This runs a trial, not an optimization campaign. FOUND publication is reserved for
+the later verifier. A complete baseline with zero trades is a valid simulation,
+not a successful search. Required unavailable inputs produce BLOCKED_DATA.
+
+Nine active keys cover signal/setup, regime, confirmation, geometry and economics.
+Other overrides are rejected as unsupported consumers. Explicit execution
+assumptions produce ASSUMPTION_BASED results. The simulation preserves the
+production expiry/next-closed-minute contract and SHADOW timeout semantics.
+A 30-second entry validity does not survive a fill requiring the minute close.
+Open tails are incomplete, not PATH_END wins. Research opportunity state is in
+memory and never loads or persists the production file.

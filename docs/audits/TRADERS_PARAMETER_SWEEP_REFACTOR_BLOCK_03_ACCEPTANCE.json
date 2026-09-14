@@ -1,0 +1,123 @@
+{
+  "acceptance": "REAL_CHRONOLOGICAL_FUNNEL_PASS",
+  "dataset_fingerprint": "a890247e7f011691c1a50344a72edd1354907ff72f7f7748237d6fdc40989a72",
+  "deployment": {
+    "capabilities": [
+      "TYPED_REQUEST",
+      "RESUME_GUARD",
+      "DURABLE_VERIFIED_RESULT_CONTRACT"
+    ],
+    "checkout": "D:\\disk_E\\game_projects\\traders\\traders-ml",
+    "contract": "result-search/1",
+    "engine": "result-search-engine/1-foundation",
+    "interpreter": "C:\\Program Files\\Python311\\python.exe",
+    "module": "D:\\disk_E\\game_projects\\traders\\traders-ml\\traders_ml\\parameter_sweep\\result_search.py",
+    "module_dirty": false,
+    "module_sha256": "1367beee5ff81f8624044a94dfd5633a4bfeb34afbf42194a6e063afc7f41112",
+    "pid": 12460,
+    "registry": "result-search-registry/1-foundation",
+    "search_execution_available": false,
+    "source_commit": "32f69eae73e11d73e8d1a0a4918b2268cc82da28"
+  },
+  "fresh_repeat": {
+    "deployment": {
+      "capabilities": [
+        "TYPED_REQUEST",
+        "RESUME_GUARD",
+        "DURABLE_VERIFIED_RESULT_CONTRACT"
+      ],
+      "checkout": "D:\\disk_E\\game_projects\\traders\\traders-ml",
+      "contract": "result-search/1",
+      "engine": "result-search-engine/1-foundation",
+      "interpreter": "C:\\Program Files\\Python311\\python.exe",
+      "module": "D:\\disk_E\\game_projects\\traders\\traders-ml\\traders_ml\\parameter_sweep\\result_search.py",
+      "module_dirty": false,
+      "module_sha256": "1367beee5ff81f8624044a94dfd5633a4bfeb34afbf42194a6e063afc7f41112",
+      "pid": 14180,
+      "registry": "result-search-registry/1-foundation",
+      "search_execution_available": false,
+      "source_commit": "5c5e02123a553fdcb6a9f70172dfaa5fb4e9dcab"
+    },
+    "open_position_entry_fees": "0",
+    "result": "IDENTICAL_BASELINE_EVENTS_AND_ACCOUNTING"
+  },
+  "no_production_writes": true,
+  "production_opportunity_registry": {
+    "last_write_utc": "2026-09-06T16:15:43Z",
+    "research_uses": "TRIAL_LOCAL_IN_MEMORY_SHARED_RULES",
+    "sha256": "20421fe4e9c859f6aa6bee6699b855f2f4fd1d86d1952ff1c7858721277ae357"
+  },
+  "profitable_historical_trade_found": false,
+  "tests": "300 passed; subsequent version-guard checks recorded separately",
+  "trading_yaml_sha256": "70bba34921cdfb49709771068dd1ca53641dd4e9811ebd50046ef5aaf4989499",
+  "trials": [
+    {
+      "baseline_parity": {
+        "true": 480
+      },
+      "blocker_counts": {},
+      "closed_trades": 0,
+      "configuration_fingerprint": "f0e0e112e312bc1c4d792c6efa89ed85b96e5b89b836ed5168443bfe99227431",
+      "events": 480,
+      "net_pnl": "0",
+      "overrides": {},
+      "quality": "HISTORICAL_VERIFIED",
+      "rejections": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 94,
+        "SELECTOR_NOT_SELECTED": 0
+      },
+      "result": "SIMULATED",
+      "sha256": "5f97b52e7f84dc7c8c62a39d634b6b4aba75a3f4aee6e300643a0575c9642049"
+    },
+    {
+      "baseline_parity": {
+        "false": 255,
+        "true": 225
+      },
+      "blocker_counts": {},
+      "closed_trades": 0,
+      "configuration_fingerprint": "96e14c655415f2f463da6c07ec065dfdff687d3b08b121f3ecfe44446341f332",
+      "events": 480,
+      "net_pnl": "0",
+      "overrides": {
+        "signal.strategy_minimum_score": 100
+      },
+      "quality": "HISTORICAL_VERIFIED",
+      "rejections": {
+        "NO_PLAN": 480,
+        "SELECTOR_NOT_SELECTED": 0
+      },
+      "result": "SIMULATED",
+      "sha256": "79ce7936d051db4ca5e6791297df10e99bb78fe014b9fc2915fac328362512a9"
+    },
+    {
+      "baseline_parity": {
+        "false": 23,
+        "true": 457
+      },
+      "blocker_counts": {
+        "MISSING_REQUIRED_COST_SNAPSHOT": 23
+      },
+      "closed_trades": 0,
+      "configuration_fingerprint": "823db269d2c6f1725c64e6671ce208a3f68cd835b95467c72c945b637f8959aa",
+      "events": 480,
+      "net_pnl": "0",
+      "overrides": {
+        "geometry.stop_max_bps": 60
+      },
+      "quality": "HISTORICAL_VERIFIED",
+      "rejections": {
+        "ECONOMIC_GEOMETRY_NOT_FEASIBLE": 131,
+        "NO_PLAN": 225,
+        "PAPER_REJECT_INVALID_LEVEL_GEOMETRY": 30,
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": 71,
+        "SELECTOR_NOT_SELECTED": 0
+      },
+      "result": "BLOCKED_DATA",
+      "sha256": "4bf55e1ba0d6085f58e410b72a5eb052a1c86e02f5cbeb8f982f768416a92709"
+    }
+  ]
+}
