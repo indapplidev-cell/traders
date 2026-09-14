@@ -92,7 +92,13 @@ def generate_space(directory: Path):
         reason={"risk":"FROZEN_CAPITAL_AND_RISK_AUTHORITY","costs":"EXTERNAL_COSTS_NOT_OPTIMIZED",
             "lifecycle":"FROZEN_PRODUCTION_LIFECYCLE_CONTRACT","exit_policy":"SHADOW_DIAGNOSTICS_CANNOT_CLOSE",
             "entry_refinement_1m":"SHADOW_ONLY_NO_EXECUTION_PROMOTION"}.get(family,"NO_REGISTERED_SEARCH_CONSUMER")
-        registry.append({"key":key,"baseline":value,"searchable":False,"reason":reason})
+        unit=("bps" if key.endswith('_bps') else "seconds" if key.endswith('_seconds') else
+              "milliseconds" if key.endswith('_ms') else "candles" if key.endswith('_candles') else "configuration_value")
+        registry.append({"key":key,"config_path":"profiles.trade-5m-v2."+key,
+            "value_type":type(value).__name__,"unit":unit,"baseline":value,"values":[value],
+            "family":family,"consumer":"FROZEN_TYPED_RUNTIME_CONFIGURATION","searchable":False,"reason":reason,
+            "conditional_constraints":["exact frozen baseline value"],"required_data":"FROZEN_CONFIGURATION",
+            "generation":"NONE_FROZEN","source":"frozen boundary parameter snapshot"})
     result={"registry_version":REGISTRY_VERSION,"dataset_fingerprint":manifest["fingerprint"],
         "baseline_source_hash":frozen["resolved_config_hash"],"domains":domains,"registry":registry,
         "generation_interval":{"start":manifest["intervals"]["search_start_ms"],"end":end},
