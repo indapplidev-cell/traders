@@ -2,7 +2,7 @@
 
 Candles are independent of old PAPER positions and setup admission. Persisted
 geometry is retained as evidence, never silently used as a universal historical
-order book. Missing inputs keep the dataset BLOCKED_DATA.
+order book. Cost availability is inventory, not an unconditional dataset gate.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from sqlalchemy import text
 from .engine import ReadOnlyResearchDatabase, resolve_database_binding
 from .result_search import SearchRequest, fingerprint, ResultSearchService
 
-SCHEMA = "result-search-history/1"
+SCHEMA = "result-search-history/2"
 TIMEFRAMES = {"1m": 60000, "5m": 300000, "15m": 900000, "1h": 3600000}
 
 
@@ -73,6 +73,7 @@ class HistoryProvider:
         database = self.database or ReadOnlyResearchDatabase(resolve_database_binding())
         coverage: dict[str, Any] = {}
         missing: list[str] = []
+        conditional: list[str] = []
         epochs: set[str] = set()
         # Serialize incrementally in memory under both row and byte ceilings.
         # At most the configured budget is retained; no unbounded fetchall.
@@ -113,6 +114,9 @@ class HistoryProvider:
                     # No setup/PAPER-status filter: collect evidence across all causal boundaries.
                     query = text("SELECT symbol,closed_until_ms,run_id,"
                                  "paper_payload_json->'paper_context'->'scalping_geometry_diagnostics' AS geometry,"
+                                 "risk_payload_json AS risk,"
+                                 "paper_payload_json->>'paper_status' AS paper_status,"
+                                 "paper_payload_json->'frozen_parameter_snapshot' AS frozen,"
                                  "paper_payload_json->'effective_configuration' AS epoch "
                                  "FROM online_pipeline_results WHERE trade_profile_id=:profile AND symbol=:symbol "
                                  "AND closed_until_ms>=:start AND closed_until_ms<:end "
@@ -121,6 +125,13 @@ class HistoryProvider:
                     for raw in connection.execute(query, dict(profile=request.profile, symbol=symbol,
                                                               start=start, end=end, limit=max_rows + 1)).mappings():
                         row = dict(raw)
+                        # Retain immutable values, not repeated UI provenance labels.
+                        frozen = row.get("frozen") or {}
+                        row["frozen"] = {
+                            "resolved_config_hash": frozen.get("resolved_config_hash"),
+                            "parameters": {k: v["value"] for k, v in frozen.get("parameters", {}).items()},
+                            "runtime_parameters": {k: v["value"] for k, v in frozen.get("runtime_parameters", {}).items()},
+                        }
                         g = row.get("geometry") or {}
                         total += 1
                         cost_ready += int(g.get("commission_authoritative") is True
@@ -135,9 +146,9 @@ class HistoryProvider:
                     coverage[symbol + ":cost_evidence"] = {"boundaries": total,
                         "derived_cost_snapshots": cost_ready, "raw_depth_snapshots": raw_book}
                     if raw_book < (end - start) // TIMEFRAMES["5m"]:
-                        missing.append(symbol + ":HISTORICAL_DEPTH_LADDER_UNAVAILABLE_FOR_NEW_ENTRY_QUANTITY")
+                        conditional.append(symbol + ":DEPTH_RECOMPUTATION_REQUIRES_COMPATIBLE_INPUTS")
                     if cost_ready < (end - start) // TIMEFRAMES["5m"]:
-                        missing.append(symbol + ":HISTORICAL_CAUSAL_COST_COVERAGE_INCOMPLETE")
+                        conditional.append(symbol + ":COST_SNAPSHOT_REQUIRED_ONLY_IF_STAGE_REACHED")
         finally:
             if self.database is None:
                 database.dispose()
@@ -156,9 +167,10 @@ class HistoryProvider:
                                   "data_cutoff_ms": cutoff, "independent_evaluation": None},
                     "content_sha256": sha256(content).hexdigest(), "bytes": len(content),
                     "rows": len(lines), "missing_inputs": missing,
+                    "conditional_input_requirements": conditional,
                     "requested_data_mode": request.data_mode,
                     "evidence_quality": "INCOMPLETE" if missing else "UNVERIFIED",
-                    "outcome": "BLOCKED_DATA" if missing else "REQUIRES_ENGINE_INPUT_CERTIFICATION"}
+                    "outcome": "BLOCKED_DATA" if missing else "READY_FOR_COMBINATION_ASSESSMENT"}
         manifest["fingerprint"] = fingerprint(manifest)
         directory.mkdir(parents=True, exist_ok=False)
         from .artifact_writer import DEFAULT_ARTIFACT_WRITER

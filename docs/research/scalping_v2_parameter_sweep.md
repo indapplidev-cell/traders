@@ -213,3 +213,24 @@ python -m traders_ml.parameter_sweep --migrate-v1 <old-run-dir> --migration-targ
 The source directory is never rewritten. Set #2 remains the immutable baseline;
 an evidence-backed Set #3 may only be emitted as a research candidate file and
 is never activated by Parameter Sweep.
+
+## Combination-specific historical applicability
+
+History schema 2 separates candle coverage blockers from conditional cost-input
+requirements. Missing cost snapshots or raw depth do not reject the entire dataset.
+Use the frozen dataset with retained risk decisions and frozen parameter values:
+
+```powershell
+python -m traders_ml.parameter_sweep.history_applicability --dataset artifacts/result_search_applicability_01/dataset --combinations artifacts/result_search_applicability_01/combinations.json --output artifacts/result_search_applicability_01/new_assessment.json
+```
+
+The output must not exist. This is an admission-prefix assessment using the actual
+ScalpingPaperRunner, not a full trade simulator. Supported overrides are
+geometry.stop_max_bps, geometry.minimum_planned_rr and economics.min_net_edge_bps.
+Upstream decisions and all other parameters stay frozen per historical baseline.
+NOT_REQUIRED means the authoritative evaluator rejected before requesting costs.
+VERIFIED_SAME_INPUT_SNAPSHOT requires matching symbol, boundary, entry, reference
+quantity/notional, policy, source and causal receipt timing. Missing inputs block
+only the combinations that demand them. Reaching probability returns
+HISTORICAL_PROBABILITY_HIERARCHY_REQUIRED; empty statistics are not a proven rejection.
+No PnL, portfolio acceptance, configuration export or LIVE readiness is certified.
