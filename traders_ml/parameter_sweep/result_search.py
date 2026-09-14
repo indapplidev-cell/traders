@@ -23,7 +23,7 @@ from .universe import validate_parameter_sweep_symbol
 
 CONTRACT_VERSION = "result-search/1"
 REGISTRY_VERSION = "result-search-registry/1-foundation"
-ENGINE_VERSION = "result-search-engine/1-foundation"
+ENGINE_VERSION = "result-search-engine/3-chronological"
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -141,7 +141,8 @@ def deployment_diagnostics() -> dict[str, Any]:
             "engine": ENGINE_VERSION, "registry": REGISTRY_VERSION,
             "module_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
             "module_dirty": bool(git("status", "--porcelain", "--", str(Path(__file__).resolve()))),
-            "capabilities": ["TYPED_REQUEST", "RESUME_GUARD", "DURABLE_VERIFIED_RESULT_CONTRACT"],
+            "capabilities": ["TYPED_REQUEST", "RESUME_GUARD", "DURABLE_VERIFIED_RESULT_CONTRACT",
+                             "FROZEN_HISTORY", "SHARED_CHRONOLOGICAL_SIMULATOR"],
             "search_execution_available": False}
 
 

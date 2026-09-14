@@ -11,6 +11,7 @@ from app.engine_paper.controlled_quantity_validity import calculate_quantity_siz
 from app.engine_safety.paper_domain import PaperDomainError
 from .frozen_funnel import FrozenFunnel
 from .historical_execution import HistoricalExecution, decimal
+from .result_search import ENGINE_VERSION
 
 
 @dataclass(frozen=True)
@@ -159,6 +160,7 @@ def _result(funnel,book,events,blockers,rejections,assumptions):
     if summary["open_positions"]:
         blockers.append({"reason":"INCOMPLETE_EXIT_TAIL","symbols":summary["open_positions"]})
     return {"schema":"chronological-research/1", "dataset_fingerprint":funnel.manifest["fingerprint"],
+        "engine":ENGINE_VERSION,
         "configuration_fingerprint":funnel.resolved.resolved_config_hash,
         "quality":"ASSUMPTION_BASED" if assumptions is not None else funnel.manifest.get("evidence_quality","UNVERIFIED"),
         "execution_assumptions":assumptions,"blockers":blockers,"events":events,
