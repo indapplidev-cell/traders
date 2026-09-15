@@ -504,6 +504,16 @@ def run_host_ack_daemon(
                     if value.state == "DEGRADED":
                         domains[key] = value.advance("RECOVERING", "PITR_VERIFICATION_PENDING", now, interval_seconds)
                 _publish_recovery_domains(recovery_path, {key: value.project() for key, value in domains.items()})
+                prior = _read_json_object(state)
+                prior.update(
+                    schema="TRADERS_ML_WAL_ACK_DAEMON_STATE_V2",
+                    process_id=os.getpid(), status="RUNNING", instance_id=instance_id,
+                    generation=generation, started_at=domains["wal"].started_at,
+                    heartbeat_at=started, last_recheck_started_at=started,
+                    next_recheck_at=(now + timedelta(seconds=_DAEMON_POLICY.heartbeat_freshness_seconds)).isoformat(),
+                    snapshot_generated_at=started,
+                )
+                _publish_daemon_state(state, prior)
                 payload = _host_ack_daemon_cycle(root, process_id=os.getpid())
                 observed_at = datetime.now(timezone.utc)
                 payload.update(
