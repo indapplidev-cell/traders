@@ -1,0 +1,13 @@
+{
+  "task": "TRADERS_WAL_PITR_SELF_HEALING_RUNTIME_REPAIR_03",
+  "final_verdict": "PASS_DURABLE_RUNTIME_WAL_PITR_SELF_HEALING",
+  "observed_at_utc": "2026-09-15T03:54:06Z",
+  "primary_root_cause": "RECOVERY_WORKER_NOT_RUNNING",
+  "secondary_root_cause": "STALE_GENERATION_UNBOUND_STATE_AND_MASKED_API_CAUSE",
+  "production_auto_heal": {"manual_restart": false, "pending_before": 111, "pending_after": 0, "backlog_after": 0},
+  "worker": {"pid": 3688, "instance_id": "4bde7857-818e-4fd2-9380-3f36aa57223b", "generation": 1},
+  "domains": {"supervisor": "READY", "worker": "READY", "scheduler": "READY", "publication": "READY", "wal": "READY", "pitr": "READY", "backup_recovery": "READY", "paper": "READY", "arm": "READY", "live": "DISABLED"},
+  "wal": {"archive_mode": "on", "wal_level": "replica", "pending": 0, "backlog": 0, "missing_required": 0, "physical_gap": false},
+  "pitr_contiguous_window_seconds": 3009500,
+  "safety": {"binance_real_order_calls": 0, "fifteen_minute_changed": false, "active_trading_config_changed": false}
+}
