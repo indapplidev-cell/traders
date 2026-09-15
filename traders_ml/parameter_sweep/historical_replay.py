@@ -555,7 +555,7 @@ def chronological_portfolio_replay(
     rows: list[dict[str, Any]], config: Mapping[str, object], *,
     starting_balance: float = RESEARCH_PARAMETERS.search.starting_balance,
 ) -> dict[str, Any]:
-    balance = starting_balance; available = starting_balance; fees_total = gross_total = 0.0
+    balance = starting_balance; available = starting_balance; fees_total = slippage_total = gross_total = 0.0
     active: list[dict[str, Any]] = []; closed: list[dict[str, Any]] = []
     funnel = {name: 0 for name in (
         "OBSERVATIONS_TOTAL", "SETUPS_FOUND", "REJECT_STRUCTURAL", "REJECT_GEOMETRY",
@@ -572,7 +572,7 @@ def chronological_portfolio_replay(
         for position in active:
             if int(position["closed_at_ms"]) <= boundary:
                 available += float(position["reserved"])+float(position["net_pnl"])
-                balance += float(position["net_pnl"]); fees_total += float(position["fees"]); gross_total += float(position["gross_pnl"])
+                balance += float(position["net_pnl"]); fees_total += float(position["fees"]); slippage_total += float(position["slippage"]); gross_total += float(position["gross_pnl"])
                 closed.append(position); funnel["EXITS_SIMULATED"] += 1
             else: still.append(position)
         active = still
@@ -602,14 +602,15 @@ def chronological_portfolio_replay(
             gross = reserved * direction * (exit_price-entry)/entry
             cost_bps = float(_effective_cost(row, config) or 0)
             fees = reserved * cost_bps / 10000
+            slippage = reserved * 2 * float(config.get("entry_slippage_bps", SCALPING_V2.costs.entry_slippage_bps)) / 10000
             safe_row = {key: value for key, value in row.items() if not key.startswith("__")}
             active.append({**safe_row, **path, "reserved": reserved, "risk_bps": risk_bps,
-                           "gross_pnl": gross, "fees": fees, "net_pnl": gross-fees})
+                           "gross_pnl": gross, "fees": fees, "slippage": slippage, "net_pnl": gross-fees})
             available -= reserved; funnel["ENTRIES_SIMULATED"] += 1
         capital_samples.append(1.0-available/max(balance, 1e-9))
     for position in sorted(active, key=lambda p: int(p["closed_at_ms"])):
         available += float(position["reserved"])+float(position["net_pnl"])
-        balance += float(position["net_pnl"]); fees_total += float(position["fees"]); gross_total += float(position["gross_pnl"])
+        balance += float(position["net_pnl"]); fees_total += float(position["fees"]); slippage_total += float(position["slippage"]); gross_total += float(position["gross_pnl"])
         closed.append(position); funnel["EXITS_SIMULATED"] += 1
     pnl = [float(p["net_pnl"]) for p in closed]
     wins=[v for v in pnl if v>0]; losses=[-v for v in pnl if v<0]; curve=peak=drawdown=0.0
@@ -621,7 +622,7 @@ def chronological_portfolio_replay(
         "rows_partially_replayable": sum(not bool(r.get("market_path_1m")) for r in rows),
         "wins": len(wins), "losses": len(losses),
         "breakeven": len(closed)-len(wins)-len(losses), "win_rate": len(wins)/len(closed) if closed else None,
-        "gross_pnl": gross_total, "fees": fees_total, "net_pnl": sum(pnl),
+        "gross_pnl": gross_total, "fees": fees_total, "slippage": slippage_total, "net_pnl": sum(pnl),
         "profit_factor": sum(wins)/sum(losses) if losses else None,
         "net_expectancy_per_trade": sum(pnl)/len(pnl) if pnl else None,
         "max_drawdown": drawdown, "average_holding_seconds": sum(holdings)/len(holdings) if holdings else None,

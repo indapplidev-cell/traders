@@ -24,6 +24,7 @@ from .finalist_freeze import run_finalist_freeze, verify_freeze
 from .separability import run_separability
 from .universe import validate_parameter_sweep_symbol
 from .validation_ranking import run_validation_ranking
+from .winners import WinnerTracker
 
 
 PIPELINE_SCHEMA_VERSION = 2
@@ -523,6 +524,18 @@ class SingleSymbolResearchPipeline:
                 inputs = dict(adaptive_handoff.get("campaign_inputs", {}))
                 if inputs.get("expanded_search_fingerprint") is None:
                     raise ValueError("FAIL_CLOSED_HANDOFF_MISMATCH")
+                best_path = adaptive_dir / "BEST_CONFIGS.json"
+                best_configs = (
+                    _read_json(best_path) if best_path.is_file()
+                    else WinnerTracker().artifact(
+                        symbol=selected, profile=PROFILE, search_budget=0,
+                        search_status="NOT_AVAILABLE_FROM_CUSTOM_PHASE_RUNNER",
+                    )
+                )
+                DEFAULT_ARTIFACT_WRITER.atomic_json(
+                    root / "BEST_CONFIGS.json", best_configs,
+                    operation="pipeline_best_configs",
+                )
                 manifest["phase_status"][PHASE_ORDER[3]] = "COMPLETED"
                 manifest["adaptive_refinement_status"] = "COMPLETED"
                 manifest["adaptive_handoff_fingerprint"] = _fingerprint(adaptive_dir / "ADAPTIVE_REFINEMENT_HANDOFF.json")
@@ -530,8 +543,16 @@ class SingleSymbolResearchPipeline:
                 status = dict(adaptive.get("status", {}))
                 manifest["phase_summary"][PHASE_ORDER[3]] = {
                     "rounds": status.get("ADAPTIVE_ROUNDS", 0),
+                    "evaluated": status.get("NEW_NUMERIC_CONFIGS_EVALUATED", 0),
                     "new_clusters": status.get("NEW_BEHAVIORAL_CLUSTERS_DISCOVERED", 0),
                     "stop_reason": status.get("STOP_REASON"),
+                    "positive_net_pnl_found": best_configs.get("positive_net_pnl_found", False),
+                    "best_positive_net_pnl_config_id": (
+                        (best_configs.get("best_positive_net_pnl") or {}).get("config_id")
+                    ),
+                    "best_win_count_config_id": (
+                        (best_configs.get("best_win_count") or {}).get("config_id")
+                    ),
                 }
                 manifest["next_stage_available"] = "VALIDATION_RANKING"
                 self._write(root, manifest)

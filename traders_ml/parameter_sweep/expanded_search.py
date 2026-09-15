@@ -32,6 +32,7 @@ from .historical_replay import chronological_portfolio_replay
 from .ranking import rank_results
 from .research_protocol import deduplicate_validation_behavior
 from .universe import validate_parameter_sweep_symbol
+from .winners import WinnerTracker
 
 
 HANDOFF_SCHEMA_VERSION = 2
@@ -690,14 +691,19 @@ def _run_primary_resume_safe(
         results = _read_jsonl(results_path)
         if len(results) != int(checkpoint.get("evaluated_configs", -1)):
             raise ValueError("RESUME_RESULT_COUNT_MISMATCH")
+        tracker = WinnerTracker.restore(checkpoint.get("winner_state"))
+        if tracker.evaluated != len(results):
+            tracker = WinnerTracker.from_rows(results)
     else:
         results = []
+        tracker = WinnerTracker()
         checkpoint = {
             **dict(expected), "artifact": "EXPANDED_SEARCH_CHECKPOINT",
             "schema_version": EXPANDED_SEARCH_SCHEMA_VERSION,
             "evaluated_configs": 0, "planned_configs": plan.evaluation_budget,
             "completed": False, "holdout_opened": False,
             "adaptive_refinement_executed": False,
+            "winner_state": tracker.state(),
         }
         _write_jsonl(results_path, results)
         _write_json(checkpoint_path, checkpoint)
@@ -723,6 +729,12 @@ def _run_primary_resume_safe(
         })
         result = evaluate_config(config, splits, index=index)
         results.append(result)
+        tracker.update(result)
+        winner_artifact = tracker.artifact(
+            symbol=str(expected["symbol"]), profile=str(expected["profile"]),
+            search_budget=plan.evaluation_budget, search_status="RUNNING",
+        )
+        _write_json(output / "BEST_CONFIGS.json", winner_artifact)
         statuses = [str(row.get("evaluation_status")) for row in results]
         classes = [str(row.get("performance_class")) for row in results]
         emit({
@@ -741,11 +753,13 @@ def _run_primary_resume_safe(
             "error_count": statuses.count("ERROR"),
             "remaining_count": max(0, plan.evaluation_budget - len(results)),
             "behavioral_cluster_count": len({str(row.get("behavioral_signature")) for row in results}),
+            "best_configs": winner_artifact,
         })
         if len(results) % RESEARCH_PARAMETERS.search.checkpoint_cadence == 0:
             _write_jsonl(results_path, results)
             checkpoint["evaluated_configs"] = len(results)
             checkpoint["completed"] = len(results) == plan.evaluation_budget
+            checkpoint["winner_state"] = tracker.state()
             _write_json(checkpoint_path, checkpoint)
         if len(results) % plan.batch_size == 0:
             emit({
@@ -758,7 +772,13 @@ def _run_primary_resume_safe(
     _write_jsonl(results_path, results)
     checkpoint["evaluated_configs"] = len(results)
     checkpoint["completed"] = len(results) == plan.evaluation_budget
+    checkpoint["winner_state"] = tracker.state()
     _write_json(checkpoint_path, checkpoint)
+    _write_json(output / "BEST_CONFIGS.json", tracker.artifact(
+        symbol=str(expected["symbol"]), profile=str(expected["profile"]),
+        search_budget=plan.evaluation_budget,
+        search_status="STOPPED" if stop_requested else "COMPLETED",
+    ))
     representatives, clusters = cluster_results(results, space)
     emit({
         "event_type": "PHASE_STOPPED" if stop_requested else "PHASE_COMPLETED",
@@ -868,6 +888,7 @@ def run_expanded_search(
     }
     positive = [row for row in representatives if float(row.get("net_pnl") or 0) > 0]
     best = representatives[0] if representatives else None
+    best_configs = _read_json(output / "BEST_CONFIGS.json")
     boundary_summary = {flag: 0 for flag in ("AT_LOW_BOUNDARY", "AT_HIGH_BOUNDARY", "INTERIOR")}
     for row in representatives:
         for flag in row["range_boundary_flags"].values():
@@ -890,6 +911,7 @@ def run_expanded_search(
             {"behavioral_signature": row["behavioral_signature"], "existing_values_only": row["parameters"], "rank": index + 1}
             for index, row in enumerate(representatives[: RESEARCH_PARAMETERS.artifact.finalist_config_count])
         ],
+        "best_configs": best_configs,
     }
     status = {
         "FINAL_STATUS": "STOPPED" if stop_requested else "PASS",
@@ -916,6 +938,11 @@ def run_expanded_search(
         "BEST_MAX_DRAWDOWN": None if best is None else best["max_drawdown"],
         "BEST_INDEPENDENT_PERIODS": None if best is None else best["independent_period_count"],
         "POSITIVE_OBSERVED_CONFIGS": len(positive),
+        "POSITIVE_NET_PNL_FOUND": best_configs["positive_net_pnl_found"],
+        "BEST_POSITIVE_NET_PNL_CONFIG": best_configs["best_positive_net_pnl"],
+        "BEST_NET_PNL_CONFIG": best_configs["best_net_pnl_fallback"],
+        "BEST_WIN_COUNT_CONFIG": best_configs["best_win_count"],
+        "WINNERS_FROM_ALL_EVALUATED_CONFIGS": True,
         "VALIDATION_ELIGIBLE_CONFIGS": sum(row["performance_class"] == "VALIDATION_CANDIDATE" for row in representatives),
         "BOUNDARY_POSITION_OF_BEST": None if best is None else best["range_boundary_flags"],
         "LEGACY_COMPARISON_STATUS": comparison["status"],

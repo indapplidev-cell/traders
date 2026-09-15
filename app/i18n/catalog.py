@@ -1593,6 +1593,41 @@ for _key, _ru, _en in (
     RU['readiness.' + _key] = _ru
     EN['readiness.' + _key] = _en
 
+for _key, _ru, _en in (
+    (
+        "parameter_sweep.winners.title",
+        "ЛУЧШИЕ НАЙДЕННЫЕ КОМБИНАЦИИ",
+        "BEST FOUND CONFIGURATIONS",
+    ),
+    (
+        "parameter_sweep.winners.max_positive_profit",
+        "Максимальная положительная прибыль",
+        "Maximum positive net profit",
+    ),
+    (
+        "parameter_sweep.winners.max_win_count",
+        "Максимальное количество побед",
+        "Maximum win count",
+    ),
+    (
+        "parameter_sweep.winners.positive_not_found",
+        "Положительная прибыль не найдена.",
+        "No positive net profit found.",
+    ),
+    (
+        "parameter_sweep.winners.best_net_pnl",
+        "Лучший Net PnL среди проверенных",
+        "Best Net PnL among evaluated configurations",
+    ),
+    (
+        "parameter_sweep.winners.negative_economic_result",
+        "Экономический результат: ОТРИЦАТЕЛЬНЫЙ",
+        "Economic result: NEGATIVE",
+    ),
+):
+    RU[_key] = _ru
+    EN[_key] = _en
+
 CATALOGS = MappingProxyType(
     {
         Locale.RU: MappingProxyType(RU),

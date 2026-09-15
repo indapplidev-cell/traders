@@ -42,6 +42,7 @@ from .expanded_search import (
 from .historical_replay import build_parameter_registry
 from .symbol_authority_audit import build_symbol_runtime_authority_audit
 from .universe import validate_parameter_sweep_symbol
+from .winners import WinnerTracker, search_incumbents
 
 
 ADAPTIVE_SCHEMA_VERSION = 1
@@ -83,6 +84,7 @@ class AdaptiveCheckpoint(_Strict):
     completed: bool
     stop_reason: str | None
     holdout_opened: Literal[False]
+    winner_state: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def valid_stop(self):
@@ -137,9 +139,19 @@ def _adaptive_policy() -> dict[str, Any]:
             "config/research/research_parameters.yaml:search.max_configs_per_observation",
         ],
         "candidate_priority": [
+            "DISTINCT_WINNER_INCUMBENT_PARENT",
             "BEHAVIORAL_TRANSITION_EVIDENCE", "POSITIVE_PARENT_PROXIMITY",
             "CANONICAL_PARENT_RANK", "BOUNDARY_PRESSURE", "CANONICAL_CONFIG_KEY",
         ],
+        "winner_incumbent_roles": [
+            "BEST_POSITIVE_NET_PNL_CONFIG", "BEST_WIN_COUNT_CONFIG",
+            "BEST_BALANCED_CONFIG",
+        ],
+        "winner_incumbent_uses": [
+            "ADAPTIVE_LOCAL_SEARCH", "MUTATION", "BOUNDARY_EXPLORATION",
+            "GLOBAL_RESEED_GUIDANCE",
+        ],
+        "win_count_is_analytical_not_economic_objective": True,
         "convergence": "FIRST_ROUND_WITHOUT_NEW_BEHAVIOR_OR_WITHOUT_CANDIDATES",
     }
 
@@ -380,6 +392,7 @@ def _proposal(
 def generate_candidates(
     *, results: Sequence[Mapping[str, Any]], domains: Mapping[str, Sequence[object]],
     handoff: DataDrivenRangeHandoff, round_id: int,
+    winners: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     representatives, _nodes = _cluster_payloads(results, domains)
     ranks = {str(row["behavioral_signature"]): index for index, row in enumerate(representatives, 1)}
@@ -448,8 +461,19 @@ def generate_candidates(
         )
         proposals.append(proposal)
 
+    incumbent_roles = {
+        str(row.get("behavioral_cluster_id") or row.get("behavioral_signature")): str(row["incumbent_role"])
+        for row in search_incumbents(winners or {}, representatives[0] if representatives else None)
+    }
+    for proposal in proposals:
+        proposal["provenance"]["incumbent_roles"] = sorted({
+            incumbent_roles[cluster]
+            for cluster in proposal["parent_clusters"] if cluster in incumbent_roles
+        })
+
     # A deterministic evidence tuple, not a replacement result-ranking score.
     proposals.sort(key=lambda row: (
+        not bool(row["provenance"].get("incumbent_roles")),
         not row["provenance"]["positive_parent"],
         min(row["provenance"]["parent_canonical_ranks"]),
         row["generation_reason"] != "INTERIOR_BEHAVIORAL_TRANSITION",
@@ -615,6 +639,7 @@ def _write_final_artifacts(
     domains: Mapping[str, Sequence[object]], trace: Sequence[Mapping[str, Any]],
     rounds: Sequence[Mapping[str, Any]], budget: int, budget_authority: Sequence[str],
     manifest: Mapping[str, Any], stop_reason: str,
+    best_configs: Mapping[str, Any],
 ) -> dict[str, Any]:
     combined = [dict(row) for row in initial_results] + [dict(row) for row in adaptive_results]
     graph, _pairs = build_transition_graph(combined, domains)
@@ -658,6 +683,7 @@ def _write_final_artifacts(
             "convergence_status": "CONVERGED" if stop_reason != "BUDGET_EXHAUSTED" else "BOUNDED_STOP",
             "stop_reason": stop_reason,
             "validation_eligible_count": sum(row["validation_eligible"] for row in final_clusters),
+            "best_configs": dict(best_configs),
         },
         "promotion_eligible": False, "holdout_opened": False,
         "finalist_freeze_executed": False,
@@ -693,6 +719,11 @@ def _write_final_artifacts(
         "BEST_NET_PNL_CONFIG": summary["BEST_NET_PNL_CONFIG"],
         "BEST_EXPECTANCY_CONFIG": summary["BEST_EXPECTANCY_CONFIG"],
         "BEST_PROFIT_FACTOR_CONFIG": summary["BEST_PROFIT_FACTOR_CONFIG"],
+        "POSITIVE_NET_PNL_FOUND": best_configs["positive_net_pnl_found"],
+        "BEST_POSITIVE_NET_PNL_CONFIG": best_configs["best_positive_net_pnl"],
+        "BEST_NET_PNL_FALLBACK_CONFIG": best_configs["best_net_pnl_fallback"],
+        "BEST_WIN_COUNT_CONFIG": best_configs["best_win_count"],
+        "WINNERS_FROM_ALL_EVALUATED_CONFIGS": True,
         "POSITIVE_NUMERIC_CONFIGS": summary["POSITIVE_NUMERIC_CONFIGS"],
         "POSITIVE_BEHAVIORAL_CLUSTERS": summary["POSITIVE_BEHAVIORAL_CLUSTERS"],
         "POSITIVE_BEHAVIORAL_DUPLICATES": summary["POSITIVE_BEHAVIORAL_DUPLICATES"],
@@ -721,6 +752,7 @@ def _write_final_artifacts(
         "production_mutation_allowed": False,
     }
     _write_json(output / "ADAPTIVE_REFINEMENT_CONFIG.json", config)
+    _write_json(output / "BEST_CONFIGS.json", best_configs)
     _write_json(output / "BEHAVIORAL_TRANSITION_GRAPH.json", graph)
     _write_json(output / "ADAPTIVE_PARAMETER_SENSITIVITY.json", sensitivity)
     _write_jsonl(output / "ADAPTIVE_CANDIDATE_TRACE.jsonl", trace)
@@ -764,6 +796,11 @@ def run_adaptive_refinement(
     output.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output / "CHECKPOINT.json"
     types = {row.parameter: row.parameter_type for row in handoff.parameters if row.parameter in initial_domains}
+    expanded_winners_path = expanded_results_path.parent / "BEST_CONFIGS.json"
+    expanded_winners = _read_json(expanded_winners_path) if expanded_winners_path.is_file() else None
+    base_tracker = WinnerTracker.restore(expanded_winners)
+    if base_tracker.evaluated != len(initial_results):
+        base_tracker = WinnerTracker.from_rows(initial_results)
     if resume:
         if not checkpoint_path.is_file():
             raise ValueError("RESUME_CHECKPOINT_NOT_AVAILABLE")
@@ -790,15 +827,21 @@ def run_adaptive_refinement(
                 _write_json(checkpoint_path, checkpoint.model_dump())
             else:
                 raise ValueError("RESUME_RESULT_COUNT_MISMATCH")
+        tracker = WinnerTracker.restore(checkpoint.winner_state)
+        if tracker.evaluated != len(initial_results) + len(adaptive_results):
+            tracker = WinnerTracker.restore(base_tracker.state())
+            for row in adaptive_results:
+                tracker.update(row)
         if checkpoint.completed:
             return {"status": _read_json(output / "STATUS.json"), "handoff": _read_json(output / "ADAPTIVE_REFINEMENT_HANDOFF.json"), "output": str(output)}
     else:
         adaptive_results, trace, rounds = [], [], []
+        tracker = WinnerTracker.restore(base_tracker.state())
         checkpoint = AdaptiveCheckpoint(
             artifact="ADAPTIVE_REFINEMENT_CHECKPOINT", schema_version=ADAPTIVE_SCHEMA_VERSION,
             inputs=inputs, evaluated_candidate_keys=[], completed_rounds=0,
             cumulative_evaluations=0, completed=False, stop_reason=None,
-            holdout_opened=False,
+            holdout_opened=False, winner_state=tracker.state(),
         )
         _write_json(checkpoint_path, checkpoint.model_dump())
         _write_jsonl(output / "ADAPTIVE_RESULTS.jsonl", [])
@@ -831,6 +874,7 @@ def run_adaptive_refinement(
         active = [row["parameter"] for row in sensitivity["parameters"] if row["active_status"] in {"BEHAVIORALLY_ACTIVE", "WEAKLY_ACTIVE"}]
         proposals, round_trace, counts = generate_candidates(
             results=combined, domains=domains, handoff=handoff, round_id=round_id,
+            winners=tracker.state(),
         )
         # Reject proposals already evaluated in an earlier round before execution.
         planned = []
@@ -899,6 +943,12 @@ def run_adaptive_refinement(
                 )
             }
             new_rows.append(result)
+            tracker.update(result)
+            best_configs = tracker.artifact(
+                symbol=inputs.symbol, profile=inputs.profile,
+                search_budget=len(initial_results) + budget, search_status="RUNNING",
+            )
+            _write_json(output / "BEST_CONFIGS.json", best_configs)
             evaluated_keys.add(proposal["candidate_key"])
             proposal["decision"] = "EVALUATED"
             emit({
@@ -914,6 +964,7 @@ def run_adaptive_refinement(
                 "evaluated_count": len(adaptive_results) + len(new_rows),
                 "remaining_count": max(0, len(planned) - offset - 1),
                 "adaptive_new_clusters": len({str(row.get("behavioral_signature")) for row in new_rows} - before_signatures),
+                "best_configs": best_configs,
             })
             if should_stop is not None and should_stop():
                 stop_requested = True
@@ -957,7 +1008,7 @@ def run_adaptive_refinement(
             completed_rounds=len(rounds), cumulative_evaluations=len(adaptive_results),
             completed=stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED", "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"},
             stop_reason=stop_reason if stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED", "USER_CANCELLED", "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"} else None,
-            holdout_opened=False,
+            holdout_opened=False, winner_state=tracker.state(),
         )
         _write_json(checkpoint_path, checkpoint.model_dump())
         if checkpoint.completed or stop_requested:
@@ -967,17 +1018,24 @@ def run_adaptive_refinement(
         parameter: _numeric_values(row["parameters"][parameter] for row in final_combined)
         for parameter in sorted(initial_domains)
     }
+    final_best_configs = tracker.artifact(
+        symbol=inputs.symbol, profile=inputs.profile,
+        search_budget=len(initial_results) + budget,
+        search_status="STOPPED" if stop_requested else "COMPLETED",
+    )
     result = _write_final_artifacts(
         output=output, inputs=inputs, handoff=handoff,
         initial_results=initial_results, adaptive_results=adaptive_results,
         domains=final_domains, trace=trace, rounds=rounds, budget=budget,
         budget_authority=budget_authority, manifest=manifest, stop_reason=stop_reason,
+        best_configs=final_best_configs,
     )
     final_checkpoint = AdaptiveCheckpoint(
         artifact="ADAPTIVE_REFINEMENT_CHECKPOINT", schema_version=ADAPTIVE_SCHEMA_VERSION,
         inputs=inputs, evaluated_candidate_keys=sorted(evaluated_keys),
         completed_rounds=len(rounds), cumulative_evaluations=len(adaptive_results),
         completed=not stop_requested, stop_reason=stop_reason, holdout_opened=False,
+        winner_state=tracker.state(),
     )
     _write_json(checkpoint_path, final_checkpoint.model_dump())
     emit({

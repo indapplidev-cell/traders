@@ -127,6 +127,13 @@ class PresentationState:
     counterfactual_trade_count: int = 0
     counterfactual_wins: int = 0
     counterfactual_losses: int = 0
+    best_positive_net_pnl_config: dict[str, Any] | None = None
+    best_net_pnl_config: dict[str, Any] | None = None
+    best_win_count_config: dict[str, Any] | None = None
+    positive_net_pnl_found: bool = False
+    search_evaluated: int = 0
+    search_budget: int = 0
+    search_status: str = "NOT_STARTED"
 
     @property
     def progress_percent(self) -> float:
@@ -318,6 +325,24 @@ class ParameterSweepController:
         self.state.status_text = RU["cancel_requested"]
         self.state.phase = "CANCEL_REQUESTED"
 
+    def _apply_best_configs(self, value: Mapping[str, Any]) -> None:
+        state = self.state
+        state.best_positive_net_pnl_config = (
+            dict(value["best_positive_net_pnl"])
+            if value.get("best_positive_net_pnl") else None
+        )
+        state.best_net_pnl_config = (
+            dict(value["best_net_pnl_fallback"])
+            if value.get("best_net_pnl_fallback") else None
+        )
+        state.best_win_count_config = (
+            dict(value["best_win_count"]) if value.get("best_win_count") else None
+        )
+        state.positive_net_pnl_found = bool(value.get("positive_net_pnl_found"))
+        state.search_evaluated = int(value.get("search_evaluated", state.search_evaluated))
+        state.search_budget = int(value.get("search_budget", state.search_budget))
+        state.search_status = str(value.get("search_status", state.search_status))
+
     def _apply_pipeline_manifest(self, value: Mapping[str, Any]) -> None:
         state = self.state
         state.gui_orchestrator = str(value.get("gui_orchestrator", PIPELINE_NAME))
@@ -397,6 +422,8 @@ class ParameterSweepController:
         state.pipeline_phase = phase
         state.phase = phase
         event_type = str(value.get("event_type"))
+        if isinstance(value.get("best_configs"), Mapping):
+            self._apply_best_configs(value["best_configs"])
         if event_type == "CONFIG_PLANNED":
             dimensions = value.get("active_dimensions") or []
             if dimensions:
@@ -452,6 +479,13 @@ class ParameterSweepController:
             except (OSError, ValueError, TypeError):
                 return {}
         range_handoff = read(root / "02_data_driven_ranges" / "DATA_DRIVEN_RANGE_HANDOFF.json")
+        best_configs = read(root / "BEST_CONFIGS.json")
+        if not best_configs:
+            best_configs = read(root / "04_adaptive_refinement" / "BEST_CONFIGS.json")
+        if not best_configs:
+            best_configs = read(root / "03_expanded_search" / "BEST_CONFIGS.json")
+        if best_configs:
+            self._apply_best_configs(best_configs)
         parameters = list(range_handoff.get("parameters") or [])
         state.search_dimensions = [str(row["parameter"]) for row in parameters if row.get("eligible_for_search")]
         state.dimension_values = {

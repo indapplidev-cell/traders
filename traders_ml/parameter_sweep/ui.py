@@ -12,6 +12,61 @@ from .controller import ParameterSweepController
 from .texts import RU
 from .utils import format_duration
 from .modes import ResearchMode
+from app.i18n.catalog import RU as SERVER_RU
+
+
+def _display(value: object) -> str:
+    if value is None:
+        return "—"
+    if isinstance(value, float):
+        return f"{value:.8f}".rstrip("0").rstrip(".")
+    return str(value)
+
+
+def _winner_details(value: dict | None) -> str:
+    if not value:
+        return "—"
+    parameters = "\n".join(
+        f"  {name} = {_display(parameter_value)}"
+        for name, parameter_value in sorted(dict(value.get("parameters") or {}).items())
+    ) or "  —"
+    return (
+        f"Config ID: {_display(value.get('config_id'))}\n"
+        f"Behavioral cluster: {_display(value.get('behavioral_cluster_id'))} · "
+        f"numeric aliases: {int(value.get('numeric_alias_count') or 1)}\n"
+        f"Параметры:\n{parameters}\n"
+        f"Сделок: {_display(value.get('trade_count'))} · Побед: {_display(value.get('wins'))} · "
+        f"Поражений: {_display(value.get('losses'))} · Win rate: {_display(value.get('win_rate'))}\n"
+        f"Gross PnL: {_display(value.get('gross_pnl'))} · Fees: {_display(value.get('fees'))} · "
+        f"Slippage: {_display(value.get('slippage'))} · Net PnL: {_display(value.get('net_pnl'))}\n"
+        f"Expectancy R: {_display(value.get('expectancy_R'))} · Profit Factor: {_display(value.get('profit_factor'))} · "
+        f"Max Drawdown: {_display(value.get('max_drawdown'))}\n"
+        f"Avg win/loss/holding: {_display(value.get('avg_win'))} / {_display(value.get('avg_loss'))} / "
+        f"{_display(value.get('avg_holding_time'))}\n"
+        f"Independent periods: {_display(value.get('independent_periods'))} · "
+        f"Symbol coverage: {_display(value.get('symbol_coverage'))}\n"
+        f"Validation: {_display(value.get('validation_status'))} · Promotion eligible: "
+        f"{'ДА' if value.get('promotion_eligible') else 'НЕТ'}"
+    )
+
+
+def format_positive_winner_card(state) -> str:
+    if state.positive_net_pnl_found and state.best_positive_net_pnl_config:
+        return "Статус: найдено\n" + _winner_details(state.best_positive_net_pnl_config)
+    fallback = state.best_net_pnl_config
+    return (
+        SERVER_RU["parameter_sweep.winners.positive_not_found"] + "\n\n"
+        + SERVER_RU["parameter_sweep.winners.best_net_pnl"] + ":\n"
+        + _winner_details(fallback)
+    )
+
+
+def format_win_count_card(state) -> str:
+    winner = state.best_win_count_config
+    text = _winner_details(winner)
+    if winner and float(winner.get("net_pnl") or 0) <= 0:
+        text += "\n" + SERVER_RU["parameter_sweep.winners.negative_economic_result"]
+    return text
 
 
 class ParameterSweepWindow:
@@ -76,6 +131,24 @@ class ParameterSweepWindow:
 
         self.result = ttk.Label(self.body, justify="left")
         self.result.pack(anchor="w", pady=8)
+        ttk.Label(
+            self.body, text=SERVER_RU["parameter_sweep.winners.title"],
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", pady=(12, 5))
+        profit_frame = ttk.LabelFrame(
+            self.body, text=SERVER_RU["parameter_sweep.winners.max_positive_profit"],
+            padding=8,
+        )
+        profit_frame.pack(fill="x", pady=4)
+        self.best_profit = ttk.Label(profit_frame, justify="left", wraplength=800)
+        self.best_profit.pack(anchor="w", fill="x")
+        wins_frame = ttk.LabelFrame(
+            self.body, text=SERVER_RU["parameter_sweep.winners.max_win_count"],
+            padding=8,
+        )
+        wins_frame.pack(fill="x", pady=4)
+        self.best_wins = ttk.Label(wins_frame, justify="left", wraplength=800)
+        self.best_wins.pack(anchor="w", fill="x")
         self.terminal_explanation = ttk.Label(self.body, justify="left", wraplength=820)
         self.terminal_explanation.pack(anchor="w", pady=4)
         self.counters = ttk.Label(self.body, justify="left")
@@ -272,6 +345,8 @@ class ParameterSweepWindow:
                 f"({state.independent_period_unit or '—'})\n"
                 f"Статус: {translated_status}"
             ))
+        self.best_profit.configure(text=format_positive_winner_card(state))
+        self.best_wins.configure(text=format_win_count_card(state))
         if state.failed_before_first_config:
             self.terminal_explanation.configure(text=(
                 f"{RU['failed_before_first']}\n"

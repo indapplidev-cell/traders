@@ -95,6 +95,13 @@ def compact_result(
     wins = sum(float(t.get("net_pnl", 0)) > 0 for t in trades) if trade_records_present else int(validation.get("wins") or 0)
     losses = sum(float(t.get("net_pnl", 0)) < 0 for t in trades) if trade_records_present else int(validation.get("losses") or 0)
     trade_count = len(trades) if trade_records_present else int(validation.get("trade_count") or 0)
+    winning_pnl = [float(t.get("net_pnl", 0)) for t in trades if float(t.get("net_pnl", 0)) > 0]
+    losing_pnl = [-float(t.get("net_pnl", 0)) for t in trades if float(t.get("net_pnl", 0)) < 0]
+    holding_seconds = [
+        (int(t["closed_at_ms"]) - int(t["opened_at_ms"])) / 1000
+        for t in trades
+        if t.get("opened_at_ms") is not None and t.get("closed_at_ms") is not None
+    ]
     funnel = dict(validation.get("funnel") or {})
     candidate_count = int(item.get("INPUT_ROWS") or sum(funnel.values()) or 0)
     rr_pass = int(funnel.get("PASSED_ROWS") or trade_count)
@@ -157,10 +164,24 @@ def compact_result(
         "loss_count": losses,
         "win_rate": validation.get("win_rate"),
         "gross_pnl": validation.get("gross_pnl"),
+        "fees": validation.get("fees", validation.get("total_fees")),
+        "slippage": validation.get("slippage", validation.get("slippage_cost")),
         "net_pnl": validation.get("net_pnl"),
         "expectancy_R": validation.get("expectancy_R", validation.get("net_expectancy_per_trade")),
         "profit_factor": validation.get("profit_factor"),
         "max_drawdown": validation.get("max_drawdown"),
+        "avg_win": validation.get(
+            "avg_win", sum(winning_pnl) / len(winning_pnl) if winning_pnl else None,
+        ),
+        "avg_loss": validation.get(
+            "avg_loss", sum(losing_pnl) / len(losing_pnl) if losing_pnl else None,
+        ),
+        "avg_holding_time": validation.get(
+            "avg_holding_time", validation.get(
+                "average_holding_seconds",
+                sum(holding_seconds) / len(holding_seconds) if holding_seconds else None,
+            ),
+        ),
         "mean_net_rr": validation.get("mean_net_rr", _mean(trades, "net_rr")),
         "median_net_rr": validation.get("median_net_rr", _median(trades, "net_rr")),
         "mean_required_rr": validation.get("mean_required_rr", _mean(trades, "required_rr")),

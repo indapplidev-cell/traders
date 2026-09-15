@@ -67,6 +67,8 @@ def test_chronological_portfolio_selector_risk_balance_and_symbol_capacity():
     assert result["funnel"]["REJECT_SELECTOR"] == 1
     assert result["ending_balance"] != 1000.0
     assert result["available_balance"] == result["ending_balance"]
+    assert result["slippage"] > 0.0
+    assert result["slippage"] == result["trades"][0]["slippage"]
 
 
 def test_per_family_capability_does_not_globally_fail_optional_missing_family():

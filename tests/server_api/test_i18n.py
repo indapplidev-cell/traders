@@ -84,6 +84,22 @@ def test_generated_desktop_bootstrap_matches_server_catalog():
     assert json.loads(path.read_text(encoding="utf-8")) == build_snapshot()
 
 
+def test_parameter_sweep_winner_labels_are_server_owned_and_bilingual():
+    expected = {
+        "parameter_sweep.winners.title",
+        "parameter_sweep.winners.max_positive_profit",
+        "parameter_sweep.winners.max_win_count",
+        "parameter_sweep.winners.positive_not_found",
+        "parameter_sweep.winners.best_net_pnl",
+        "parameter_sweep.winners.negative_economic_result",
+    }
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert expected <= set(ru) == set(en)
+    assert ru["parameter_sweep.winners.title"] == "ЛУЧШИЕ НАЙДЕННЫЕ КОМБИНАЦИИ"
+    assert en["parameter_sweep.winners.title"] == "BEST FOUND CONFIGURATIONS"
+
+
 def test_trade_profile_keys_are_server_owned_and_ru_en_complete():
     ru = catalog_payload("ru")["translations"]
     en = catalog_payload("en")["translations"]
