@@ -229,7 +229,10 @@ def _pitr_lineage(
         )
         updated = datetime.fromisoformat(str(daemon["updated_at"]).replace("Z", "+00:00"))
         daemon_ready = (
-            daemon.get("schema") == "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1"
+            daemon.get("schema") in {
+                "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
+                "TRADERS_ML_WAL_ACK_DAEMON_STATE_V2",
+            }
             and daemon.get("status") == "RUNNING"
             and daemon.get("error_class") == "NONE"
             and daemon.get("export_backlog_count") == 0
@@ -531,6 +534,19 @@ class ProductionPaperRuntimeObservationSource:
             if not (saved.get("state") == "RECOVERING" and state == "DEGRADED" and reason == "WAL_ARCHIVER_FAILURE"):
                 saved.update(state=state, reason_code=reason)
             recovery_domains[key] = saved
+        primary_reason = None
+        for domain_key in (
+            "recovery_supervisor", "recovery_worker",
+            "recovery_recheck_scheduler", "recovery_state_publication",
+        ):
+            domain = recovery_domains.get(domain_key)
+            if isinstance(domain, dict) and domain.get("state") != "READY":
+                primary_reason = domain.get("reason_code") or "SELF_HEALER_STALLED"
+                break
+        if primary_reason:
+            for key in ("wal", "pitr"):
+                recovery_domains[key]["primary_reason"] = primary_reason
+                recovery_domains[key]["consequence"] = recovery_domains[key].get("reason_code")
         return PaperRuntimeObservation(
             environment="production",
             # This is readiness of the bounded operator runtime artifact, not a

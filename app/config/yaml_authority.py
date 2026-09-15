@@ -203,6 +203,13 @@ class WalAckDaemonPolicy(StrictModel):
     settle_poll_seconds: float = Field(gt=0)
     state_write_attempts: int = Field(gt=0)
     state_write_retry_seconds: float = Field(ge=0)
+    heartbeat_freshness_seconds: float = Field(gt=0)
+    recheck_grace_seconds: float = Field(gt=0)
+    publication_freshness_seconds: float = Field(gt=0)
+    supervisor_poll_seconds: float = Field(gt=0)
+    restart_backoff_seconds: float = Field(ge=0)
+    restart_burst: int = Field(gt=0)
+    restart_cooldown_seconds: float = Field(gt=0)
 
 
 class PaperReadinessPolicy(StrictModel):

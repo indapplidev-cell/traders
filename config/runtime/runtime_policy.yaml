@@ -133,6 +133,13 @@ wal_ack_daemon:
   settle_poll_seconds: 0.25
   state_write_attempts: 5
   state_write_retry_seconds: 0.2
+  heartbeat_freshness_seconds: 120.0
+  recheck_grace_seconds: 120.0
+  publication_freshness_seconds: 120.0
+  supervisor_poll_seconds: 1.0
+  restart_backoff_seconds: 1.0
+  restart_burst: 3
+  restart_cooldown_seconds: 30.0
 paper_readiness:
   minimum_pitr_window_seconds: 86400
   wal_daemon_max_age_seconds: 1200

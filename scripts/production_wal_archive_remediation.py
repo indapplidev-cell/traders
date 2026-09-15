@@ -10,8 +10,9 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,8 @@ DAEMON_STATE_WRITE_ATTEMPTS = _DAEMON_POLICY.state_write_attempts
 DAEMON_STATE_WRITE_RETRY_SECONDS = _DAEMON_POLICY.state_write_retry_seconds
 WINDOWS_AUTOSTART_TASK = "TradersML-WALAckDaemon"
 WINDOWS_STARTUP_LAUNCHER = "TradersML-WALAckDaemon.vbs"
+SUPERVISOR_LOCK = "wal_recovery_supervisor.pid"
+SUPERVISOR_STATE = "wal_recovery_supervisor_state.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +286,45 @@ def _publish_daemon_state(
     return False
 
 
+def _read_json_object(path: Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def _publish_recovery_domains(path: Path, updates: dict[str, object]) -> bool:
+    current = _read_json_object(path)
+    current.update(updates)
+    return _publish_daemon_state(path, current)
+
+
+def _utc(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def classify_worker_health(
+    state: dict[str, object], *, now: datetime, process_alive: bool,
+) -> tuple[bool, str]:
+    """Return authoritative health for one generation-bound worker."""
+    if not process_alive:
+        return False, "RECOVERY_WORKER_NOT_RUNNING"
+    heartbeat = _utc(state.get("heartbeat_at") or state.get("updated_at"))
+    if heartbeat is None or (now - heartbeat).total_seconds() > _DAEMON_POLICY.heartbeat_freshness_seconds:
+        return False, "RECOVERY_HEARTBEAT_STALE"
+    deadline = _utc(state.get("next_recheck_at"))
+    if deadline is None or (now - deadline).total_seconds() > _DAEMON_POLICY.recheck_grace_seconds:
+        return False, "RECOVERY_RECHECK_STALLED"
+    return True, "RECOVERY_WORKER_READY"
+
+
 def _process_is_alive(pid: int) -> bool:
     if pid < 1:
         return False
@@ -344,7 +386,7 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
         raise OperationFailure("PYTHONW_UNAVAILABLE")
     script = Path(__file__).resolve()
     task_action = (
-        f'"{pythonw}" "{script}" daemon --root "{root.resolve()}" '
+        f'"{pythonw}" "{script}" supervisor --root "{root.resolve()}" '
         f"--interval-seconds {interval_seconds}"
     )
     created = subprocess.run(
@@ -359,6 +401,13 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
         )
         if verified.returncode:
             raise OperationFailure("ACK_DAEMON_AUTOSTART_VERIFY_FAILED")
+        started = subprocess.run(
+            ["schtasks.exe", "/Run", "/TN", WINDOWS_AUTOSTART_TASK],
+            capture_output=True, text=True, timeout=_DAEMON_POLICY.command_timeout_seconds,
+            check=False,
+        )
+        if started.returncode:
+            raise OperationFailure("RECOVERY_SUPERVISOR_START_FAILED")
         return True
 
     # Non-elevated Windows sessions may not create even a LIMITED scheduled
@@ -381,6 +430,12 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
             raise OperationFailure("ACK_DAEMON_AUTOSTART_VERIFY_FAILED")
     except OSError as error:
         raise OperationFailure("ACK_DAEMON_AUTOSTART_INSTALL_FAILED") from error
+    subprocess.Popen(
+        [str(pythonw), str(script), "supervisor", "--root", str(root.resolve()),
+         "--interval-seconds", str(interval_seconds)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
     return True
 
 
@@ -413,7 +468,10 @@ def _host_ack_daemon_cycle(root: Path, *, process_id: int) -> dict[str, object]:
     }
 
 
-def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
+def run_host_ack_daemon(
+    root: Path, *, interval_seconds: int, instance_id: str | None = None,
+    generation: int = 1,
+) -> None:
     """Continuously service the existing fail-closed host ACK protocol."""
     if not (
         _DAEMON_POLICY.minimum_interval_seconds
@@ -427,6 +485,7 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     state = root / "catalog" / "wal_ack_daemon_state.json"
     descriptor = _acquire_daemon_lock(lock)
     recovery_path = root / "catalog" / "recovery_readiness.json"
+    instance_id = instance_id or str(uuid.uuid4())
     domains = {"wal": RecoveryState(), "pitr": RecoveryState()}
     try:
         previous = json.loads(recovery_path.read_text(encoding="utf-8"))
@@ -435,33 +494,60 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
         pass
     try:
         os.close(descriptor)
+        bound_at = datetime.now(timezone.utc)
+        domains = {key: value.bind(instance_id, generation, bound_at, interval_seconds) for key, value in domains.items()}
         while True:
+            now = datetime.now(timezone.utc)
+            started = now.isoformat()
             try:
-                now = datetime.now(timezone.utc)
                 for key, value in domains.items():
                     if value.state == "DEGRADED":
                         domains[key] = value.advance("RECOVERING", "PITR_VERIFICATION_PENDING", now, interval_seconds)
-                _publish_daemon_state(recovery_path, {key: value.project() for key, value in domains.items()})
+                _publish_recovery_domains(recovery_path, {key: value.project() for key, value in domains.items()})
                 payload = _host_ack_daemon_cycle(root, process_id=os.getpid())
-            except (OSError, ValueError, json.JSONDecodeError, OperationFailure, subprocess.TimeoutExpired) as error:
+                observed_at = datetime.now(timezone.utc)
+                payload.update(
+                    schema="TRADERS_ML_WAL_ACK_DAEMON_STATE_V2",
+                    instance_id=instance_id, generation=generation,
+                    started_at=domains["wal"].started_at,
+                    heartbeat_at=observed_at.isoformat(),
+                    next_recheck_at=(observed_at + timedelta(seconds=interval_seconds)).isoformat(),
+                    snapshot_generated_at=observed_at.isoformat(),
+                )
+                _publish_daemon_state(state, payload)
+                # Reuse the exact API lineage verifier; never manufacture a healthy chain.
+                from app.server_api.paper_runtime_observation import _pitr_lineage
+                finished_at = datetime.now(timezone.utc)
+                observed = _pitr_lineage(root, finished_at)
+                domains["wal"] = domains["wal"].advance(observed.wal_state, observed.wal_reason_code, finished_at, interval_seconds)
+                domains["pitr"] = domains["pitr"].advance(observed.pitr_state, observed.pitr_reason_code, finished_at, interval_seconds)
+            except Exception as error:
+                # The supervisor must never be lost to a transient subprocess,
+                # Docker, filesystem or publication exception.
+                failed_at = datetime.now(timezone.utc)
                 payload = {
-                    "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
-                    "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V2",
+                    "updated_at": failed_at.isoformat().replace("+00:00", "Z"),
                     "process_id": os.getpid(),
                     "status": "DEGRADED",
                     "pending_archive_status_count": -1,
                     "export_backlog_count": -1,
                     "published_segment_count_last_cycle": 0,
-                    "error_class": "WAL_ARCHIVER_FAILURE",
+                    "error_class": type(error).__name__,
                 }
+                domains["wal"] = domains["wal"].advance("DEGRADED", "WAL_ARCHIVER_FAILURE", failed_at, interval_seconds)
+                domains["pitr"] = domains["pitr"].advance("DEGRADED", "PITR_VERIFICATION_PENDING", failed_at, interval_seconds)
+            finished = datetime.now(timezone.utc)
+            next_recheck = (finished + timedelta(seconds=interval_seconds)).isoformat()
+            payload.update(
+                schema="TRADERS_ML_WAL_ACK_DAEMON_STATE_V2", instance_id=instance_id,
+                generation=generation, started_at=domains["wal"].started_at,
+                heartbeat_at=finished.isoformat(), last_recheck_started_at=started,
+                last_recheck_finished_at=finished.isoformat(), next_recheck_at=next_recheck,
+                snapshot_generated_at=finished.isoformat(),
+            )
             _publish_daemon_state(state, payload)
-            # Reuse the exact API lineage verifier; never manufacture a healthy chain.
-            from app.server_api.paper_runtime_observation import _pitr_lineage
-            now = datetime.now(timezone.utc)
-            observed = _pitr_lineage(root, now)
-            domains["wal"] = domains["wal"].advance(observed.wal_state, observed.wal_reason_code, now, interval_seconds)
-            domains["pitr"] = domains["pitr"].advance(observed.pitr_state, observed.pitr_reason_code, now, interval_seconds)
-            _publish_daemon_state(recovery_path, {key: value.project() for key, value in domains.items()})
+            _publish_recovery_domains(recovery_path, {key: value.project() for key, value in domains.items()})
             time.sleep(interval_seconds)
     finally:
         try:
@@ -470,16 +556,117 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
             pass
 
 
+def run_recovery_supervisor(root: Path, *, interval_seconds: int) -> None:
+    """Watch the watchdog: keep exactly one generation-bound ACK worker alive."""
+    if root.resolve() != SAFE_ROOT.resolve():
+        raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
+    catalog = root / "catalog"
+    descriptor = _acquire_daemon_lock(catalog / SUPERVISOR_LOCK)
+    os.close(descriptor)
+    generation = int(_read_json_object(catalog / SUPERVISOR_STATE).get("generation", 0))
+    restarts: list[float] = []
+    child: subprocess.Popen[str] | None = None
+    instance_id = ""
+    try:
+        while True:
+            now = datetime.now(timezone.utc)
+            worker_state = _read_json_object(catalog / "wal_ack_daemon_state.json")
+            alive = child is not None and child.poll() is None
+            healthy, reason = classify_worker_health(worker_state, now=now, process_alive=alive)
+            identity_matches = (
+                alive and worker_state.get("instance_id") == instance_id
+                and worker_state.get("generation") == generation
+            )
+            if not healthy or not identity_matches:
+                if alive:
+                    child.terminate()
+                    try:
+                        child.wait(timeout=_DAEMON_POLICY.command_timeout_seconds)
+                    except subprocess.TimeoutExpired:
+                        child.kill()
+                        child.wait()
+                stale_pid = catalog / "wal_ack_daemon.pid"
+                if stale_pid.exists() and not _process_is_alive(_read_lock_pid(stale_pid)):
+                    stale_pid.unlink()
+                moment = time.monotonic()
+                restarts = [value for value in restarts if moment - value < _DAEMON_POLICY.restart_cooldown_seconds]
+                if len(restarts) >= _DAEMON_POLICY.restart_burst:
+                    time.sleep(_DAEMON_POLICY.restart_cooldown_seconds)
+                    restarts.clear()
+                time.sleep(_DAEMON_POLICY.restart_backoff_seconds)
+                generation += 1
+                instance_id = str(uuid.uuid4())
+                child = subprocess.Popen(
+                    [sys.executable, str(Path(__file__).resolve()), "daemon", "--root", str(root),
+                     "--interval-seconds", str(interval_seconds), "--instance-id", instance_id,
+                     "--generation", str(generation)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    text=True,
+                )
+                restarts.append(moment)
+                reason = "RECOVERY_WORKER_RESTARTED"
+                started = datetime.now(timezone.utc)
+                _publish_daemon_state(catalog / "wal_ack_daemon_state.json", {
+                    "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V2",
+                    "process_id": child.pid, "status": "RECOVERING",
+                    "error_class": "NONE", "instance_id": instance_id,
+                    "generation": generation, "started_at": started.isoformat(),
+                    "heartbeat_at": started.isoformat(),
+                    "next_recheck_at": (started + timedelta(seconds=interval_seconds)).isoformat(),
+                    "last_recheck_started_at": None, "last_recheck_finished_at": None,
+                    "snapshot_generated_at": started.isoformat(),
+                    "pending_archive_status_count": -1, "export_backlog_count": -1,
+                    "published_segment_count_last_cycle": 0,
+                })
+            stamp = datetime.now(timezone.utc).isoformat()
+            supervisor = {
+                "state": "READY", "reason_code": "RECOVERY_SUPERVISOR_READY",
+                "heartbeat_at": stamp, "last_success_at": stamp,
+                "last_failure_at": None, "instance_id": str(os.getpid()),
+                "generation": generation, "started_at": stamp,
+            }
+            worker = dict(worker_state)
+            worker.update(state="READY" if healthy and identity_matches else "RECOVERING", reason_code=reason,
+                          instance_id=instance_id, generation=generation)
+            scheduler = dict(worker)
+            scheduler.update(state="READY" if healthy else "RECOVERING",
+                             reason_code="RECOVERY_RECHECK_READY" if healthy else reason)
+            publication = dict(worker)
+            publication.update(state="READY", reason_code="RECOVERY_STATE_PUBLICATION_READY",
+                               snapshot_generated_at=stamp, heartbeat_at=stamp)
+            _publish_recovery_domains(catalog / "recovery_readiness.json", {
+                "recovery_supervisor": supervisor, "recovery_worker": worker,
+                "recovery_recheck_scheduler": scheduler,
+                "recovery_state_publication": publication,
+            })
+            _publish_daemon_state(catalog / SUPERVISOR_STATE, {
+                "schema": "TRADERS_ML_RECOVERY_SUPERVISOR_STATE_V1", "process_id": os.getpid(),
+                "heartbeat_at": stamp, "generation": generation, "worker_instance_id": instance_id,
+                "worker_process_id": child.pid if child and child.poll() is None else None,
+            })
+            time.sleep(_DAEMON_POLICY.supervisor_poll_seconds)
+    finally:
+        if child is not None and child.poll() is None:
+            child.terminate()
+        try:
+            (catalog / SUPERVISOR_LOCK).unlink()
+        except OSError:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("operation", choices=(
-        "diagnose", "retry", "install-host-ack-command", "install-daemon-autostart", "daemon",
+        "diagnose", "retry", "install-host-ack-command", "install-daemon-autostart", "daemon", "supervisor",
     ))
     parser.add_argument("--root", type=Path, default=SAFE_ROOT)
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument(
         "--interval-seconds", type=int, default=_DAEMON_POLICY.interval_seconds
     )
+    parser.add_argument("--instance-id", default=None)
+    parser.add_argument("--generation", type=int, default=1)
     args = parser.parse_args(argv)
     try:
         if args.operation == "diagnose":
@@ -493,8 +680,12 @@ def main(argv: list[str] | None = None) -> int:
             result = {"autostart_installed": install_windows_daemon_autostart(
                 args.root, interval_seconds=args.interval_seconds),
                 "autostart_scope": "CURRENT_USER_LOGON"}
+        elif args.operation == "daemon":
+            run_host_ack_daemon(args.root, interval_seconds=args.interval_seconds,
+                                instance_id=args.instance_id, generation=args.generation)
+            result = {"status": "STOPPED"}
         else:
-            run_host_ack_daemon(args.root, interval_seconds=args.interval_seconds)
+            run_recovery_supervisor(args.root, interval_seconds=args.interval_seconds)
             result = {"status": "STOPPED"}
         print(json.dumps(result, sort_keys=True))
         return 0

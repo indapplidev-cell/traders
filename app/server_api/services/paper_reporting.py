@@ -295,6 +295,13 @@ class PaperReadonlyReportingService:
             "arm": domain(mutation_ready and runtime.wal_ready is True and runtime.pitr_ready is True, "ARM_READINESS"),
             "live": domain(False, "LIVE_DISABLED"),
         }
+        for key in (
+            "recovery_supervisor", "recovery_worker",
+            "recovery_recheck_scheduler", "recovery_state_publication",
+        ):
+            domains[key] = recovery.get(key, {
+                "state": "DEGRADED", "reason_code": "SELF_HEALER_STALLED"
+            })
         return PaperReadiness(
             readiness_domains=domains,
             environment=runtime.environment,

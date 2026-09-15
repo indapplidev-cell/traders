@@ -61,3 +61,65 @@ def test_transition_log_only_changes(caplog):
         state=RecoveryState().advance("READY","WAL_ARCHIVE_READY",now,3)
         state=state.advance("READY","WAL_ARCHIVE_READY",now,3)
     assert len(caplog.records)==1
+
+
+def _worker_state(now, **changes):
+    value = {
+        "heartbeat_at": now.isoformat(),
+        "next_recheck_at": (now + timedelta(seconds=3)).isoformat(),
+        "instance_id": "current", "generation": 2,
+    }
+    value.update(changes)
+    return value
+
+
+def test_dead_worker_is_primary_cause():
+    now=datetime.now(timezone.utc)
+    assert daemon.classify_worker_health(_worker_state(now),now=now,process_alive=False) == (False,"RECOVERY_WORKER_NOT_RUNNING")
+
+
+def test_stale_worker_heartbeat_is_detected():
+    now=datetime.now(timezone.utc)
+    old=now-timedelta(seconds=daemon._DAEMON_POLICY.heartbeat_freshness_seconds+1)
+    assert daemon.classify_worker_health(_worker_state(now,heartbeat_at=old.isoformat()),now=now,process_alive=True)[1] == "RECOVERY_HEARTBEAT_STALE"
+
+
+def test_overdue_recheck_is_detected():
+    now=datetime.now(timezone.utc)
+    old=now-timedelta(seconds=daemon._DAEMON_POLICY.recheck_grace_seconds+1)
+    assert daemon.classify_worker_health(_worker_state(now,next_recheck_at=old.isoformat()),now=now,process_alive=True)[1] == "RECOVERY_RECHECK_STALLED"
+
+
+def test_current_worker_health_passes():
+    now=datetime.now(timezone.utc)
+    assert daemon.classify_worker_health(_worker_state(now),now=now,process_alive=True) == (True,"RECOVERY_WORKER_READY")
+
+
+def test_stale_running_is_invalidated_by_new_generation():
+    now=datetime.now(timezone.utc)
+    old=RecoveryState(state="READY",instance_id="old",generation=1,heartbeat_at=now.isoformat())
+    new=old.bind("new",2,now,3)
+    assert (new.state,new.reason_code,new.instance_id,new.generation)==("RECOVERING","RECOVERY_WORKER_STARTING","new",2)
+
+
+def test_old_generation_heartbeat_cannot_masquerade_as_current():
+    now=datetime.now(timezone.utc)
+    state=_worker_state(now,instance_id="old",generation=1)
+    assert not (state["instance_id"]=="new" and state["generation"]==2)
+
+
+def test_recheck_rearms_after_transient_failure_and_success():
+    now=datetime.now(timezone.utc)
+    failed=RecoveryState().advance("DEGRADED","WAL_ARCHIVER_FAILURE",now,3)
+    ready=failed.advance("READY","WAL_ARCHIVE_READY",now+timedelta(seconds=3),3)
+    assert failed.next_recheck_at and ready.next_recheck_at and ready.recovered_at
+
+
+def test_three_repeated_recovery_cycles_are_not_sticky():
+    now=datetime.now(timezone.utc)
+    state=RecoveryState()
+    for cycle in range(3):
+        state=state.advance("DEGRADED","WAL_ARCHIVER_FAILURE",now+timedelta(seconds=cycle*6),3)
+        state=state.advance("RECOVERING","PITR_VERIFICATION_PENDING",now+timedelta(seconds=cycle*6+2),3)
+        state=state.advance("READY","WAL_ARCHIVE_READY",now+timedelta(seconds=cycle*6+3),3)
+        assert state.state=="READY" and state.next_recheck_at
