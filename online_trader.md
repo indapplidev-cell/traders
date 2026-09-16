@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 6263e39b629017bf45a538fb222e0e68bf3380f6
+STATUS_AS_OF_COMMIT = ef0ad7c3b02adb41e74a24f25f652e665fd4d166
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-15T04:57:39Z
-RECONCILED_BY_TASK = TRADERS_RUNTIME_YAML_HOT_RELOAD_LIVE_READERS_AND_LOCAL_CONFIG_UNTRACK_01
-FILES_CHANGED = app/i18n/catalog.py; traders_ml/parameter_sweep/winners.py; traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/adaptive_refinement.py; traders_ml/parameter_sweep/pipeline.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/historical_replay.py; scripts/parameter_sweep_winners_acceptance.py; tests/research/test_parameter_sweep_winners.py; tests/research/test_parameter_sweep_historical_replay.py; tests/server_api/test_i18n.py; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_ACCEPTANCE.json; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_FINAL.md; app/config/trading_config_manager.py; app/server_api/services/paper_reporting.py; .gitignore; config/trading/risk_policy.yaml; config/trading/trade_parameters.yaml; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-16T04:20:00Z
+RECONCILED_BY_TASK = TRADERS_RECOVERY_UI_I18N_AND_RECHECK_TIMESTAMPS_FIX_01
+FILES_CHANGED = app/engine_safety/recovery_state.py; app/i18n/catalog.py; scripts/production_wal_archive_remediation.py; tests/server_api/test_i18n.py; tests/test_recovery_self_healing.py; sibling traders-client/src/traders_client/i18n/generated_bootstrap.json; online_trader.md.
 
 ## Runtime YAML hot-reload live readers 01
 
@@ -33,6 +33,37 @@ disk but are no longer tracked or published by Git.
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = RUNNING_MARKET_DATA_SYNC_ONLINE_ORCHESTRATOR5M_POSTGRES_HEALTHY_SCALPING_CALIBRATION_COLLECTOR; NO_SERVICE_RESTART_OR_DEPLOYMENT_BY_TASK
 PUSH_STATE_AT_RECONCILIATION = ORIGIN_FEATURE_ENGINE_PLATFORM_8ff2ae4; PROJECT_STATE_2c06d3c_AND_DOCUMENTATION_RECONCILIATION_PENDING_PUSH
 STATUS_CONFIDENCE = REAL_TK_SOLUSDT_525_CONFIG_ACCEPTANCE_PASS; ACTIVE_CONFIG_HASH_UNCHANGED; PAPER_TRUE_LIVEFALSE; BINANCE_REAL_ORDER_CALLS0
+
+## Recovery UI i18n and recheck timestamp repair 01
+
+```text
+TASK = TRADERS_RECOVERY_UI_I18N_AND_RECHECK_TIMESTAMPS_FIX_01
+FINAL_VERDICT = FAIL_CLOSED_RUNTIME_ACCEPTANCE
+PROJECT_STATE_COMMIT = ef0ad7c3b02adb41e74a24f25f652e665fd4d166
+DESKTOP_I18N_COMMIT = eba86cfce011c576ae07969ab9ada7a401f4dd8e
+MISSING_I18N_KEYS_BEFORE = 1_requested_alias_runtime_snapshot_gap
+MISSING_I18N_KEYS_AFTER = 0
+SERVER_CLIENT_I18N_PARITY = PASS
+RECHECK_TIMESTAMP_SEMANTICS = PASS_UNIT_AND_SYNTHETIC_THREE_CYCLES
+MULTI_CYCLE_ACCEPTANCE = PASS_SYNTHETIC_THREE_CYCLES; RUNTIME_TEST_COLLECTION_BLOCKED_BY_PREEXISTING_CIRCULAR_IMPORT
+WAL_ARCHIVE_STATUS = NOT_RECONFIRMED_RUNTIME_IN_THIS_TASK
+PITR_RECOVERY_STATUS = NOT_RECONFIRMED_RUNTIME_IN_THIS_TASK
+ARM_READINESS = NOT_RECONFIRMED_RUNTIME_IN_THIS_TASK
+PAPER_MUTATION_READY = NOT_RECONFIRMED_RUNTIME_IN_THIS_TASK
+LIVE_STATE = PRESERVED_DISABLED_BY_SCOPE
+CURRENT_BLOCKER = EXISTING_UNCOMMITTED_SERVER_CHANGES_CAUSE_MAPPING_CONTRACT_CIRCULAR_IMPORT_DURING_RECOVERY_TEST_COLLECTION; NO_DESTRUCTIVE_FAILURE_INJECTION
+CURRENT_STAGE = RUNTIME_RECOVERY_MULTI_CYCLE_RECHECK_AFTER_IMPORT_BLOCKER_CLEAR
+NEXT = CLEAR_PREEXISTING_IMPORT_BLOCKER_THEN_RUN_NATURAL_RUNTIME_CYCLES_AND_READONLY_READINESS_PROOF
+```
+
+The server catalog now owns the missing `readiness.domain.recovery_recheck`
+alias and the generated Desktop bootstrap was refreshed from that catalog.
+Completed recheck publication now receives the actual start instant for the
+same iteration, so started/finished/snapshot timestamps no longer mix cycles;
+cadence, timeout and retry policy were not changed. Unit and synthetic
+three-cycle evidence passed. Runtime acceptance remains fail-closed because
+the pre-existing working-tree changes prevent collection of the recovery test
+module through an unrelated circular import.
 
 # Состояние проекта traders-ml
 
