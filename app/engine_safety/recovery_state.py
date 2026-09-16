@@ -24,8 +24,24 @@ class RecoveryState:
     last_recheck_finished_at: str | None = None
     snapshot_generated_at: str | None = None
 
-    def advance(self, state: State, reason: str, now: datetime, cadence: float):
+    def advance(
+        self,
+        state: State,
+        reason: str,
+        now: datetime,
+        cadence: float,
+        *,
+        recheck_started_at: datetime | None = None,
+    ):
+        """Publish one completed recheck with timestamps from that iteration.
+
+        ``now`` is the completion/publication instant.  The caller may provide
+        the instant at which this same recheck began; without it, the
+        transition remains compatible with the small state-machine callers
+        that model an instantaneous check.
+        """
         stamp = now.isoformat()
+        started_stamp = (recheck_started_at or now).isoformat()
         if state != self.state:
             LOGGER.info("recovery_transition %s -> %s reason=%s", self.state, state, reason)
         failed = state in {"DEGRADED", "BLOCKED"}
@@ -37,7 +53,7 @@ class RecoveryState:
             stamp if recovered else self.recovered_at,
             (now + timedelta(seconds=cadence)).isoformat(),
             stamp, self.instance_id, self.generation, self.started_at,
-            self.last_recheck_started_at, stamp, stamp)
+            started_stamp, stamp, stamp)
 
     def bind(self, instance_id: str, generation: int, now: datetime, cadence: float):
         """Bind persisted RUNNING state to one concrete worker incarnation."""

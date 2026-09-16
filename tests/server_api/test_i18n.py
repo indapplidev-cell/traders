@@ -84,6 +84,23 @@ def test_generated_desktop_bootstrap_matches_server_catalog():
     assert json.loads(path.read_text(encoding="utf-8")) == build_snapshot()
 
 
+def test_recovery_readiness_diagnostics_are_server_owned_and_bilingual():
+    required = {
+        "readiness.field.heartbeat_at",
+        "readiness.field.last_recheck_started_at",
+        "readiness.field.last_recheck_finished_at",
+        "readiness.field.snapshot_generated_at",
+        "readiness.domain.recovery_supervisor",
+        "readiness.domain.recovery_worker",
+        "readiness.domain.recovery_recheck",
+        "readiness.domain.recovery_state_publication",
+    }
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert required <= set(ru) == set(en)
+    assert all(ru[key] and en[key] for key in required)
+
+
 def test_parameter_sweep_winner_labels_are_server_owned_and_bilingual():
     expected = {
         "parameter_sweep.winners.title",

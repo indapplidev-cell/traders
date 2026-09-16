@@ -1547,6 +1547,7 @@ for _key, _ru, _en in (
     ('domain.live', 'Готовность LIVE', 'LIVE readiness'),
     ('domain.recovery_supervisor', 'Супервизор восстановления', 'Recovery supervisor'),
     ('domain.recovery_worker', 'Рабочий восстановления', 'Recovery worker'),
+    ('domain.recovery_recheck', 'Перепроверка восстановления', 'Recovery recheck'),
     ('domain.recovery_recheck_scheduler', 'Планировщик перепроверки', 'Recovery recheck scheduler'),
     ('domain.recovery_state_publication', 'Публикация состояния recovery', 'Recovery state publication'),
     ('state.READY', 'Готово', 'Ready'),

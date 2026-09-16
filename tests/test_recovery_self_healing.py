@@ -115,6 +115,27 @@ def test_recheck_rearms_after_transient_failure_and_success():
     assert failed.next_recheck_at and ready.next_recheck_at and ready.recovered_at
 
 
+def test_recheck_timestamps_belong_to_the_same_iteration():
+    first_started = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    first_finished = first_started + timedelta(seconds=2)
+    second_started = first_finished + timedelta(seconds=3)
+    second_finished = second_started + timedelta(seconds=1)
+    state = RecoveryState().advance(
+        "READY", "WAL_ARCHIVE_READY", first_finished, 10,
+        recheck_started_at=first_started,
+    )
+    state = state.advance(
+        "READY", "WAL_ARCHIVE_READY", second_finished, 10,
+        recheck_started_at=second_started,
+    )
+    assert state.last_recheck_started_at == second_started.isoformat()
+    assert state.last_recheck_finished_at == second_finished.isoformat()
+    assert state.last_recheck_started_at <= state.last_recheck_finished_at
+    assert state.next_recheck_at == (second_finished + timedelta(seconds=10)).isoformat()
+    assert state.heartbeat_at == second_finished.isoformat()
+    assert state.snapshot_generated_at == second_finished.isoformat()
+
+
 def test_three_repeated_recovery_cycles_are_not_sticky():
     now=datetime.now(timezone.utc)
     state=RecoveryState()

@@ -50,6 +50,7 @@ _DAEMON_POLICY = RUNTIME_POLICY.wal_ack_daemon
 DAEMON_STATE_WRITE_ATTEMPTS = _DAEMON_POLICY.state_write_attempts
 DAEMON_STATE_WRITE_RETRY_SECONDS = _DAEMON_POLICY.state_write_retry_seconds
 WINDOWS_AUTOSTART_TASK = "TradersML-WALAckDaemon"
+WINDOWS_WATCHDOG_TASK = "TradersML-WALRecoveryWatchdog"
 WINDOWS_STARTUP_LAUNCHER = "TradersML-WALAckDaemon.vbs"
 SUPERVISOR_LOCK = "wal_recovery_supervisor.pid"
 SUPERVISOR_STATE = "wal_recovery_supervisor_state.json"
@@ -386,20 +387,31 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
         raise OperationFailure("PYTHONW_UNAVAILABLE")
     script = Path(__file__).resolve()
     task_action = (
-        f'"{pythonw}" "{script}" supervisor --root "{root.resolve()}" '
+        f'"{pythonw}" "{script}" watchdog --root "{root.resolve()}" '
         f"--interval-seconds {interval_seconds}"
     )
+    # A logon trigger alone cannot recover a supervisor which exits later in
+    # the same session.  Keep it for immediate startup and add a bounded
+    # per-minute watchdog: the supervisor lock makes repeated launches safe.
     created = subprocess.run(
         ["schtasks.exe", "/Create", "/TN", WINDOWS_AUTOSTART_TASK, "/SC", "ONLOGON",
          "/RL", "LIMITED", "/TR", task_action, "/F"],
         capture_output=True, text=True, timeout=30, check=False,
     )
-    if not created.returncode:
-        verified = subprocess.run(
-            ["schtasks.exe", "/Query", "/TN", WINDOWS_AUTOSTART_TASK],
-            capture_output=True, text=True, timeout=30, check=False,
-        )
-        if verified.returncode:
+    watchdog = subprocess.run(
+        ["schtasks.exe", "/Create", "/TN", WINDOWS_WATCHDOG_TASK, "/SC", "MINUTE", "/MO", "1",
+         "/RL", "LIMITED", "/TR", task_action, "/F"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if not created.returncode and not watchdog.returncode:
+        verified = [
+            subprocess.run(
+                ["schtasks.exe", "/Query", "/TN", task],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            for task in (WINDOWS_AUTOSTART_TASK, WINDOWS_WATCHDOG_TASK)
+        ]
+        if any(item.returncode for item in verified):
             raise OperationFailure("ACK_DAEMON_AUTOSTART_VERIFY_FAILED")
         started = subprocess.run(
             ["schtasks.exe", "/Run", "/TN", WINDOWS_AUTOSTART_TASK],
@@ -412,7 +424,8 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
 
     # Non-elevated Windows sessions may not create even a LIMITED scheduled
     # task. The current-user Startup folder is the bounded, privilege-free
-    # fallback and pythonw keeps the owner non-interactive and hidden.
+    # fallback; it recovers the next logon, while the immediate hidden process
+    # below restores the current session.
     appdata = os.environ.get("APPDATA")
     if not appdata:
         raise OperationFailure("ACK_DAEMON_AUTOSTART_INSTALL_FAILED")
@@ -502,7 +515,10 @@ def run_host_ack_daemon(
             try:
                 for key, value in domains.items():
                     if value.state == "DEGRADED":
-                        domains[key] = value.advance("RECOVERING", "PITR_VERIFICATION_PENDING", now, interval_seconds)
+                        domains[key] = value.advance(
+                            "RECOVERING", "PITR_VERIFICATION_PENDING", now, interval_seconds,
+                            recheck_started_at=now,
+                        )
                 _publish_recovery_domains(recovery_path, {key: value.project() for key, value in domains.items()})
                 prior = _read_json_object(state)
                 prior.update(
@@ -526,11 +542,17 @@ def run_host_ack_daemon(
                 )
                 _publish_daemon_state(state, payload)
                 # Reuse the exact API lineage verifier; never manufacture a healthy chain.
-                from app.server_api.paper_runtime_observation import _pitr_lineage
+                from app.engine_safety.pitr_lineage import pitr_lineage
                 finished_at = datetime.now(timezone.utc)
-                observed = _pitr_lineage(root, finished_at)
-                domains["wal"] = domains["wal"].advance(observed.wal_state, observed.wal_reason_code, finished_at, interval_seconds)
-                domains["pitr"] = domains["pitr"].advance(observed.pitr_state, observed.pitr_reason_code, finished_at, interval_seconds)
+                observed = pitr_lineage(root, finished_at)
+                domains["wal"] = domains["wal"].advance(
+                    observed.wal_state, observed.wal_reason_code, finished_at, interval_seconds,
+                    recheck_started_at=now,
+                )
+                domains["pitr"] = domains["pitr"].advance(
+                    observed.pitr_state, observed.pitr_reason_code, finished_at, interval_seconds,
+                    recheck_started_at=now,
+                )
             except Exception as error:
                 # The supervisor must never be lost to a transient subprocess,
                 # Docker, filesystem or publication exception.
@@ -545,8 +567,14 @@ def run_host_ack_daemon(
                     "published_segment_count_last_cycle": 0,
                     "error_class": type(error).__name__,
                 }
-                domains["wal"] = domains["wal"].advance("DEGRADED", "WAL_ARCHIVER_FAILURE", failed_at, interval_seconds)
-                domains["pitr"] = domains["pitr"].advance("DEGRADED", "PITR_VERIFICATION_PENDING", failed_at, interval_seconds)
+                domains["wal"] = domains["wal"].advance(
+                    "DEGRADED", "WAL_ARCHIVER_FAILURE", failed_at, interval_seconds,
+                    recheck_started_at=now,
+                )
+                domains["pitr"] = domains["pitr"].advance(
+                    "DEGRADED", "PITR_VERIFICATION_PENDING", failed_at, interval_seconds,
+                    recheck_started_at=now,
+                )
             finished = datetime.now(timezone.utc)
             next_recheck = (finished + timedelta(seconds=interval_seconds)).isoformat()
             payload.update(
@@ -665,10 +693,20 @@ def run_recovery_supervisor(root: Path, *, interval_seconds: int) -> None:
             pass
 
 
+def run_recovery_watchdog(root: Path, *, interval_seconds: int) -> None:
+    """Return successfully for a healthy owner; supervise only after its death."""
+    if root.resolve() != SAFE_ROOT.resolve():
+        raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
+    lock = root / "catalog" / SUPERVISOR_LOCK
+    if _process_is_alive(_read_lock_pid(lock)):
+        return
+    run_recovery_supervisor(root, interval_seconds=interval_seconds)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("operation", choices=(
-        "diagnose", "retry", "install-host-ack-command", "install-daemon-autostart", "daemon", "supervisor",
+        "diagnose", "retry", "install-host-ack-command", "install-daemon-autostart", "daemon", "supervisor", "watchdog",
     ))
     parser.add_argument("--root", type=Path, default=SAFE_ROOT)
     parser.add_argument("--timeout-seconds", type=int, default=600)
@@ -694,8 +732,11 @@ def main(argv: list[str] | None = None) -> int:
             run_host_ack_daemon(args.root, interval_seconds=args.interval_seconds,
                                 instance_id=args.instance_id, generation=args.generation)
             result = {"status": "STOPPED"}
-        else:
+        elif args.operation == "supervisor":
             run_recovery_supervisor(args.root, interval_seconds=args.interval_seconds)
+            result = {"status": "STOPPED"}
+        else:
+            run_recovery_watchdog(args.root, interval_seconds=args.interval_seconds)
             result = {"status": "STOPPED"}
         print(json.dumps(result, sort_keys=True))
         return 0
