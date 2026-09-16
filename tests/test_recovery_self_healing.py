@@ -95,6 +95,24 @@ def test_current_worker_health_passes():
     assert daemon.classify_worker_health(_worker_state(now),now=now,process_alive=True) == (True,"RECOVERY_WORKER_READY")
 
 
+def test_inflight_recheck_is_not_projected_as_completed_readiness():
+    now = datetime.now(timezone.utc)
+    previous = {
+        "last_recheck_started_at": (now - timedelta(seconds=5)).isoformat(),
+        "last_recheck_finished_at": (now - timedelta(seconds=4)).isoformat(),
+        "next_recheck_at": (now + timedelta(seconds=55)).isoformat(),
+        "snapshot_generated_at": (now - timedelta(seconds=4)).isoformat(),
+    }
+    inflight = {
+        **previous,
+        "last_recheck_started_at": now.isoformat(),
+    }
+    projected = daemon._completed_recheck_projection(inflight, previous)
+    assert projected["last_recheck_started_at"] == previous["last_recheck_started_at"]
+    assert projected["last_recheck_finished_at"] == previous["last_recheck_finished_at"]
+    assert projected["last_recheck_started_at"] <= projected["last_recheck_finished_at"]
+
+
 def test_stale_running_is_invalidated_by_new_generation():
     now=datetime.now(timezone.utc)
     old=RecoveryState(state="READY",instance_id="old",generation=1,heartbeat_at=now.isoformat())

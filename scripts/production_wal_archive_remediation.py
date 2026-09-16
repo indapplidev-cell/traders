@@ -370,6 +370,26 @@ def _read_lock_pid(lock: Path) -> int:
         return 0
 
 
+def _completed_recheck_projection(
+    worker: dict[str, object], previous: dict[str, object],
+) -> dict[str, object]:
+    """Keep an in-flight worker payload out of completed readiness domains."""
+    started = _utc(worker.get("last_recheck_started_at"))
+    finished = _utc(worker.get("last_recheck_finished_at"))
+    if started is None or finished is None or started <= finished:
+        return worker
+    projected = dict(worker)
+    for field in (
+        "last_recheck_started_at", "last_recheck_finished_at", "next_recheck_at",
+        "snapshot_generated_at",
+    ):
+        if field in previous:
+            projected[field] = previous[field]
+        else:
+            projected[field] = None
+    return projected
+
+
 def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bool:
     """Install the canonical daemon as a current-user logon task on Windows."""
     if os.name != "nt":
@@ -664,7 +684,11 @@ def run_recovery_supervisor(root: Path, *, interval_seconds: int) -> None:
                 "last_failure_at": None, "instance_id": str(os.getpid()),
                 "generation": generation, "started_at": stamp,
             }
-            worker = dict(worker_state)
+            previous_domains = _read_json_object(catalog / "recovery_readiness.json")
+            previous_worker = previous_domains.get("recovery_worker")
+            if not isinstance(previous_worker, dict):
+                previous_worker = {}
+            worker = _completed_recheck_projection(worker_state, previous_worker)
             worker.update(state="READY" if healthy and identity_matches else "RECOVERING", reason_code=reason,
                           instance_id=instance_id, generation=generation)
             scheduler = dict(worker)
