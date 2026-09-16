@@ -68,6 +68,7 @@ def _projection(row: Mapping[str, Any]) -> dict[str, Any]:
     wins = int(row.get("wins") or row.get("win_count") or 0)
     losses = int(row.get("losses") or row.get("loss_count") or 0)
     projected = {
+        "symbol": row.get("symbol"),
         "config_id": numeric_id,
         "numeric_config_id": numeric_id,
         "config_index": row.get("config_index", row.get("result_index")),

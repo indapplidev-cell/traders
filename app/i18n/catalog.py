@@ -1625,6 +1625,9 @@ for _key, _ru, _en in (
         "Экономический результат: ОТРИЦАТЕЛЬНЫЙ",
         "Economic result: NEGATIVE",
     ),
+    ("parameter_sweep.selector.symbol", "Символ", "Symbol"),
+    ("parameter_sweep.selector.all", "ВСЕ", "ALL"),
+    ("parameter_sweep.progress.all_mode", "ВСЕ СИМВОЛЫ", "ALL SYMBOLS"),
 ):
     RU[_key] = _ru
     EN[_key] = _en

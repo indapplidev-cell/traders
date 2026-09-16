@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, resolve_universe
 
+ALL_SYMBOLS_ID = "ALL"
+
 
 def resolve_parameter_sweep_universe() -> tuple[str, tuple[str, ...]]:
     """Return the existing v2 authority; Parameter Sweep owns no symbol list."""
@@ -21,4 +23,14 @@ def validate_parameter_sweep_symbol(value: object) -> str:
     return symbol
 
 
-__all__ = ["resolve_parameter_sweep_universe", "validate_parameter_sweep_symbol"]
+def validate_parameter_sweep_selection(value: object) -> str:
+    """Validate the GUI selector while keeping ALL a transport-level sentinel."""
+    if isinstance(value, str) and value.strip().upper() == ALL_SYMBOLS_ID:
+        return ALL_SYMBOLS_ID
+    return validate_parameter_sweep_symbol(value)
+
+
+__all__ = [
+    "ALL_SYMBOLS_ID", "resolve_parameter_sweep_universe",
+    "validate_parameter_sweep_selection", "validate_parameter_sweep_symbol",
+]

@@ -17,6 +17,8 @@ from .state import read_effective_status
 from .utils import generate_run_id, open_directory
 from .modes import ResearchMode, parse_research_mode
 from .universe import resolve_parameter_sweep_universe, validate_parameter_sweep_symbol
+from .universe import ALL_SYMBOLS_ID, validate_parameter_sweep_selection
+from .all_symbols import AllSymbolsResearchPipeline
 from .pipeline import PIPELINE_NAME, SingleSymbolResearchPipeline
 
 
@@ -134,6 +136,12 @@ class PresentationState:
     search_evaluated: int = 0
     search_budget: int = 0
     search_status: str = "NOT_STARTED"
+    resolved_symbols: list[str] = field(default_factory=list)
+    completed_symbols: int = 0
+    failed_symbols: int = 0
+    current_symbol: str | None = None
+    per_symbol_summary: dict[str, Any] = field(default_factory=dict)
+    all_status: str = "NOT_STARTED"
 
     @property
     def progress_percent(self) -> float:
@@ -186,6 +194,11 @@ class ParameterSweepController:
     @property
     def available_symbols(self) -> tuple[str, ...]:
         return resolve_parameter_sweep_universe()[1]
+
+    @property
+    def selector_values(self) -> tuple[str, ...]:
+        from app.i18n.catalog import RU as SERVER_RU
+        return (SERVER_RU["parameter_sweep.selector.all"], *self.available_symbols)
 
     def _discover_incomplete_run(self) -> None:
         if not self.output_root.is_dir():
@@ -247,7 +260,7 @@ class ParameterSweepController:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
         canonical_mode = parse_research_mode(mode)
-        canonical_symbol = validate_parameter_sweep_symbol(symbol)
+        canonical_symbol = validate_parameter_sweep_selection(symbol)
         run_id = generate_run_id(self.output_root)
         self._start(
             run_id, resume=False, max_configs=max_configs, mode=canonical_mode,
@@ -261,7 +274,7 @@ class ParameterSweepController:
         self._start(
             run_id, resume=True, max_configs=None,
             mode=parse_research_mode(self.state.research_mode),
-            symbol=validate_parameter_sweep_symbol(symbol or self.state.symbol),
+            symbol=validate_parameter_sweep_selection(symbol or self.state.symbol),
         )
 
     def _start(
@@ -283,7 +296,8 @@ class ParameterSweepController:
             output_directory=str(self.output_root / run_id), active=True,
             research_mode=mode.value,
             symbol=symbol,
-            gui_orchestrator=PIPELINE_NAME if mode is ResearchMode.ALL else "LEGACY_EXPLICIT_RESEARCH_MODE",
+            gui_orchestrator=("ALL_SYMBOLS_ORCHESTRATOR" if symbol == ALL_SYMBOLS_ID else
+                              PIPELINE_NAME if mode is ResearchMode.ALL else "LEGACY_EXPLICIT_RESEARCH_MODE"),
             overall_status="RUNNING",
         )
 
@@ -292,12 +306,14 @@ class ParameterSweepController:
 
         def target() -> None:
             try:
-                if mode is ResearchMode.ALL:
+                if symbol == ALL_SYMBOLS_ID:
+                    self.pipeline = AllSymbolsResearchPipeline(progress=receive_pipeline)
+                    result = self.pipeline.run(output_root=self.output_root, run_id=run_id, resume=resume)
+                    self.pipeline_updates.put(dict(result))
+                elif mode is ResearchMode.ALL:
                     self.pipeline = SingleSymbolResearchPipeline(progress=receive_pipeline)
-                    result = self.pipeline.run(
-                        symbol=symbol, output_root=self.output_root,
-                        run_id=run_id, resume=resume,
-                    )
+                    result = self.pipeline.run(symbol=symbol, output_root=self.output_root,
+                                               run_id=run_id, resume=resume)
                     self.pipeline_updates.put(dict(result))
                 else:
                     self.engine.run(
@@ -412,8 +428,42 @@ class ParameterSweepController:
         if terminal:
             self._hydrate_pipeline_artifacts(Path(state.output_directory))
 
+    def _apply_all_progress(self, value: Mapping[str, Any]) -> None:
+        state = self.state
+        state.research_mode = ResearchMode.ALL.value
+        state.symbol = ALL_SYMBOLS_ID
+        state.gui_orchestrator = "ALL_SYMBOLS_ORCHESTRATOR"
+        state.resolved_symbols = [str(item) for item in value.get("resolved_symbols", state.resolved_symbols)]
+        state.completed_symbols = int(value.get("completed_symbols", state.completed_symbols))
+        state.failed_symbols = int(value.get("failed_symbols", state.failed_symbols))
+        state.current_symbol = value.get("current_symbol", state.current_symbol)
+        state.search_evaluated = int(value.get("total_evaluated_configs", state.search_evaluated))
+        state.total_research_evaluated = state.search_evaluated
+        state.all_status = str(value.get("status", "RUNNING"))
+        state.overall_status = state.all_status
+        if value.get("per_symbol"):
+            state.per_symbol_summary = dict(value["per_symbol"])
+        if any(isinstance(value.get(key), Mapping) for key in (
+            "best_positive_net_pnl", "best_net_pnl_fallback", "best_win_count",
+        )):
+            self._apply_best_configs(value)
+        if value.get("failed_symbol_reasons"):
+            state.error_details = dict(value["failed_symbol_reasons"])
+        state.active = state.all_status in {"RUNNING", "NOT_STARTED"}
+        if state.all_status in {"COMPLETED", "COMPLETED_WITH_SYMBOL_FAILURES", "FAIL_CLOSED", "CANCELLED"}:
+            state.active = False
+            state.terminal_state = state.all_status
+        state.status_text = (
+            f"ALL: {state.completed_symbols} / {len(state.resolved_symbols)}\n"
+            f"Текущий символ: {state.current_symbol or '—'}\n"
+            f"Статус: {state.all_status}"
+        )
+
     def _apply_pipeline_progress(self, value: Mapping[str, Any]) -> None:
         state = self.state
+        if value.get("artifact") == "ALL_SYMBOLS_PROGRESS":
+            self._apply_all_progress(value)
+            return
         sequence = int(value.get("progress_sequence", 0))
         if sequence <= state.progress_sequence:
             return
@@ -583,6 +633,10 @@ class ParameterSweepController:
                 continue
             if update.get("artifact") == "SINGLE_SYMBOL_PIPELINE_PROGRESS_EVENT":
                 self._apply_pipeline_progress(update)
+            elif update.get("artifact") == "ALL_SYMBOLS_PROGRESS":
+                self._apply_all_progress(update)
+            elif update.get("artifact") == "ALL_SUMMARY":
+                self._apply_all_progress(update)
             else:
                 self._apply_pipeline_manifest(update)
         status_path = Path(self.state.output_directory) / "STATUS.json"

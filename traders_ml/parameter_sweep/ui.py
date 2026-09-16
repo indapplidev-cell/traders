@@ -164,11 +164,11 @@ class ParameterSweepWindow:
 
         actions = ttk.Frame(self.body)
         actions.pack(fill="x", pady=12)
-        ttk.Label(actions, text="Символ:").pack(side="left", padx=(0, 4))
+        ttk.Label(actions, text=SERVER_RU["parameter_sweep.selector.symbol"]).pack(side="left", padx=(0, 4))
         self.symbol_var = tk.StringVar(value=self.controller.state.symbol or "")
         self.symbol_selector = ttk.Combobox(
             actions, textvariable=self.symbol_var, state="readonly", width=12,
-            values=self.controller.available_symbols,
+            values=self.controller.selector_values,
         )
         self.symbol_selector.pack(side="left", padx=(0, 8))
         self.mode_var = tk.StringVar(value=ResearchMode.ALL.value)
@@ -189,16 +189,23 @@ class ParameterSweepWindow:
 
     def _start(self) -> None:
         try:
+            from app.i18n.catalog import RU as SERVER_RU
+            selected = self.symbol_var.get()
+            if selected == SERVER_RU["parameter_sweep.selector.all"]:
+                selected = "ALL"
             self.controller.start_new_run(
-                mode=self.mode_var.get(), symbol=self.symbol_var.get(),
+                mode=self.mode_var.get(), symbol=selected,
             )
         except (RuntimeError, ValueError) as error:
             messagebox.showerror(RU["title"], str(error), parent=self.root)
 
     def _resume(self) -> None:
         if self.controller.state.run_id != "—":
+            selected = self.symbol_var.get()
+            if selected == SERVER_RU["parameter_sweep.selector.all"]:
+                selected = "ALL"
             self.controller.resume_run(
-                self.controller.state.run_id, symbol=self.symbol_var.get(),
+                self.controller.state.run_id, symbol=selected,
             )
 
     def _open(self) -> None:
@@ -239,7 +246,16 @@ class ParameterSweepWindow:
             "Будет исследовано"
             if state.terminal_state is None and state.active else "Запланировано"
         )
-        if state.research_mode == ResearchMode.ALL.value:
+        if state.symbol == "ALL":
+            plan_text = (
+                f"Режим поиска: {SERVER_RU['parameter_sweep.progress.all_mode']}\n"
+                f"Символов обработано: {state.completed_symbols} / {len(state.resolved_symbols)}\n"
+                f"Текущий символ: {state.current_symbol or '—'}\n"
+                f"Текущая фаза: {state.pipeline_phase}\n"
+                f"Комбинаций обработано: {state.search_evaluated}\n"
+                f"Статус: {state.all_status}"
+            )
+        elif state.research_mode == ResearchMode.ALL.value:
             phase_lines = []
             labels = {
                 "SEPARABILITY": "Separability",
@@ -288,7 +304,13 @@ class ParameterSweepWindow:
         self.search_parameters.delete("1.0", "end")
         self.search_parameters.insert("1.0", state.format_search_parameters())
         self.search_parameters.configure(state="disabled")
-        if state.research_mode == ResearchMode.ALL.value:
+        if state.symbol == "ALL":
+            total = len(state.resolved_symbols)
+            self.progress.configure(value=100.0 * state.completed_symbols / total if total else 0.0)
+            self.progress_text.configure(text=(
+                f"Символов обработано {state.completed_symbols} из {total} · {state.all_status}"
+            ))
+        elif state.research_mode == ResearchMode.ALL.value:
             phase_values = tuple(state.pipeline_phase_statuses.values())
             finished_phases = sum(value in {"COMPLETED", "LIMITED", "STOPPED", "FAILED"} for value in phase_values)
             pipeline_progress = 100.0 * finished_phases / 6
@@ -427,7 +449,7 @@ class ParameterSweepWindow:
             text=RU["show_changed"] if self.show_all else RU["show_all"],
             state="normal" if state.current_config is not None else "disabled",
         )
-        valid_symbol = self.symbol_var.get() in self.controller.available_symbols
+        valid_symbol = self.symbol_var.get() in self.controller.selector_values
         self.start_button.configure(
             state="disabled" if state.active or not valid_symbol else "normal",
         )
