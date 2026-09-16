@@ -3,13 +3,32 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2c06d3cbb9206a4687abfc7cdae41ef0f395af7a
+STATUS_AS_OF_COMMIT = 6263e39b629017bf45a538fb222e0e68bf3380f6
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
 RECONCILED_AT_UTC = 2026-09-15T04:57:39Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01
-FILES_CHANGED = app/i18n/catalog.py; traders_ml/parameter_sweep/winners.py; traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/adaptive_refinement.py; traders_ml/parameter_sweep/pipeline.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/historical_replay.py; scripts/parameter_sweep_winners_acceptance.py; tests/research/test_parameter_sweep_winners.py; tests/research/test_parameter_sweep_historical_replay.py; tests/server_api/test_i18n.py; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_ACCEPTANCE.json; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_FINAL.md; online_trader.md.
+RECONCILED_BY_TASK = TRADERS_RUNTIME_YAML_HOT_RELOAD_LIVE_READERS_AND_LOCAL_CONFIG_UNTRACK_01
+FILES_CHANGED = app/i18n/catalog.py; traders_ml/parameter_sweep/winners.py; traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/adaptive_refinement.py; traders_ml/parameter_sweep/pipeline.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/historical_replay.py; scripts/parameter_sweep_winners_acceptance.py; tests/research/test_parameter_sweep_winners.py; tests/research/test_parameter_sweep_historical_replay.py; tests/server_api/test_i18n.py; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_ACCEPTANCE.json; docs/audits/TRADERS_PARAMETER_SWEEP_BEST_WINNERS_AND_PROFIT_LEADERS_01_FINAL.md; app/config/trading_config_manager.py; app/server_api/services/paper_reporting.py; .gitignore; config/trading/risk_policy.yaml; config/trading/trade_parameters.yaml; online_trader.md.
+
+## Runtime YAML hot-reload live readers 01
+
+```text
+TASK = TRADERS_RUNTIME_YAML_HOT_RELOAD_LIVE_READERS_AND_LOCAL_CONFIG_UNTRACK_01
+FINAL_VERDICT = IMPLEMENTED_VALIDATION_BLOCKED_LOCAL_YAML_RUNTIME_RR_FLOOR
+PROJECT_STATE_COMMIT = 6263e39
+IMPLEMENTATION = PRE-STAGING_RUNTIME_PROFILE_VALIDATION; LIVE_CRITERIA_READS_ACTIVE_MANAGER_SNAPSHOT_NOT_HISTORICAL_DB_CYCLE
+CONFIG_TRACKING = config/trading/*.yaml_UNTRACKED_AND_IGNORED_LOCAL_FILES_PRESERVED
+VALIDATION = PYCOMPILE_PASS; TARGETED_PYTEST_BLOCKED_BEFORE_COLLECTION_BY_LOCAL_MINIMUM_PLANNED_RR_0.029344_BELOW_SCALPING_FLOOR_0.2
+CURRENT_BLOCKER = LOCAL_CONFIG_STILL_REJECTED_BY_RUNTIME_PROFILE_FLOOR; USER_MUST_SET_VALID_PLANNED_RR_BEFORE_RESTART_OR_RELOAD_ACCEPTANCE
+NEXT = SET_VALID_PLANNED_RR_THEN_RUN_TARGETED_HOT_RELOAD_AND_READ_PROJECTION_TESTS
+```
+
+The criteria reader now resolves the current active configuration through the
+hot-reload manager; the PostgreSQL latest-cycle snapshot remains historical
+provenance only. Reload candidates are checked against runtime profile
+invariants before they can be staged. The local trading YAML files remain on
+disk but are no longer tracked or published by Git.
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = RUNNING_MARKET_DATA_SYNC_ONLINE_ORCHESTRATOR5M_POSTGRES_HEALTHY_SCALPING_CALIBRATION_COLLECTOR; NO_SERVICE_RESTART_OR_DEPLOYMENT_BY_TASK
 PUSH_STATE_AT_RECONCILIATION = ORIGIN_FEATURE_ENGINE_PLATFORM_8ff2ae4; PROJECT_STATE_2c06d3c_AND_DOCUMENTATION_RECONCILIATION_PENDING_PUSH
