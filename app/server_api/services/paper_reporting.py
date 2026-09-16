@@ -148,8 +148,13 @@ class PaperReadonlyReportingService:
         repository = self._repo()
         active = getattr(repository, "active_trading_universe", None)
         symbols = active().symbols if callable(active) else None
-        snapshot_reader = getattr(repository, "latest_scalping_parameter_snapshot", None)
-        snapshot = snapshot_reader() if callable(snapshot_reader) else None
+        # Criteria is a live read projection.  Do not use the latest persisted
+        # cycle snapshot here: that is historical provenance and can lag YAML
+        # after a hot-reload boundary.
+        from app.config.trade_parameters import parameter_snapshot
+        from app.config.trading_config_manager import get_trading_config_manager
+        active_config = get_trading_config_manager().get_active_snapshot()
+        snapshot = parameter_snapshot(active_config.resolved)
         return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot(symbols, snapshot))
 
     def _repo(self) -> PaperReportingReadRepository:

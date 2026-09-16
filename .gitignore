@@ -43,6 +43,9 @@ scan_outputs/
 *.dump
 traders-ml-tree.md
 
+# Local trading policy inputs (technical runtime files; never publish)
+/config/trading/*.yaml
+
 # OS / IDE
 .DS_Store
 .idea/

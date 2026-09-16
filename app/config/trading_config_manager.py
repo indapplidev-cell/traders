@@ -155,6 +155,14 @@ class TradingConfigManager:
                     self._last_attempted_signature = None
                 return False
             resolved = config.resolve_scalping_v2_parameter_set()
+            # Validate the resolved candidate against the same runtime contract
+            # used by the consumers before staging it.  YAML parsing alone is
+            # insufficient: a candidate can be structurally valid but violate
+            # profile invariants (for example the Scalping RR floor).
+            from app.engine_orchestrator.trade_profile import resolve_trade_profile
+            resolve_trade_profile(
+                "trade-5m-v2", scalping_parameters=resolved.parameters
+            )
         except Exception as exc:
             with self._lock:
                 self._reload_status = "RELOAD_FAILED"
