@@ -499,12 +499,14 @@ def _downstream_trace_facts(
     compatibility_pass = trace["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
     if compatibility_pass:
         if diagnostic:
+            canonical_geometry_status = diagnostic.get("geometry_validation_status")
             trace["GEOMETRY_VALID"] = (
-                "PASS" if (
+                "PASS" if canonical_geometry_status == "PASS"
+                else "REJECTED" if canonical_geometry_status == "REJECTED"
+                else "PASS" if (
                     diagnostic.get("stop_envelope_pass") is True
                     or diagnostic.get("geometry_pass") is True
-                )
-                else "REJECTED"
+                ) else "REJECTED"
             )
         else:
             trace["GEOMETRY_VALID"] = "UNAVAILABLE"
@@ -521,8 +523,17 @@ def _downstream_trace_facts(
         else:
             trace["TARGET_VALID"] = "UNAVAILABLE"
     if trace["TARGET_VALID"] == "PASS":
+        expectancy_rejection = (
+            diagnostic.get("rejection_stage") == "EXPECTANCY_GATE"
+            or diagnostic.get("expectancy_gate_reason") in {
+                "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
+                "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+            }
+            or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+        )
         if (
             diagnostic.get("economic_gate_pass") is True
+            or expectancy_rejection
             or net_cost_gate.get("gate_decision") == "PASS"
         ):
             trace["NET_COST_PASS"] = "PASS"
@@ -571,6 +582,14 @@ def _downstream_trace_facts(
         return trace, detail
 
     geometry_reason = diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
+    expectancy_rejection = (
+        diagnostic.get("rejection_stage") == "EXPECTANCY_GATE"
+        or diagnostic.get("expectancy_gate_reason") in {
+            "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
+            "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+        }
+        or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+    )
     entry = _first_present(
         planned.get("hypothetical_entry_reference"), diagnostic.get("entry")
     )
@@ -666,8 +685,10 @@ def _downstream_trace_facts(
         "strategy_admission": trace["STRATEGY_ADMITTED"],
         "risk_compatibility": risk.get("risk_status"),
         "entry_price": entry,
+        "normalized_entry": diagnostic.get("normalized_entry"),
         "entry_source": planned.get("entry_reference_source"),
         "stop_price": stop,
+        "normalized_stop": diagnostic.get("normalized_stop"),
         "stop_source": planned.get("stop_source") or diagnostic.get("stop_source"),
         "stop_provenance": stop_provenance or None,
         "stop_source_timeframe": stop_provenance.get("source_timeframe"),
@@ -684,6 +705,7 @@ def _downstream_trace_facts(
         "atr_buffer_multiplier": diagnostic.get("atr_buffer_multiplier"),
         "atr_buffer_bps": diagnostic.get("atr_buffer_bps"),
         "target_price": target,
+        "normalized_target": diagnostic.get("normalized_target"),
         "target_distance_absolute": _absolute_distance(entry, target),
         "target_status": trace["TARGET_VALID"],
         "target_distance_bps": diagnostic.get("target_distance_bps"),
@@ -702,6 +724,8 @@ def _downstream_trace_facts(
         "geometry_feasibility_result": diagnostic.get(
             "geometry_feasibility_result"
         ),
+        "geometry_validation_status": diagnostic.get("geometry_validation_status"),
+        "geometry_validation_reason": diagnostic.get("geometry_validation_reason"),
         "target_candidates_considered": diagnostic.get(
             "target_candidates_considered"
         ),
@@ -754,13 +778,15 @@ def _downstream_trace_facts(
             diagnostic.get("expected_net_edge_bps"),
         ),
         "cost_gate_decision": _first_present(
+            "PASS" if expectancy_rejection else None,
             net_cost_gate.get("gate_decision"),
             "PASS" if diagnostic.get("economic_gate_pass") is True else None,
             "REJECT" if diagnostic.get("economic_gate_pass") is False else None,
         ),
         "cost_gate_reason": _first_present(
+            "ECONOMIC_GATE_PASS" if expectancy_rejection else None,
             net_cost_gate.get("gate_reason"),
-            diagnostic.get("expectancy_gate_reason"),
+            diagnostic.get("expectancy_gate_reason") if not expectancy_rejection else None,
             "ECONOMIC_GATE_PASS"
             if diagnostic.get("economic_gate_pass") is True else None,
             diagnostic.get("rejection_reason"),
@@ -839,10 +865,12 @@ def _downstream_trace_facts(
         ),
         "rr_status": trace["RR_PASS"],
         "rr_reason": (
-            geometry_reason if trace["RR_PASS"] == "REJECTED"
+            diagnostic.get("rejection_reason") or diagnostic.get("expectancy_gate_reason")
+            if trace["RR_PASS"] == "REJECTED"
             else diagnostic.get("expectancy_gate_reason")
             or ("RR_AND_EXPECTANCY_PASS" if trace["RR_PASS"] == "PASS" else None)
         ),
+        "rr_raw_reason": diagnostic.get("expectancy_gate_reason") or diagnostic.get("raw_reason"),
         "rr_subreason": _rr_subreason(diagnostic, required_rr),
         "authoritative_risk": (
             authoritative_risk.get("status") or "PASS"

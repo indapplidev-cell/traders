@@ -501,10 +501,12 @@ class ScalpingPaperRunner(PaperRunner):
             paper_context["scalping_policy_provenance"] = policy_provenance()
         common = dict(
             context=context,
-            entry=diagnostic.entry,
+            # The shadow evaluator owns the immutable normalized geometry
+            # snapshot. PAPER must consume it instead of reconstructing prices.
+            entry=diagnostic.normalized_entry or diagnostic.entry,
             invalidation=diagnostic.causal_invalidation,
-            stop=diagnostic.final_stop,
-            target=diagnostic.causal_target,
+            stop=diagnostic.normalized_stop or diagnostic.final_stop,
+            target=diagnostic.normalized_target or diagnostic.causal_target,
             planned_rr=diagnostic.gross_rr,
             entry_source="confirmation_or_reference_closed_candle",
             invalidation_source="causal_5m_invalidation",

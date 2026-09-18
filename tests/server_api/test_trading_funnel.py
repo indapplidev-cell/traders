@@ -631,12 +631,13 @@ def test_scalping_expectancy_reason_projects_exactly_with_row_detail_identity_pa
             "opportunity_id": "opportunity:expectancy:fixture",
             "stop_envelope_pass": True,
             "causal_target_exists": True,
-            "economic_gate_pass": True,
+            "economic_gate_pass": False,
             "valid_plan": False,
             "net_rr": "0.9061",
             "dynamic_required_net_rr": "5.5825",
             "expected_ev_r": "-0.7082",
             "min_required_ev": "0.02",
+            "expectancy_gate_reason": "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
             "rejection_stage": "EXPECTANCY_GATE",
             "rejection_reason": "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED",
         },
@@ -650,12 +651,15 @@ def test_scalping_expectancy_reason_projects_exactly_with_row_detail_identity_pa
     identity = detail["row_identity"]
 
     assert item["downstream_stage_trace"]["RR_PASS"] == "REJECTED"
+    assert item["downstream_stage_trace"]["NET_COST_PASS"] == "PASS"
     assert item["terminal_reason_code"] == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
     assert detail["terminal_reason"] == item["terminal_reason_code"]
     assert detail["rr_subreason"] == "NET_BELOW_DYNAMIC_REQUIRED"
     assert detail["expected_ev_r"] == "-0.7082"
     assert detail["net_rr"] == "0.9061"
     assert detail["dynamic_required_net_rr"] == "5.5825"
+    assert detail["cost_gate_decision"] == "PASS"
+    assert detail["rr_raw_reason"] == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
     assert identity["profile"] == detail["profile"] == value["trade_profile_id"]
     assert identity["timeframe"] == detail["timeframe"] == value["decision_timeframe"]
     assert identity["cycle_boundary_ms"] == detail["cycle_boundary_ms"]

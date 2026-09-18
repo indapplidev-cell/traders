@@ -6,7 +6,7 @@ The module has no command, order, fill, position, or private API dependency.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from decimal import Decimal, ROUND_DOWN, ROUND_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
 from hashlib import sha256
 from math import isfinite
 from statistics import median
@@ -242,6 +242,7 @@ class ShadowGeometryDiagnostic:
     candidate_id: str
     opportunity_id: str
     entry: float
+    normalized_entry: float | None = None
     causal_invalidation: float | None = None
     causal_invalidation_distance_bps: float | None = None
     atr: float | None = None
@@ -249,11 +250,13 @@ class ShadowGeometryDiagnostic:
     atr_buffer_bps: float | None = None
     raw_stop: float | None = None
     final_stop: float | None = None
+    normalized_stop: float | None = None
     stop_distance_bps: float | None = None
     stop_envelope_bps: float | None = None
     stop_envelope_pass: bool | None = None
     target_source_type: str | None = None
     causal_target: float | None = None
+    normalized_target: float | None = None
     target_distance_bps: float | None = None
     target_available: bool = False
     causal_target_exists: bool = False
@@ -371,6 +374,8 @@ class ShadowGeometryDiagnostic:
     rr_policy_version: str = RR_POLICY_VERSION
     target_policy_version: str = TARGET_POLICY_VERSION
     price_normalization_quantum: str = str(PAPER_PRICE_QUANTUM)
+    geometry_validation_status: str = "NOT_EVALUATED"
+    geometry_validation_reason: str | None = None
 
     def reject(self, stage: str, reason: str) -> "ShadowGeometryDiagnostic":
         self.rejection_stage = stage
@@ -396,13 +401,25 @@ def _normalized_price(
     """
 
     value = Decimal(str(price))
-    if role == "STOP":
+    if role == "ENTRY":
+        rounding = ROUND_HALF_UP
+    elif role == "STOP":
         rounding = ROUND_DOWN if direction == "BULLISH" else ROUND_UP
     elif role == "TARGET":
         rounding = ROUND_DOWN if direction == "BULLISH" else ROUND_UP
     else:
         raise ValueError("unsupported price normalization role")
     return float(value.quantize(PAPER_PRICE_QUANTUM, rounding=rounding))
+
+
+def _normalized_nonnegative_cost(value: float | None) -> float | None:
+    """Collapse floating-point negative zero without accepting real negatives."""
+    if value is None:
+        return None
+    numeric = float(value)
+    if numeric < 0 and abs(numeric) <= 1e-12:
+        return 0.0
+    return numeric
 
 
 def compute_net_economics(
@@ -599,6 +616,9 @@ def evaluate_scalping_shadow(
         rr_policy_version=(V2_RR_EV_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else RR_POLICY_VERSION),
         target_policy_version=(V2_TARGET_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else TARGET_POLICY_VERSION),
     )
+    result.normalized_entry = _normalized_price(
+        candidate.entry, direction=candidate.direction, role="ENTRY"
+    )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
         return result.reject("CAUSAL_INVALIDATION", R.PAPER_NO_PLAN_MISSING_INVALIDATION_LEVEL.value)
@@ -615,6 +635,7 @@ def evaluate_scalping_shadow(
     result.final_stop = _normalized_price(
         stop, direction=candidate.direction, role="STOP"
     )  # never clipped toward entry to satisfy an envelope
+    result.normalized_stop = result.final_stop
     result.stop_distance_bps = _bps(
         result.final_stop - candidate.entry, candidate.entry
     )
@@ -652,8 +673,29 @@ def evaluate_scalping_shadow(
     )
     result.target_source_type = nearest.source_type
     result.causal_target = nearest.price
+    result.normalized_target = _normalized_price(
+        nearest.price, direction=candidate.direction, role="TARGET"
+    )
     result.target_distance_bps = _bps(nearest.price - candidate.entry, candidate.entry)
     result.minimum_target_diagnostic_pass = result.target_distance_bps >= config.minimum_target_diagnostic_bps
+
+    geometry_order_valid = (
+        result.normalized_stop is not None
+        and result.normalized_entry is not None
+        and result.normalized_target is not None
+        and (
+            result.normalized_stop < result.normalized_entry < result.normalized_target
+            if candidate.direction == "BULLISH"
+            else result.normalized_target < result.normalized_entry < result.normalized_stop
+        )
+    )
+    if not geometry_order_valid:
+        result.geometry_validation_status = "REJECTED"
+        result.geometry_validation_reason = R.PAPER_REJECT_INVALID_LEVEL_GEOMETRY.value
+        return result.reject(
+            "GEOMETRY_VALID", R.PAPER_REJECT_INVALID_LEVEL_GEOMETRY.value
+        )
+    result.geometry_validation_status = "PASS"
 
     if costs.spread_bps is None or not costs.spread_authoritative:
         return result.reject(
@@ -667,14 +709,22 @@ def evaluate_scalping_shadow(
         )
     if costs.require_causal_timestamp and not costs.causally_usable:
         return result.reject("NET_COST_GATE", "PAPER_NO_PLAN_STALE_OR_FUTURE_ECONOMIC_INPUT")
-    if costs.spread_bps < 0 or costs.depth_impact_bps < 0:
-        return result.reject("NET_COST_GATE", R.PAPER_REJECT_INVALID_LEVEL_GEOMETRY.value)
-    if costs.depth_impact_bps > config.max_depth_impact_bps:
+    normalized_spread = _normalized_nonnegative_cost(costs.spread_bps)
+    normalized_depth = _normalized_nonnegative_cost(costs.depth_impact_bps)
+    if (
+        normalized_spread is not None and normalized_spread < 0
+    ) or (
+        normalized_depth is not None and normalized_depth < 0
+    ):
+        return result.reject("COST_MODEL", R.COST_MODEL_INVALID.value)
+    result.spread_bps = normalized_spread
+    result.depth_impact_bps = normalized_depth
+    if normalized_depth > config.max_depth_impact_bps:
         return result.reject("NET_COST_GATE", R.PAPER_REJECT_DEPTH_IMPACT_TOO_HIGH.value)
 
     total_cost = (
         costs.entry_fee_bps + costs.exit_fee_bps + costs.entry_slippage_bps
-        + costs.exit_slippage_bps + costs.spread_bps + costs.depth_impact_bps
+        + costs.exit_slippage_bps + (normalized_spread or 0.0) + (normalized_depth or 0.0)
         + costs.safety_margin_bps + costs.adverse_fill_reserve_bps
     )
     result.total_cost_bps = round(total_cost, 8)
@@ -706,6 +756,7 @@ def evaluate_scalping_shadow(
         normalized_target = _normalized_price(
             target.price, direction=candidate.direction, role="TARGET"
         )
+        result.normalized_target = normalized_target
         reward = _bps(normalized_target - candidate.entry, candidate.entry)
         gross_rr = round(reward / result.gross_risk_bps, 8)
         try:
@@ -791,6 +842,7 @@ def evaluate_scalping_shadow(
         )
 
     target, normalized_target, reward, edge, gross_rr, net_rr = selected
+    result.normalized_target = normalized_target
     result.economically_actionable_target_exists = True
     result.geometry_feasibility_result = "FEASIBLE"
     result.target_source_type = target.source_type

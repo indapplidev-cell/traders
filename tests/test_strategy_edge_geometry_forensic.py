@@ -98,6 +98,55 @@ def test_runtime_selector_continues_to_farther_causal_target_for_dynamic_rr() ->
     assert result.valid_plan is True
 
 
+def test_tiny_negative_depth_rounding_noise_is_not_level_geometry_rejection() -> None:
+    boundary = 2_000
+    candidate = ShadowGeometryCandidate(
+        trade_profile_id="trade-5m-v2", symbol="XRPUSDT", boundary_ms=boundary,
+        direction="BULLISH", entry=1.3902, causal_invalidation=1.3836, atr=.0028458333333333252,
+        targets=(CausalTarget(1.3918, "LOCAL_5M", boundary),), setup_identity="fixture",
+    )
+    costs = ShadowCostInputs(
+        spread_bps=.7189, depth_impact_bps=-1.4e-23,
+        spread_authoritative=True, depth_authoritative=True,
+        commission_authoritative=True,
+    )
+    result = evaluate_scalping_shadow(candidate, costs, ShadowGeometryConfig(
+        atr_buffer_multiplier=.25, stop_envelope_bps=80,
+        minimum_target_diagnostic_bps=1, production_rr_floor=.4,
+    ))
+    assert result.depth_impact_bps == 0.0
+    assert result.geometry_validation_status == "PASS"
+    assert result.rejection_reason != "PAPER_REJECT_INVALID_LEVEL_GEOMETRY"
+
+
+def test_normalized_geometry_order_is_directionally_symmetric() -> None:
+    for direction, invalidation, target in (
+        ("BULLISH", 99.5, 101.0), ("BEARISH", 100.5, 99.0),
+    ):
+        result = evaluate_scalping_shadow(
+            ShadowGeometryCandidate(
+                trade_profile_id="trade-5m-v2", symbol="BTCUSDT", boundary_ms=2_000,
+                direction=direction, entry=100.000000004,
+                causal_invalidation=invalidation, atr=.1,
+                targets=(CausalTarget(target, "LOCAL_5M", 2_000),),
+            ),
+            ShadowCostInputs(
+                spread_bps=0, depth_impact_bps=0,
+                spread_authoritative=True, depth_authoritative=True,
+                commission_authoritative=True,
+            ),
+            ShadowGeometryConfig(
+                atr_buffer_multiplier=.25, stop_envelope_bps=100,
+                minimum_target_diagnostic_bps=1, production_rr_floor=.4,
+            ),
+        )
+        if direction == "BULLISH":
+            assert result.normalized_stop < result.normalized_entry < result.normalized_target
+        else:
+            assert result.normalized_target < result.normalized_entry < result.normalized_stop
+        assert result.geometry_validation_status == "PASS"
+
+
 def test_stop_task_does_not_treat_rounding_noise_as_suboptimal() -> None:
     row = _row(1); row["stop_efficiency"] = .99999
     report = task_b([row], {"cycle_boundary": 1})
