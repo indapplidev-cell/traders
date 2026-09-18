@@ -100,7 +100,7 @@ services:
     volumes:
       - ./reports:/service/reports
       - ./config/trading:/service/config/trading:ro
-      - D:/disk_E/game_projects/traders/production_control/commission:/run/traders-commission
+      - ./production_control/commission:/run/traders-commission
     secrets:
       - traders_shared_db_password
       - binance_account_credentials

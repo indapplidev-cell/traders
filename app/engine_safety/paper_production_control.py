@@ -30,7 +30,9 @@ AUDIT_SCHEMA_VERSION: Final = "TRADERS_ML_PAPER_PRODUCTION_SAFETY_AUDIT/1"
 ENVIRONMENT: Final = "PRODUCTION"
 MODE: Final = "PAPER"
 OPERATOR_ROLE: Final = "TRADERS_LOCAL_OPERATOR"
-DEFAULT_CONTROL_ROOT: Final = Path(r"D:\disk_E\game_projects\traders\production_control\paper")
+DEFAULT_CONTROL_ROOT: Final = (
+    Path(__file__).resolve().parents[2] / "production_control" / "paper"
+)
 STATE_NAME: Final = "state.json"
 AUDIT_NAME: Final = "audit.jsonl"
 INTERLOCK_NAME: Final = "interlock.lock"

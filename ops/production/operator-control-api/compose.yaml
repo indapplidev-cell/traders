@@ -48,10 +48,10 @@ services:
         target: /service/config/trading
         read_only: true
       - type: bind
-        source: D:/disk_E/game_projects/traders/production_control/paper
+        source: ../../../production_control/paper
         target: /run/traders-control
       - type: bind
-        source: D:/disk_E/game_projects/traders/production_control/commission
+        source: ../../../production_control/commission
         target: /run/traders-commission
         read_only: true
     networks:

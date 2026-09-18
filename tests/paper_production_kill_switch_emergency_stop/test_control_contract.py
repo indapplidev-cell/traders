@@ -29,7 +29,9 @@ def target(**changes):
 def test_default_constants_and_no_remote_control_surface():
     assert safety.ENVIRONMENT == "PRODUCTION"
     assert safety.MODE == "PAPER"
-    assert safety.DEFAULT_CONTROL_ROOT == Path(r"D:\disk_E\game_projects\traders\production_control\paper")
+    assert safety.DEFAULT_CONTROL_ROOT == (
+        Path(safety.__file__).resolve().parents[2] / "production_control" / "paper"
+    )
     source = Path(safety.__file__).read_text(encoding="utf-8")
     assert "FastAPI" not in source
     assert "POST /arm" not in source
