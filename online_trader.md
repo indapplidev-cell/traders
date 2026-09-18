@@ -3,13 +3,39 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 844c5004b8955f3459a72af396ff059cbe5dc30b
+STATUS_AS_OF_COMMIT = 326ff15fc86eec375241b08ec770c8127fb911a7
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-16T18:30:00Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_ALL_SYMBOLS_MODE_MINIMAL_CHANGE_01
-FILES_CHANGED = app/i18n/catalog.py; traders_ml/parameter_sweep/all_symbols.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/universe.py; traders_ml/parameter_sweep/winners.py; tests/research/test_parameter_sweep_all_symbols.py; sibling traders-client/src/traders_client/i18n/generated_bootstrap.json; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-18T00:00:00Z
+RECONCILED_BY_TASK = TRADERS_FUNNEL_EXPORT_REPAIR_AND_RR_DIAGNOSTICS_01
+FILES_CHANGED = app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_shadow.py; app/server_api/funnel_export.py; app/server_api/routes/v1.py; tests/server_api/test_funnel_export.py; sibling traders-client/src/traders_client/funnel_export.py; sibling traders-client/src/traders_client/ui/funnel_export_dialog.py; sibling traders-client/tests/test_funnel_export.py; online_trader.md.
+
+## Funnel export repair and RR diagnostics 01
+
+```text
+TASK = TRADERS_FUNNEL_EXPORT_REPAIR_AND_RR_DIAGNOSTICS_01
+FINAL_VERDICT = PASS_FOCUSED_EXPORT_REPAIR; DESKTOP_ACCEPTANCE_PENDING
+SERVER_PROJECT_STATE_COMMIT = 326ff15fc86eec375241b08ec770c8127fb911a7
+CLIENT_PROJECT_STATE_COMMIT = f9e0c6bcdda31139c88fecba62d3938c0f9375cc
+ROOT_CAUSE = RICH_EXPORT_PAGE_DEFAULT_200_EXCEEDED_CLIENT_2MB_RESPONSE_LIMIT
+EXPORT_REPAIR = CLIENT_DEFAULT_PAGE_SIZE_50_KEYSET_PAGINATION_PRESERVED
+FILENAME_REPAIR = funnel_ddmm_hhmmss_mls_EXTENSION_SERVER_AND_DESKTOP_DIALOG
+RR_DIAGNOSTICS = rr_rejection_OBJECT_WITH_EMPIRICAL_BUCKET_SAMPLE_WINS_LOSSES_WIN_RATES_POSTERIOR_LOWER_BOUND_DYNAMIC_RR_EV_FALLBACK
+PERSISTED_RR_AUTHORITY = SELECTED_EMPIRICAL_BUCKET_WINS_LOSSES_AND_WILSON_LOWER_BOUND
+VALIDATION = CLIENT_FUNNEL_EXPORT_12PASS; SERVER_FOCUSED_3PASS; PYCOMPILE_PASS
+KNOWN_UNRELATED_FAILURES = SERVER_FUNNEL_EXPORT_6_LEGACY_FIXTURE_FAILURES_FOR_REMOVED_TRADE_5M_V1_PROFILE
+DEPLOYMENT = NOT_RUN_BY_SCOPE; LIVE_DISABLED_UNCHANGED
+CURRENT_STAGE = READONLY_DESKTOP_EXPORT_ACCEPTANCE_AND_DEPLOYMENT_INTEGRATION
+CURRENT_BLOCKER = REAL_TK_EXPORT_ACCEPTANCE_NOT_RUN; LEGACY_TRADE5MV1_TEST_FIXTURES_REQUIRE_SEPARATE_RECONCILIATION
+NEXT_ACTION = RUN_READONLY_REAL_TK_EXPORT_FOR_1H_4H_12H_24H_AND_VERIFY_SAVED_FILENAME_AND_RR_COLUMNS
+```
+
+The desktop export now streams smaller pages so rich multi-hour reports stay
+below the transport limit. Both server and client use the timestamped funnel
+filename. RR rejection records carry the requested empirical and expectancy
+fields, with wins/losses and the conservative lower bound sourced from the
+selected statistical bucket rather than reconstructed in the UI.
 
 ## Parameter Sweep ALL symbols orchestration 01
 
