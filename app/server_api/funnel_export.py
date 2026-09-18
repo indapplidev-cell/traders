@@ -358,6 +358,19 @@ def build_export_record(
         "ANALYSIS_QUALIFIED",
     )
     paper_trace_status = _mapping(canonical_trace.get("paper_plan")).get("status")
+    rr_rejection = {
+        "empirical_bucket": diagnostic.get("empirical_bucket") or diagnostic.get("probability_bucket"),
+        "bucket_sample_count": diagnostic.get("bucket_sample_count", diagnostic.get("probability_sample_size")),
+        "bucket_wins": diagnostic.get("bucket_wins"),
+        "bucket_losses": diagnostic.get("bucket_losses"),
+        "empirical_win_rate": diagnostic.get("empirical_win_rate", diagnostic.get("p_win_raw")),
+        "posterior_mean": diagnostic.get("posterior_mean", diagnostic.get("p_win_adjusted")),
+        "confidence_lower_bound": diagnostic.get("confidence_lower_bound", diagnostic.get("p_win_conservative")),
+        "break_even_win_rate": diagnostic.get("break_even_win_rate"),
+        "required_dynamic_rr": diagnostic.get("required_dynamic_rr", diagnostic.get("dynamic_required_net_rr")),
+        "expected_ev_r": diagnostic.get("expected_ev_r"),
+        "fallback_bucket_used": diagnostic.get("fallback_bucket_used", diagnostic.get("probability_fallback_level")),
+    }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
         "stop_distance_absolute", "stop_distance_percent", "stop_distance_bps",
@@ -553,6 +566,7 @@ def build_export_record(
             "rr_1_2_pass": _mapping(diagnostic.get("rr_cohorts_net")).get("1.20"),
             "rr_1_5_pass": _mapping(diagnostic.get("rr_cohorts_net")).get("1.50"),
         },
+        "rr_rejection": rr_rejection,
         "paper_outcome": {
             "planned_entry": planned.get("planned_entry") or legacy.get("entry"),
             "planned_stop": planned.get("planned_stop") or legacy.get("stop"),

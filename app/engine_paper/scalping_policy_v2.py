@@ -76,6 +76,11 @@ class ExpectancyDecision:
     candidate_net_rr: float | None = None
     expected_ev_r: float | None = None
     ev_reserve: float | None = None
+    empirical_bucket: str | None = None
+    bucket_sample_count: int = 0
+    bucket_wins: int = 0
+    bucket_losses: int = 0
+    confidence_lower_bound: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +156,10 @@ def evaluate_expectancy(
             ),
             sample_size=0 if leaf is None else leaf.samples,
             parent_sample_size=0 if broadest is None else broadest.samples,
+            empirical_bucket=None if leaf is None else (leaf.bucket_key or f"{leaf.setup_type}|{leaf.direction}"),
+            bucket_sample_count=0 if leaf is None else leaf.samples,
+            bucket_wins=0 if leaf is None else leaf.wins,
+            bucket_losses=0 if leaf is None else leaf.samples - leaf.wins,
         )
     selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
     hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
@@ -193,6 +202,11 @@ def evaluate_expectancy(
         candidate_net_rr=candidate_net_rr,
         expected_ev_r=expected_ev_r,
         ev_reserve=ev_reserve,
+        empirical_bucket=estimate.bucket_key,
+        bucket_sample_count=estimate.sample_size,
+        bucket_wins=selected.wins,
+        bucket_losses=selected.samples - selected.wins,
+        confidence_lower_bound=estimate.p_win_conservative,
     )
 
 

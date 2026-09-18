@@ -186,6 +186,16 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
     assert row["trade_math"]["ttl_ms"] == 300_000
 
 
+def test_export_always_emits_rr_rejection_diagnostic_contract():
+    row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
+    assert set(row["rr_rejection"]) == {
+        "empirical_bucket", "bucket_sample_count", "bucket_wins", "bucket_losses",
+        "empirical_win_rate", "posterior_mean", "confidence_lower_bound",
+        "break_even_win_rate", "required_dynamic_rr", "expected_ev_r",
+        "fallback_bucket_used",
+    }
+
+
 def test_15m_export_marks_applicable_stages_and_historical_unknowns_honestly():
     row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
     trace = row["downstream_stage_trace"]

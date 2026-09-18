@@ -303,6 +303,11 @@ class ShadowGeometryDiagnostic:
     probability_fallback_level: str | None = None
     probability_confidence_method: str | None = None
     probability_estimator_version: str | None = None
+    empirical_bucket: str | None = None
+    bucket_sample_count: int = 0
+    bucket_wins: int = 0
+    bucket_losses: int = 0
+    confidence_lower_bound: float | None = None
     dynamic_required_net_rr: float | None = None
     break_even_net_rr: float | None = None
     candidate_net_rr: float | None = None
@@ -861,6 +866,11 @@ def evaluate_scalping_shadow(
         result.probability_fallback_level = expectancy.fallback_level
         result.probability_confidence_method = expectancy.confidence_method
         result.probability_estimator_version = expectancy.estimator_version
+        result.empirical_bucket = expectancy.empirical_bucket
+        result.bucket_sample_count = expectancy.bucket_sample_count
+        result.bucket_wins = expectancy.bucket_wins
+        result.bucket_losses = expectancy.bucket_losses
+        result.confidence_lower_bound = expectancy.confidence_lower_bound
         result.dynamic_required_net_rr = expectancy.dynamic_required_net_rr
         result.break_even_net_rr = (
             None if expectancy.p_win_conservative in (None, 0)

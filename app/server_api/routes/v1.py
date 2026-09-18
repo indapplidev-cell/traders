@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Annotated, Literal
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Path, Query, Response
 
@@ -110,9 +111,11 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         body, media_type, extension = service.trading_funnel_export(
             trade_profile_id, from_value, to_value, symbol, format_name,
         )
+        generated_at = datetime.now(timezone.utc)
+        filename = f"funnel_{generated_at:%d%m_%H%M%S}_{generated_at.microsecond // 1000:03d}.{extension}"
         return Response(
             content=body, media_type=media_type,
-            headers={"Content-Disposition": f'attachment; filename="trading-funnel-{trade_profile_id}.{extension}"'},
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     @router.get("/markets/{symbol}", response_model=MarketDetailEnvelope, operation_id="getMarket", responses=error_responses)
