@@ -3,13 +3,41 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 7e2dee8660b42cfe4a0d3eb09796f2aef8cdacd0
+STATUS_AS_OF_COMMIT = 954afb068639930f5aba37270755c3bb3915c7bb
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-18T20:15:55Z
-RECONCILED_BY_TASK = TRADERS_ROOT_LEGACY_CLEANUP_DOCKER_DB_OWNERSHIP_RECONCILIATION_02
-FILES_CHANGED = .gitignore; app/engine_safety/paper_production_control.py; docker-compose.yml; ops/production/operator-control-api/compose.yaml; ops/production/readonly-api/compose.yaml; tests/paper_production_kill_switch_emergency_stop/test_control_contract.py; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-18T20:41:06Z
+RECONCILED_BY_TASK = TRADERS_PAPER_GEOMETRY_RR_PUSH_DEPLOY_01
+FILES_CHANGED = online_trader.md; runtime deployment from 954afb068639930f5aba37270755c3bb3915c7bb.
+
+## PAPER geometry/RR repair push and deployment 01
+
+```text
+TASK = TRADERS_PAPER_GEOMETRY_RR_PUSH_DEPLOY_01
+FINAL_VERDICT = PUSHED_AND_DEPLOYED_RUNTIME_VERIFIED
+SOURCE_HEAD_PUSHED = 954afb068639930f5aba37270755c3bb3915c7bb
+REMOTE_HEAD_AFTER_PUSH = 954afb068639930f5aba37270755c3bb3915c7bb
+PUSH_STATE_AT_RECONCILIATION = PUSHED; LOCAL_AND_REMOTE_HEAD_EQUAL
+DEPLOYED_SERVICES = traders-ml-online-orchestrator-5m; traders-readonly-api-readonly-api-1
+ORCHESTRATOR_DEPLOYMENT = IMAGE_BUILT_AND_CONTAINER_RECREATED
+READONLY_API_DEPLOYMENT = IMAGE_BUILT_AND_CONTAINER_RECREATED
+READONLY_API_HEALTH = HEALTHY
+PAPER_READINESS = READY
+RUNTIME_PROFILE = trade-5m-v2
+PAPER_CONTROL = CONTINUOUS_ARMED
+LIVE_STATE = DISABLED; live_allowed=false
+FIFTEEN_MINUTE_PROFILE_CHANGED = false
+BINANCE_REAL_ORDER_CALLS = 0_NOT_ENABLED_BY_SCOPE
+CURRENT_STAGE = POST_DEPLOYMENT_RUNTIME_OBSERVATION_AND_REAL_EXPORT_ACCEPTANCE
+CURRENT_BLOCKER = FRESH_NATURAL_REPORT_EXPORT_ACCEPTANCE_FOR_1H_PLUS_NOT_YET_CAPTURED
+NEXT_ACTION = RUN_READONLY_CLIENT_EXPORT_AND_VERIFY_SAVED_FILENAME_AND_RR_COLUMNS
+```
+
+The source was previously committed but the running Docker images had not yet
+been rebuilt, so the reports still used the old runtime. The branch is now
+pushed and both the PAPER orchestrator and Readonly API were rebuilt and
+recreated from the pushed HEAD. No database migration or LIVE action was run.
 
 ## Root legacy cleanup and Docker/DB ownership reconciliation 02
 
