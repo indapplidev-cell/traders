@@ -354,7 +354,13 @@ def evaluate_paper_exit_window(
                 continue
             if not (safety_here or stop_hit or target_hit):
                 continue
-            if safety_here:
+            # A market stop/target observed on the same closed candle has
+            # priority over a lifecycle time/causal exit. STOP_FIRST remains
+            # the conservative policy when both market levels were crossed.
+            market_trigger_has_priority = (stop_hit or target_hit) and not (
+                safety_directive is not None and safety_directive.recovery_close
+            )
+            if safety_here and not market_trigger_has_priority:
                 cause = (
                     PaperExitCause.OPERATOR_RECOVERY_CLOSE
                     if safety_directive.recovery_close

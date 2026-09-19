@@ -146,15 +146,15 @@ def safety(boundary, *, valid_until=None, **changes):
     return PaperSafetyExitDirective(**values)
 
 
-def test_safety_wins_at_same_boundary():
+def test_market_stop_wins_over_lifecycle_safety_at_same_boundary():
     directive = safety(T0 + 60_000)
     result = evaluate(
         (candle(0, trigger="STOP"),),
         safety=directive,
     )
-    assert result.trigger.cause is PaperExitCause.SYSTEM_SAFETY_EXIT
-    assert result.trigger.safety_directive_id == directive.directive_id
-    assert result.trigger.trigger_candle_open_time_ms is None
+    assert result.trigger.cause is PaperExitCause.STOP_LOSS
+    assert result.trigger.safety_directive_id is None
+    assert result.trigger.trigger_candle_open_time_ms == T0
 
 
 def test_earlier_market_trigger_wins_before_safety():

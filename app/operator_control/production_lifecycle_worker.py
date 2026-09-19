@@ -45,6 +45,7 @@ from app.engine_paper.order_execution_service import (
     PaperEntryExecutionRequest,
 )
 from app.engine_paper.scalping_paper_runner import read_binance_commission_snapshot
+from app.config.trade_parameters import SCALPING_V2
 from app.engine_safety.paper_domain import PaperPositionState
 from app.engine_paper.production_market_data import (
     PaperProductionMarketDataInputAdapter,
@@ -148,6 +149,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         opportunity_registry: object | None = None,
         outcome_diagnostics: object | None = None,
         stale_position_shadow: object | None = None,
+        scalping_hold_lifecycle: object | None = None,
     ) -> None:
         if not MIN_POLL_SECONDS <= poll_seconds <= MAX_POLL_SECONDS:
             raise ValueError("FIRST_CANARY_LIFECYCLE_POLL_INTERVAL_INVALID")
@@ -165,6 +167,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self._opportunity_registry = opportunity_registry
         self._outcome_diagnostics = outcome_diagnostics
         self._stale_position_shadow = stale_position_shadow
+        self._scalping_hold_lifecycle = scalping_hold_lifecycle
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._ticks = 0
@@ -475,7 +478,14 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         commission_load = read_binance_commission_snapshot(command.symbol)
         commission = commission_load.snapshot
         if commission is None:
-            return None, commission_load.status
+            # Entry used this immutable persisted simulation policy.  A stale
+            # optional commission refresh must not make an already-open PAPER
+            # position immortal.  The foundation fee is the conservative,
+            # auditable fallback; it does not affect future entry eligibility.
+            return (
+                _foundation_policy(command.simulation_policy_id),
+                f"FALLBACK_PERSISTED_SIMULATION_POLICY:{commission_load.status}",
+            )
         policy = _foundation_policy(command.simulation_policy_id)
         snapshot_digest = sha256(commission.snapshot_id.encode("utf-8")).hexdigest()[:16]
         return replace(
@@ -882,8 +892,87 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                             error_type=type(error).__name__,
                             production_exit_mutation=False,
                         )
+                directive = None
+                position = graph.positions[0]
+                if self._scalping_hold_lifecycle is not None:
+                    try:
+                        hold = self._scalping_hold_lifecycle.evaluate_and_persist(
+                            position,
+                            candles,
+                            from_closed_until_ms=graph.cursors[0].last_evaluated_closed_until_ms,
+                        )
+                        if hold is not None and hold.force_exit:
+                            now = datetime.now(timezone.utc)
+                            directive = PaperSafetyExitDirective(
+                                directive_id=_id(
+                                    canary.canary_id,
+                                    f"scalping-hold-{hold.boundary_ms}-{hold.exit_reason.value}",
+                                    continuous=continuous,
+                                ),
+                                version=1, position_id=position.position_id,
+                                symbol=position.symbol, side=position.side,
+                                effective_closed_until_ms=hold.boundary_ms,
+                                issued_at=now,
+                                valid_until_ms=max(
+                                    int((now + timedelta(minutes=5)).timestamp() * 1000),
+                                    candles[-1].close_boundary_ms + 300_000,
+                                ),
+                                final_safety_authorization=True,
+                                reason=hold.exit_reason.value,
+                                correlation_id=graph.journal[0].correlation_id,
+                                causation_id=graph.command.command_id,
+                                mode=ExecutionMode.PAPER,
+                            )
+                            _safe_event(
+                                "scalping_hold_force_exit",
+                                position_id=position.position_id,
+                                boundary_ms=hold.boundary_ms,
+                                validity=hold.validity.value,
+                                lifecycle_state=hold.lifecycle_state.value,
+                                reason=hold.exit_reason.value,
+                            )
+                    except Exception as error:
+                        _safe_event(
+                            "scalping_hold_lifecycle_fault",
+                            position_id=position.position_id,
+                            error_type=type(error).__name__,
+                        )
+                # Defense in depth: persistence or canonical-analysis failure
+                # may never extend a scalping position beyond the hard limit.
+                if directive is None and getattr(graph, "cursors", None):
+                    hard_seconds = SCALPING_V2.exit_policy.stale_position.hard_timeout_seconds
+                    cursor_boundary = graph.cursors[0].last_evaluated_closed_until_ms
+                    overdue = next((item for item in candles if (
+                        item.close_boundary_ms > cursor_boundary
+                        and int((
+                            _at(item.close_boundary_ms) - position.opened_at
+                        ).total_seconds()) >= hard_seconds
+                    )), None)
+                    if overdue is not None:
+                        now = datetime.now(timezone.utc)
+                        directive = PaperSafetyExitDirective(
+                            directive_id=_id(
+                                canary.canary_id,
+                                f"scalping-hard-timeout-{overdue.close_boundary_ms}",
+                                continuous=continuous,
+                            ),
+                            version=1, position_id=position.position_id,
+                            symbol=position.symbol, side=position.side,
+                            effective_closed_until_ms=overdue.close_boundary_ms,
+                            issued_at=now,
+                            valid_until_ms=max(
+                                int((now + timedelta(minutes=5)).timestamp() * 1000),
+                                candles[-1].close_boundary_ms + 300_000,
+                            ),
+                            final_safety_authorization=True,
+                            reason="MAX_HOLD_TIME",
+                            correlation_id=graph.journal[0].correlation_id,
+                            causation_id=graph.command.command_id,
+                            mode=ExecutionMode.PAPER,
+                        )
                 cycle, readiness_code = self._exit_cycle(
-                    canary.canary_id, graph, candles, continuous=continuous
+                    canary.canary_id, graph, candles, continuous=continuous,
+                    safety_directive=directive,
                 )
                 stage = MutationStage.EXIT_EVALUATION_MUTATION
             elif lifecycle is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:

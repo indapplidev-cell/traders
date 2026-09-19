@@ -744,6 +744,51 @@ class ScalpingStalePositionShadowRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ScalpingPositionHoldDecisionRecord(Base):
+    """Restart-safe authoritative 1m revalidation of the original 5m thesis."""
+
+    __tablename__ = "scalping_position_hold_decisions"
+    __table_args__ = (
+        CheckConstraint("holding_seconds >= 0", name="ck_scalping_hold_holding"),
+        CheckConstraint("extension_count >= 0", name="ck_scalping_hold_extensions"),
+        CheckConstraint(
+            "validity IN ('VALID','INVALIDATED','REVERSED','STALE','DATA_UNAVAILABLE','ERROR')",
+            name="ck_scalping_hold_validity",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('FRESH','AT_RISK','STALE','EXTENSION_ALLOWED','EXTENSION_EXHAUSTED','FORCE_EXIT')",
+            name="ck_scalping_hold_state",
+        ),
+        CheckConstraint(
+            "(lifecycle_state = 'FORCE_EXIT') = (exit_reason IS NOT NULL)",
+            name="ck_scalping_hold_exit_complete",
+        ),
+        Index(
+            "ix_scalping_hold_position_evaluation",
+            "position_id", "evaluation_closed_until_ms",
+        ),
+    )
+
+    position_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH),
+        ForeignKey("paper_positions.position_id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    evaluation_closed_until_ms: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    holding_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    validity: Mapped[str] = mapped_column(String(24), nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    exit_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    extension_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    extension_until_ms: Mapped[int | None] = mapped_column(BigInteger)
+    thesis: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    evidence: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    config_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    provenance: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
 class PaperOrderRecord(Base):
     __tablename__ = "paper_orders"
     __table_args__ = (

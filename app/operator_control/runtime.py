@@ -37,6 +37,7 @@ from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSour
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.outcome_diagnostics import PostgresOutcomeDiagnosticsProcessor
 from app.engine_paper.stale_position_shadow import PostgresStalePositionShadowService
+from app.engine_paper.scalping_hold_lifecycle import PostgresScalpingHoldLifecycleService
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.config.trade_parameters import SCALPING_V2
@@ -342,6 +343,7 @@ def create_runtime_app(
             stale_position_shadow=PostgresStalePositionShadowService(
                 sessions, scalping_cost_source,
             ),
+            scalping_hold_lifecycle=PostgresScalpingHoldLifecycleService(sessions),
         )
         runtime_health_publisher = PaperRuntimeHealthPublisher(
             resolve_production_control_root(),
