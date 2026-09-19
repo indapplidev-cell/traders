@@ -3,13 +3,70 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 954afb068639930f5aba37270755c3bb3915c7bb
+STATUS_AS_OF_COMMIT = 2ad548b1e1b2f01a09200195855a28704c4f4764
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-18T20:41:06Z
-RECONCILED_BY_TASK = TRADERS_PAPER_GEOMETRY_RR_PUSH_DEPLOY_01
-FILES_CHANGED = online_trader.md; runtime deployment from 954afb068639930f5aba37270755c3bb3915c7bb.
+RECONCILED_AT_UTC = 2026-09-19T11:38:55Z
+RECONCILED_BY_TASK = TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01
+FILES_CHANGED = app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_statistics.py; app/engine_setup/setup_detector.py; app/server_api/funnel_export.py; scripts/engine_orchestrator_online_pipeline.py; focused tests; docs/audits/TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01_FINAL.md; online_trader.md.
+
+## Scalping funnel-to-trade full diagnostic and correction 01
+
+```text
+TASK = TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01
+FINAL_STATUS = FAIL_CLOSED
+FINAL_VERDICT = FAIL_CLOSED_EMPIRICAL_DATASET_INVALID
+PROJECT_STATE_COMMIT = 2ad548b1e1b2f01a09200195855a28704c4f4764
+EMPIRICAL_AUTHORITY_FIX_COMMIT = cdaf1983177319817275b22b93a7e941c3590b2d
+SETUP_CAUSALITY_FIX_COMMIT = 2ad548b1e1b2f01a09200195855a28704c4f4764
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 2ad548b1e1b2f01a09200195855a28704c4f4764
+PUSH_STATE_AT_RECONCILIATION = PUSHED; LOCAL_AND_REMOTE_PROJECT_STATE_EQUAL
+RUNTIME_REVISION = 2ad548b1e1b2f01a09200195855a28704c4f4764
+ACTIVE_PROFILE = trade-5m-v2
+ACTIVE_PARAMETER_SET = scalping-v2-set-2; version=scalping-v2-set-2-v1
+ACTIVE_CONFIG_HASH = 9d3f604ee4a3b0793bb40ba3cef9826a36e00d945c44e60811cdeede6b1ee7ce
+ACTIVE_CONFIG_EPOCH = d66efd4422e1c772b2f58e7789e3717f465e9fe86bd65a916dd918cef9569eb3
+EMPIRICAL_SOURCE = postgres-natural-paper-closed-only-v3
+EMPIRICAL_INTEGRITY = PROSPECTIVE_COUNTERFACTUAL_DATA_REMOVED_FROM_PRODUCTION_AUTHORITY
+CLOSED_NATURAL_PAPER_POSITIONS = 53_TOTAL; ZERO_COMPATIBLE_ACTIVE_SET_2_BUCKET_OBSERVATIONS
+EXPECTANCY_MODEL = CONSERVATIVE_P_WIN_TIMES_OBSERVED_AVG_WIN_NET_MINUS_LOSS_PROBABILITY_TIMES_OBSERVED_AVG_LOSS_NET
+STATIC_FALLBACK = DISABLED
+SETUP_FIX = INDICATOR_DIRECTION_NO_LONGER_PROMOTES_UNKNOWN_OR_NO_IMPULSE_TO_MOMENTUM
+PARAMETERS_CHANGED = false
+FRESH_BOUNDARY = 1789817400000; COMPLETE_10_OF_10
+FRESH_FUNNEL = analysis_10; setup_5; strategy_5; risk_compatibility_5; geometry_2; target_1; net_cost_1; rr_0; risk_0; portfolio_0; approval_0; plan_0; command_0; position_0
+FRESH_RR_REJECT = DOGEUSDT_POSITIVE_NET_GEOMETRY_BUT_SAMPLE_0_PARENT_0; SCALPING_EMPIRICAL_EXPECTANCY_REJECTED
+RUNTIME_SERVICES = ORCHESTRATOR_RUNNING_REVISION_MATCH; READONLY_API_HEALTHY_REVISION_MATCH; POSTGRES_HEALTHY
+LIVE_STATE = DISABLED; live_allowed=false
+PAPER_CONTROL = CONTINUOUS_ARMED
+BINANCE_REAL_ORDER_CALLS = 0
+FIFTEEN_MINUTE_PROFILE_CHANGED = false
+TESTS = TASK_CORE_38_PASS_1_SKIP; SETUP_ISOLATION_2_PASS; 6_PREEXISTING_STALE_TRADE_5M_V1_EXPORT_FIXTURE_FAILURES
+COMPILE = PASS
+BUILD = PASS
+DEPLOY = PASS
+CURRENT_STAGE = NATURAL_PAPER_EVIDENCE_ACCUMULATION_FOR_ACTIVE_SET_2
+CURRENT_BLOCKER = ZERO_COMPATIBLE_NATURALLY_CLOSED_ACTIVE_SET_2_OUTCOMES; EMPIRICAL_AVG_WIN_LOSS_AND_EV_UNAVAILABLE
+NEXT_ACTION = KEEP_LIVE_DISABLED_AND_YAML_UNCHANGED; ACCUMULATE_AT_LEAST_20_COMPATIBLE_NATURAL_CLOSED_PAPER_OUTCOMES; RECHECK_CONSERVATIVE_POSITIVE_NET_EV_BEFORE_ALLOWING_A_PLAN
+```
+
+The earlier production statistics source mixed prospective/counterfactual
+opportunity outcomes into the empirical probability hierarchy. Production now
+uses only naturally closed realized PAPER positions and computes expectancy
+from observed average net wins and losses. Research counterfactuals remain
+available outside runtime authority. A second defect allowed indicator-only
+direction to create a momentum setup with UNKNOWN/NO_IMPULSE causal state; that
+promotion is now prohibited.
+
+The first complete post-deploy boundary produced one target- and cost-valid
+DOGEUSDT candidate (`gross_rr=2.98923874`, `net_rr=0.84620774`, modeled costs
+`23.13513820 bps`) but no compatible closed active-set observations. It was
+therefore rejected at empirical expectancy rather than converted into a PAPER
+plan. This is the required fail-closed behavior and is not evidence for
+weakening `minimum_planned_rr`, stop/target bounds, confidence, sample size or
+net-edge thresholds. The full block gate and calculations are in
+`docs/audits/TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01_FINAL.md`.
 
 ## PAPER geometry/RR repair push and deployment 01
 
