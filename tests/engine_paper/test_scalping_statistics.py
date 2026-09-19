@@ -52,6 +52,7 @@ def test_production_adapter_maps_only_persisted_rows_deterministically():
         paper_payload_json={"paper_context": {"scalping_geometry_diagnostics": {
             "effective_total_cost_bps": 18,
         }}},
+        entry_quantity="0.01", average_entry_price="10000",
     )]
     source = PostgresPaperOutcomeStatisticsSource(lambda: _Session(rows))
     first = source.resolve(
@@ -64,4 +65,22 @@ def test_production_adapter_maps_only_persisted_rows_deterministically():
     )
     assert first == second
     assert first.exact.samples == first.exact.wins == 1
+    assert first.exact.average_win_net_bps == 125.0
     assert first.outcome_count == 1
+
+
+def test_hierarchy_carries_observed_net_payoff_distribution():
+    rows = (
+        PaperOutcome("BTCUSDT", "SCALP_BREAKOUT", "BULLISH", "UP", "LOW", True,
+                     net_return_bps=30.0),
+        PaperOutcome("BTCUSDT", "SCALP_BREAKOUT", "BULLISH", "UP", "LOW", True,
+                     net_return_bps=50.0),
+        PaperOutcome("BTCUSDT", "SCALP_BREAKOUT", "BULLISH", "UP", "LOW", False,
+                     net_return_bps=-20.0),
+    )
+    value = hierarchy_from_outcomes(
+        rows, symbol="BTCUSDT", setup_type="SCALP_BREAKOUT",
+        direction="BULLISH", regime="UP", cost_bucket="LOW",
+    )
+    assert value.exact.average_win_net_bps == 40.0
+    assert value.exact.average_loss_net_bps == 20.0

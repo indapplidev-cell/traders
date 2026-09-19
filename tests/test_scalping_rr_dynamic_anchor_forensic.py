@@ -66,7 +66,10 @@ def test_units_costs_long_short_and_equality_boundaries():
         item["paper"]["paper_direction"] = direction
         assert item["paper"]["paper_context"]["production_rr_floor"] == .6
     decision = evaluate_expectancy(net_win_bps=120, net_loss_bps=40,
-        bucket=EmpiricalSetupBucket("BREAKOUT", "BULLISH", 100, 60))
+        bucket=EmpiricalSetupBucket(
+            "BREAKOUT", "BULLISH", 100, 60,
+            average_win_net_bps=120, average_loss_net_bps=40,
+        ))
     assert decision.candidate_net_rr == 3
     assert decision.admitted
     assert rr_subreason({"net_rr": .6, "dynamic_required_net_rr": .6}, .6) == "OTHER"

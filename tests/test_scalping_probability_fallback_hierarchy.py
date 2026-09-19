@@ -2,7 +2,10 @@ from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket, evaluate_e
 
 
 def bucket(level, samples, wins):
-    return EmpiricalSetupBucket("BREAKOUT", "BULLISH", samples, wins, level, level)
+    return EmpiricalSetupBucket(
+        "BREAKOUT", "BULLISH", samples, wins, level, level,
+        average_win_net_bps=80, average_loss_net_bps=40,
+    )
 
 
 def test_exact_bucket_is_preferred_when_sufficient():

@@ -311,6 +311,8 @@ class ShadowGeometryDiagnostic:
     bucket_wins: int = 0
     bucket_losses: int = 0
     confidence_lower_bound: float | None = None
+    average_win_net_bps: float | None = None
+    average_loss_net_bps: float | None = None
     dynamic_required_net_rr: float | None = None
     break_even_net_rr: float | None = None
     candidate_net_rr: float | None = None
@@ -923,6 +925,8 @@ def evaluate_scalping_shadow(
         result.bucket_wins = expectancy.bucket_wins
         result.bucket_losses = expectancy.bucket_losses
         result.confidence_lower_bound = expectancy.confidence_lower_bound
+        result.average_win_net_bps = expectancy.average_win_net_bps
+        result.average_loss_net_bps = expectancy.average_loss_net_bps
         result.dynamic_required_net_rr = expectancy.dynamic_required_net_rr
         result.break_even_net_rr = (
             None if expectancy.p_win_conservative in (None, 0)

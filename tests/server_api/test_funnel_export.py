@@ -190,8 +190,9 @@ def test_export_always_emits_rr_rejection_diagnostic_contract():
     row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
     assert set(row["rr_rejection"]) == {
         "empirical_bucket", "bucket_sample_count", "bucket_wins", "bucket_losses",
-        "empirical_win_rate", "posterior_mean", "confidence_lower_bound",
-        "break_even_win_rate", "required_dynamic_rr", "expected_ev_r",
+            "empirical_win_rate", "posterior_mean", "confidence_lower_bound",
+            "average_win_net_bps", "average_loss_net_bps",
+            "break_even_win_rate", "required_dynamic_rr", "expected_ev_r",
         "fallback_bucket_used",
     }
 

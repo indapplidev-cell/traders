@@ -6,7 +6,10 @@ from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket, evaluate_e
 def test_dynamic_required_rr_uses_conservative_probability():
     result = evaluate_expectancy(
         net_win_bps=120, net_loss_bps=40,
-        bucket=EmpiricalSetupBucket("BREAKOUT", "BULLISH", 100, 60),
+        bucket=EmpiricalSetupBucket(
+            "BREAKOUT", "BULLISH", 100, 60,
+            average_win_net_bps=120, average_loss_net_bps=40,
+        ),
         minimum_positive_ev_r=0.05, minimum_ev_reserve_r=0.1,
     )
     p = result.p_win_conservative
@@ -21,7 +24,10 @@ def test_dynamic_required_rr_uses_conservative_probability():
 def test_negative_conservative_ev_never_passes_even_with_old_static_floor():
     result = evaluate_expectancy(
         net_win_bps=20, net_loss_bps=100,
-        bucket=EmpiricalSetupBucket("BREAKOUT", "BULLISH", 100, 40),
+        bucket=EmpiricalSetupBucket(
+            "BREAKOUT", "BULLISH", 100, 40,
+            average_win_net_bps=20, average_loss_net_bps=100,
+        ),
         static_net_rr=99, static_minimum_net_rr=0,
     )
     assert result.expected_ev_r < 0
@@ -30,7 +36,10 @@ def test_negative_conservative_ev_never_passes_even_with_old_static_floor():
 
 
 def test_ev_and_reserve_thresholds_are_independent_gates():
-    bucket = EmpiricalSetupBucket("BREAKOUT", "BULLISH", 100, 60)
+    bucket = EmpiricalSetupBucket(
+        "BREAKOUT", "BULLISH", 100, 60,
+        average_win_net_bps=80, average_loss_net_bps=40,
+    )
     baseline = evaluate_expectancy(net_win_bps=80, net_loss_bps=40, bucket=bucket)
     strict = evaluate_expectancy(
         net_win_bps=80, net_loss_bps=40, bucket=bucket,

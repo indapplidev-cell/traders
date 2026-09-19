@@ -26,18 +26,16 @@ def _evidence(root, count):
     }) for index in range(count)) + "\n", encoding="utf-8")
 
 
-def test_postgres_plus_durable_evidence_threshold_and_parent(
+def test_production_statistics_exclude_prospective_evidence(
     natural_e2e_sessions, tmp_path,
 ):
     _evidence(tmp_path, 19)
-    source = PostgresPaperOutcomeStatisticsSource(
-        natural_e2e_sessions, prospective_outcome_directory=tmp_path,
-    )
+    source = PostgresPaperOutcomeStatisticsSource(natural_e2e_sessions)
     before = source.resolve(
         symbol="ADAUSDT", setup_type="SCALP_BREAKOUT", direction="BULLISH",
         regime="UP", cost_bucket="MEDIUM", parameter_set_id="scalping-v2-set-2",
     )
-    assert before.parents[0].samples == 19
+    assert before.parents[0].samples == 0
     assert not evaluate_expectancy(
         net_win_bps=100, net_loss_bps=40, bucket=before.exact,
         parent_buckets=before.parents, minimum_samples=20,
@@ -52,8 +50,8 @@ def test_postgres_plus_durable_evidence_threshold_and_parent(
         net_win_bps=100, net_loss_bps=40, bucket=after.exact,
         parent_buckets=after.parents, minimum_samples=20,
     )
-    assert decision.fallback_level == "setup_direction_regime"
-    assert decision.sample_size == 20
+    assert decision.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
+    assert decision.sample_size == 0
     assert source.resolve(
         symbol="ADAUSDT", setup_type="SCALP_BREAKOUT", direction="BULLISH",
         regime="UP", cost_bucket="MEDIUM", parameter_set_id="scalping-v2-set-1",

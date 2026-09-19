@@ -366,6 +366,8 @@ def build_export_record(
         "empirical_win_rate": diagnostic.get("empirical_win_rate", diagnostic.get("p_win_raw")),
         "posterior_mean": diagnostic.get("posterior_mean", diagnostic.get("p_win_adjusted")),
         "confidence_lower_bound": diagnostic.get("confidence_lower_bound", diagnostic.get("p_win_conservative")),
+        "average_win_net_bps": diagnostic.get("average_win_net_bps"),
+        "average_loss_net_bps": diagnostic.get("average_loss_net_bps"),
         "break_even_win_rate": diagnostic.get("break_even_win_rate"),
         "required_dynamic_rr": diagnostic.get("required_dynamic_rr", diagnostic.get("dynamic_required_net_rr")),
         "expected_ev_r": diagnostic.get("expected_ev_r"),

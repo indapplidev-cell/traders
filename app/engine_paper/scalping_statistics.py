@@ -24,7 +24,7 @@ from app.engine_orchestrator.orchestrator_models import (
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
 
 
-STATISTICS_SOURCE_VERSION = "postgres-paper-plus-causal-prospective-v2"
+STATISTICS_SOURCE_VERSION = "postgres-natural-paper-closed-only-v3"
 PROSPECTIVE_OUTCOME_SEMANTICS = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 
 
@@ -40,6 +40,7 @@ class PaperOutcome:
     observed_at_ms: int = 0
     evidence_source: str = "CLOSED_PAPER_POSITION"
     outcome_semantics: str = "REALIZED_NET_PNL"
+    net_return_bps: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +148,10 @@ def load_prospective_outcomes(
                 observed_at_ms=_utc_ms(record.get("completed_at")),
                 evidence_source="CAUSAL_COUNTERFACTUAL_OPPORTUNITY",
                 outcome_semantics=PROSPECTIVE_OUTCOME_SEMANTICS,
+                net_return_bps=(
+                    None if record.get("net_return_bps") is None
+                    else float(record["net_return_bps"])
+                ),
             ))
     return tuple(results)
 
@@ -177,6 +182,14 @@ def hierarchy_from_outcomes(
     buckets: list[EmpiricalSetupBucket] = []
     for level, predicate in dimensions:
         selected = tuple(row for row in rows if predicate(row))
+        winning_returns = tuple(
+            float(row.net_return_bps) for row in selected
+            if row.won and row.net_return_bps is not None and row.net_return_bps > 0
+        )
+        losing_returns = tuple(
+            abs(float(row.net_return_bps)) for row in selected
+            if not row.won and row.net_return_bps is not None and row.net_return_bps < 0
+        )
         evidence_sources = sorted({row.evidence_source for row in selected})
         buckets.append(EmpiricalSetupBucket(
             setup_type=setup_type,
@@ -192,6 +205,14 @@ def hierarchy_from_outcomes(
                 else "COMPOSITE:" + "+".join(evidence_sources)
                 if evidence_sources else STATISTICS_SOURCE_VERSION
             ),
+            average_win_net_bps=(
+                sum(winning_returns) / len(winning_returns)
+                if winning_returns else None
+            ),
+            average_loss_net_bps=(
+                sum(losing_returns) / len(losing_returns)
+                if losing_returns else None
+            ),
         ))
     return StatisticalHierarchy(buckets[0], tuple(buckets[1:]), outcome_count=len(rows))
 
@@ -201,13 +222,11 @@ class PostgresPaperOutcomeStatisticsSource:
 
     def __init__(
         self, session_factory: Callable[[], Session], *, maximum_outcomes: int = 5_000,
-        prospective_outcome_directory: Path | None = None,
     ) -> None:
         if maximum_outcomes <= 0:
             raise ValueError("maximum_outcomes must be positive")
         self._session_factory = session_factory
         self.maximum_outcomes = maximum_outcomes
-        self.prospective_outcome_directory = prospective_outcome_directory
 
     def _load(self) -> tuple[PaperOutcome, ...]:
         statement = (
@@ -215,6 +234,8 @@ class PostgresPaperOutcomeStatisticsSource:
                 PaperPositionRecord.symbol,
                 PaperPositionRecord.side,
                 PaperPositionRecord.realized_pnl,
+                PaperPositionRecord.entry_quantity,
+                PaperPositionRecord.average_entry_price,
                 OnlinePipelineResultRow.setup_payload_json,
                 OnlinePipelineResultRow.analysis_payload_json,
                 OnlinePipelineResultRow.paper_payload_json,
@@ -255,6 +276,11 @@ class PostgresPaperOutcomeStatisticsSource:
                 "LEGACY_UNATTRIBUTED",
             ).lower(),
             observed_at_ms=_utc_ms(getattr(row, "closed_at", None)),
+            net_return_bps=(
+                float(row.realized_pnl)
+                / (float(row.entry_quantity) * float(row.average_entry_price))
+                * 10_000
+            ),
         ) for row in rows)
 
     def resolve(
@@ -262,12 +288,11 @@ class PostgresPaperOutcomeStatisticsSource:
         regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
         parameter_set_id: str | None = None,
     ) -> StatisticalHierarchy:
+        # Production admission is intentionally based only on unique, closed,
+        # natural PAPER positions loaded from PostgreSQL.  Prospective/counterfactual
+        # outcomes remain available through ``load_prospective_outcomes`` for
+        # research, but are never mixed into the runtime probability authority.
         outcomes = self._load()
-        if self.prospective_outcome_directory is not None and parameter_set_id is not None:
-            outcomes += load_prospective_outcomes(
-                self.prospective_outcome_directory,
-                parameter_set_id=parameter_set_id,
-            )
         return hierarchy_from_outcomes(
             outcomes, symbol=_text(symbol), setup_type=_text(setup_type),
             direction=_text(direction), regime=_text(regime),

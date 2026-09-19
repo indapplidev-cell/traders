@@ -77,11 +77,17 @@ def test_v2_micro_setup_path_is_isolated_from_15m():
 def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():
     positive = evaluate_expectancy(
         net_win_bps=60, net_loss_bps=40,
-        bucket=EmpiricalSetupBucket("MICRO_BREAKOUT", "BULLISH", 30, 20),
+        bucket=EmpiricalSetupBucket(
+            "MICRO_BREAKOUT", "BULLISH", 30, 20,
+            average_win_net_bps=60, average_loss_net_bps=40,
+        ),
     )
     negative = evaluate_expectancy(
         net_win_bps=30, net_loss_bps=60,
-        bucket=EmpiricalSetupBucket("MICRO_BREAKOUT", "BULLISH", 30, 5),
+        bucket=EmpiricalSetupBucket(
+            "MICRO_BREAKOUT", "BULLISH", 30, 5,
+            average_win_net_bps=30, average_loss_net_bps=60,
+        ),
     )
     fallback = evaluate_expectancy(
         net_win_bps=30, net_loss_bps=60, bucket=None,

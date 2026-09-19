@@ -89,7 +89,10 @@ def test_runtime_selector_continues_to_farther_causal_target_for_dynamic_rr() ->
     result = evaluate_scalping_shadow(candidate, costs, ShadowGeometryConfig(
         atr_buffer_multiplier=.25, stop_envelope_bps=50,
         minimum_target_diagnostic_bps=60, production_rr_floor=.6,
-        empirical_bucket=EmpiricalSetupBucket("MOMENTUM", "BULLISH", 100, 60),
+        empirical_bucket=EmpiricalSetupBucket(
+            "MOMENTUM", "BULLISH", 100, 60,
+            average_win_net_bps=100, average_loss_net_bps=50,
+        ),
         minimum_ev_reserve_r=.05,
     ))
     assert result.first_actionable_target["target_price"] == 100.35

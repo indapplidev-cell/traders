@@ -46,6 +46,8 @@ class EmpiricalSetupBucket:
     level: str = "exact"
     bucket_key: str | None = None
     evidence_source: str = "PERSISTED_PAPER_OUTCOME"
+    average_win_net_bps: float | None = None
+    average_loss_net_bps: float | None = None
 
     def __post_init__(self) -> None:
         if self.samples < 0 or not 0 <= self.wins <= self.samples:
@@ -81,6 +83,8 @@ class ExpectancyDecision:
     bucket_wins: int = 0
     bucket_losses: int = 0
     confidence_lower_bound: float | None = None
+    average_win_net_bps: float | None = None
+    average_loss_net_bps: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,26 +174,47 @@ def evaluate_expectancy(
         prior_alpha=prior_alpha, prior_beta=prior_beta,
     )
     probability = estimate.p_win_conservative
-    expected_value = probability * net_win_bps - (1 - probability) * net_loss_bps
+    average_win_net_bps = selected.average_win_net_bps
+    average_loss_net_bps = selected.average_loss_net_bps
+    empirical_payoff_ready = (
+        average_win_net_bps is not None and average_win_net_bps > 0
+        and average_loss_net_bps is not None and average_loss_net_bps > 0
+    )
+    expected_value = (
+        probability * average_win_net_bps
+        - (1 - probability) * average_loss_net_bps
+        if empirical_payoff_ready else None
+    )
     candidate_net_rr = net_win_bps / net_loss_bps
     break_even_rr = (1 - probability) / probability
     dynamic_required_net_rr = max(
         break_even_rr + minimum_ev_reserve_r,
         (1 - probability + minimum_positive_ev_r) / probability,
     )
-    expected_ev_r = probability * candidate_net_rr - (1 - probability)
+    expected_ev_r = (
+        expected_value / average_loss_net_bps
+        if expected_value is not None and average_loss_net_bps else None
+    )
     ev_reserve = candidate_net_rr - break_even_rr
     admitted = (
-        expected_value >= minimum_expected_value_bps
+        expected_value is not None
+        and expected_value >= minimum_expected_value_bps
         and candidate_net_rr >= dynamic_required_net_rr
+        and expected_ev_r is not None
         and expected_ev_r >= minimum_positive_ev_r
         and ev_reserve >= minimum_ev_reserve_r
+    )
+    reason = (
+        "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE"
+        if not empirical_payoff_ready
+        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS" if admitted
+        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
     )
     return ExpectancyDecision(
         admitted,
         expected_value,
         probability,
-        "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS" if admitted else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
+        reason,
         fallback_level=selected.level,
         bucket_key=selected.bucket_key or f"{selected.setup_type}|{selected.direction}",
         estimator_version=f"{estimate.estimator_version}+{selected.evidence_source}",
@@ -207,6 +232,8 @@ def evaluate_expectancy(
         bucket_wins=selected.wins,
         bucket_losses=selected.samples - selected.wins,
         confidence_lower_bound=estimate.p_win_conservative,
+        average_win_net_bps=average_win_net_bps,
+        average_loss_net_bps=average_loss_net_bps,
     )
 
 

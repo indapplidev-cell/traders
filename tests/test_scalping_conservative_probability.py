@@ -33,7 +33,10 @@ def test_tiny_symbol_bucket_cannot_override_sufficient_parent():
 
 
 def test_conservative_probability_not_raw_rate_controls_admission():
-    bucket = EmpiricalSetupBucket("BREAKOUT", "BULLISH", 20, 10)
+    bucket = EmpiricalSetupBucket(
+        "BREAKOUT", "BULLISH", 20, 10,
+        average_win_net_bps=100, average_loss_net_bps=40,
+    )
     result = evaluate_expectancy(
         net_win_bps=100, net_loss_bps=40, bucket=bucket, minimum_samples=20,
     )
