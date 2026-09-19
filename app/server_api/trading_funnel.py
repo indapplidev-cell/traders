@@ -41,6 +41,7 @@ from app.db.paper_models import (
     PaperOrderRecord,
     PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
+    ScalpingPositionHoldDecisionRecord,
     ScalpingOutcomeDiagnosticRecord,
 )
 from app.config.trade_parameters import (
@@ -1343,6 +1344,8 @@ class TradingFunnelReadRepository:
                         ),
                         ("0029_stale_position_shadow",),
                         ("0030_paper_recovery_close",),
+                        ("0031_scalping_parameter_sets",),
+                        ("0032_scalping_hold_lifecycle",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1599,6 +1602,31 @@ class TradingFunnelReadRepository:
         )
         with self._session_factory() as session:
             rows = tuple(session.execute(statement))
+            position_ids = tuple(str(row[6]) for row in rows if row[6] is not None)
+            if position_ids:
+                latest_hold = (
+                    select(
+                        ScalpingPositionHoldDecisionRecord.position_id,
+                        func.max(
+                            ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms
+                        ).label("latest_boundary"),
+                    )
+                    .where(
+                        ScalpingPositionHoldDecisionRecord.position_id.in_(position_ids)
+                    )
+                    .group_by(ScalpingPositionHoldDecisionRecord.position_id)
+                    .subquery()
+                )
+                hold_rows = tuple(session.execute(
+                    select(ScalpingPositionHoldDecisionRecord)
+                    .join(
+                        latest_hold,
+                        (latest_hold.c.position_id == ScalpingPositionHoldDecisionRecord.position_id)
+                        & (latest_hold.c.latest_boundary == ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms),
+                    )
+                ).scalars())
+            else:
+                hold_rows = ()
             outcome_rows = (
                 tuple(session.execute(
                     select(PaperPlanExecutionOutcomeRecord).where(
@@ -1644,6 +1672,27 @@ class TradingFunnelReadRepository:
             }
             for row in rows
         }
+        hold_by_position = {row.position_id: row for row in hold_rows}
+        for lifecycle in values.values():
+            hold = hold_by_position.get(lifecycle.get("position_id"))
+            lifecycle["hold_revalidation"] = (
+                {
+                    "availability": "AVAILABLE",
+                    "evaluation_closed_until_ms": hold.evaluation_closed_until_ms,
+                    "evaluated_at": hold.evaluated_at,
+                    "holding_seconds": hold.holding_seconds,
+                    "validity": hold.validity,
+                    "lifecycle_state": hold.lifecycle_state,
+                    "exit_reason": hold.exit_reason,
+                    "extension_count": hold.extension_count,
+                    "extension_until_ms": hold.extension_until_ms,
+                    "thesis": hold.thesis,
+                    "evidence": hold.evidence,
+                    "policy_version": hold.policy_version,
+                    "config_hash": hold.config_hash,
+                }
+                if hold is not None else {"availability": "NOT_REACHED"}
+            )
         for outcome in outcome_rows:
             lifecycle = values.setdefault(outcome.pipeline_run_id, {})
             lifecycle.update({
@@ -2058,6 +2107,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     }),
                     "mae_mfe_diagnostics": lifecycle.get(
                         "outcome_diagnostics", {"availability": "NOT_REACHED"}
+                    ),
+                    "hold_revalidation": lifecycle.get(
+                        "hold_revalidation", {"availability": "NOT_REACHED"}
                     ),
                     "control_generation": lifecycle.get("control_generation"),
                     "policy_evaluated_at": lifecycle.get("policy_evaluated_at"),
