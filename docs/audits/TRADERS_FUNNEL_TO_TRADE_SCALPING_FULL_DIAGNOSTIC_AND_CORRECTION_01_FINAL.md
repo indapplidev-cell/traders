@@ -379,7 +379,7 @@ TESTS = task-focused core 38 passed, 1 skipped; setup isolation 2 passed
 KNOWN_TEST_FAILURES = 6 stale server export fixtures still request removed trade-5m-v1 profile; unrelated to trade-5m-v2 corrections
 COMPILE = PASS for every changed Python module
 BUILD = PASS; orchestrator image sha256:232403ebe246787491c5f98a02386381e758cf8ba9857e24426b5d71b6fbbfb3; readonly image sha256:3ef699f8d2ba84e4f40f784c2cc9fcb1ec7288d20f2feee3766ceb0afb579df8
-DEPLOY = PASS; both containers revision=2ad548b1e1b2f01a09200195855a28704c4f4764; readonly healthy; orchestrator running; restart_count=0
+DEPLOY = PASS; both containers revision=2ad548b1e1b2f01a09200195855a28704c4f4764; readonly healthy with restart_count=1; orchestrator running with restart_count=0
 FRESH_ACCEPTANCE = PASS boundary completion and provenance; FAIL trade eligibility because clean empirical authority=0
 ```
 
@@ -422,4 +422,3 @@ closed, realized `trade-5m-v2` PAPER positions with compatible setup/direction/
 regime/volatility buckets may build authority. Re-run acceptance once at least
 the configured 20 compatible observations exist; then require conservative
 positive EV using observed net payoff sizes before any plan is allowed.
-
