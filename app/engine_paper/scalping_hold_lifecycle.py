@@ -234,7 +234,9 @@ def canonical_hold_evidence(
             impulse_phase=str(payload.get("impulse_phase") or "") or None,
             entry_quality=str(payload.get("entry_quality") or "") or None,
             confidence=float(result.confidence), engine_status=status,
-            reason_codes=tuple(result.reason_codes),
+            # Persist a bounded diagnostic sample; the complete engine trace
+            # remains in its canonical analysis artifacts.
+            reason_codes=tuple(result.reason_codes[:32]),
         )
     except Exception as error:
         return CanonicalHoldEvidence(

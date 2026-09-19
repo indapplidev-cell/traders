@@ -1687,7 +1687,10 @@ class TradingFunnelReadRepository:
                     "extension_count": hold.extension_count,
                     "extension_until_ms": hold.extension_until_ms,
                     "thesis": hold.thesis,
-                    "evidence": hold.evidence,
+                    "evidence": {
+                        **hold.evidence,
+                        "reason_codes": list(hold.evidence.get("reason_codes", ()))[:32],
+                    },
                     "policy_version": hold.policy_version,
                     "config_hash": hold.config_hash,
                 }
