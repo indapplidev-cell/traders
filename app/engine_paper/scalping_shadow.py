@@ -321,6 +321,17 @@ class ShadowGeometryDiagnostic:
     ev_reserve: float | None = None
     admission_decision: str | None = None
     admission_reason: str | None = None
+    admission_mode: str | None = None
+    empirical_authority_status: str | None = None
+    empirical_evidence_status: str | None = None
+    empirical_sample_count: int = 0
+    empirical_required_sample: int = 0
+    empirical_parent_bucket_key: str | None = None
+    empirical_ev_net_bps: float | None = None
+    rr_empirical_status: str | None = None
+    paper_bootstrap_eligible: bool = False
+    paper_bootstrap_reason: str | None = None
+    bootstrap_observation_ingested: bool = False
     fee_source: str | None = None
     commission_authoritative: bool = False
     commission_symbol: str | None = None
@@ -870,6 +881,7 @@ def evaluate_scalping_shadow(
         minimum_ev_reserve_r=config.minimum_ev_reserve_r,
         static_net_rr=result.net_rr,
         static_minimum_net_rr=config.production_rr_floor,
+        paper_bootstrap_allowed=True,
     ) if config.profile_id == V2_PROFILE_ID else None
     # The probability authority is target-independent.  If the first target
     # that clears the static/cost gate fails only the later Dynamic RR gate,
@@ -906,6 +918,7 @@ def evaluate_scalping_shadow(
                 minimum_ev_reserve_r=config.minimum_ev_reserve_r,
                 static_net_rr=result.net_rr,
                 static_minimum_net_rr=config.production_rr_floor,
+                paper_bootstrap_allowed=True,
             )
     if expectancy is not None:
         result.empirical_win_probability = expectancy.probability
@@ -938,6 +951,24 @@ def evaluate_scalping_shadow(
         result.ev_reserve = expectancy.ev_reserve
         result.admission_decision = "PASS" if expectancy.admitted else "REJECT"
         result.admission_reason = expectancy.reason
+        result.admission_mode = expectancy.admission_mode
+        result.empirical_authority_status = expectancy.empirical_authority_status
+        result.empirical_evidence_status = (
+            "SUFFICIENT_SAMPLE"
+            if expectancy.empirical_authority_status == "ESTABLISHED"
+            else "INSUFFICIENT_SAMPLE"
+        )
+        result.empirical_sample_count = expectancy.sample_size
+        result.empirical_required_sample = expectancy.empirical_required_sample
+        result.empirical_parent_bucket_key = expectancy.empirical_parent_bucket_key
+        result.empirical_ev_net_bps = expectancy.empirical_ev_net_bps
+        result.rr_empirical_status = (
+            "PASS" if expectancy.empirical_pass
+            else "REJECT" if expectancy.empirical_authority_status == "ESTABLISHED"
+            else "NOT_ESTABLISHED"
+        )
+        result.paper_bootstrap_eligible = expectancy.paper_bootstrap_eligible
+        result.paper_bootstrap_reason = expectancy.paper_bootstrap_reason
         result.expected_value_bps = expectancy.expected_value_bps
         result.expectancy_gate_reason = expectancy.reason
         if not expectancy.admitted:

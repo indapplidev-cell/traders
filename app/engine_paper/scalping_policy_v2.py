@@ -20,6 +20,11 @@ CONFIDENCE_METHOD = "WILSON_ONE_SIDED_LOWER_BOUND"
 TTL_POLICY_VERSION = "scalping-short-lifecycle-v2"
 RISK_POLICY_VERSION = "scalping-risk-capped-v2"
 COST_POLICY_VERSION = "scalping-round-trip-net-pnl-v2"
+ADMISSION_EMPIRICAL = "EMPIRICAL"
+ADMISSION_PAPER_BOOTSTRAP = "PAPER_BOOTSTRAP"
+ADMISSION_REJECTED = "REJECTED"
+EMPIRICAL_AUTHORITY_ESTABLISHED = "ESTABLISHED"
+EMPIRICAL_AUTHORITY_NOT_ESTABLISHED = "NOT_ESTABLISHED"
 
 
 def policy_provenance() -> dict[str, str]:
@@ -85,6 +90,14 @@ class ExpectancyDecision:
     confidence_lower_bound: float | None = None
     average_win_net_bps: float | None = None
     average_loss_net_bps: float | None = None
+    admission_mode: str = ADMISSION_REJECTED
+    empirical_authority_status: str = EMPIRICAL_AUTHORITY_NOT_ESTABLISHED
+    empirical_required_sample: int = 20
+    empirical_parent_bucket_key: str | None = None
+    empirical_ev_net_bps: float | None = None
+    paper_bootstrap_eligible: bool = False
+    paper_bootstrap_reason: str | None = None
+    empirical_pass: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,8 +152,13 @@ def evaluate_expectancy(
     parent_buckets: tuple[EmpiricalSetupBucket, ...] = (),
     static_net_rr: float | None = None,  # historical caller compatibility; never authoritative
     static_minimum_net_rr: float = 0.4,  # historical caller compatibility; never authoritative
+    paper_bootstrap_allowed: bool = False,
 ) -> ExpectancyDecision:
-    """Select the first sufficiently sampled hierarchy level or fail closed."""
+    """Select empirical authority or explicitly admit PAPER evidence collection.
+
+    Bootstrap is never an empirical pass.  Callers may enable it only after all
+    causal geometry, target, net-cost and configured RR gates have passed.
+    """
     if any(not isfinite(float(value)) or float(value) <= 0 for value in (net_win_bps, net_loss_bps)):
         raise ValueError("net win/loss must be positive and finite")
     selected = next(
@@ -152,8 +170,13 @@ def evaluate_expectancy(
         hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
         leaf = bucket or (hierarchy[0] if hierarchy else None)
         broadest = hierarchy[-1] if hierarchy else None
+        bootstrap_reason = (
+            "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_ALLOWED"
+            if paper_bootstrap_allowed
+            else "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
+        )
         return ExpectancyDecision(
-            False, None, None, "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+            paper_bootstrap_allowed, None, None, bootstrap_reason,
             fallback_level="none",
             bucket_key=None if leaf is None else (
                 leaf.bucket_key or f"{leaf.setup_type}|{leaf.direction}"
@@ -164,6 +187,19 @@ def evaluate_expectancy(
             bucket_sample_count=0 if leaf is None else leaf.samples,
             bucket_wins=0 if leaf is None else leaf.wins,
             bucket_losses=0 if leaf is None else leaf.samples - leaf.wins,
+            admission_mode=(
+                ADMISSION_PAPER_BOOTSTRAP
+                if paper_bootstrap_allowed else ADMISSION_REJECTED
+            ),
+            empirical_authority_status=EMPIRICAL_AUTHORITY_NOT_ESTABLISHED,
+            empirical_required_sample=minimum_samples,
+            empirical_parent_bucket_key=(
+                None if broadest is None else broadest.bucket_key
+            ),
+            empirical_ev_net_bps=None,
+            paper_bootstrap_eligible=paper_bootstrap_allowed,
+            paper_bootstrap_reason=bootstrap_reason,
+            empirical_pass=False,
         )
     selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
     hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
@@ -207,8 +243,8 @@ def evaluate_expectancy(
     reason = (
         "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE"
         if not empirical_payoff_ready
-        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS" if admitted
-        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
+        else "EMPIRICAL_SUFFICIENT_POSITIVE_EV" if admitted
+        else "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
     )
     return ExpectancyDecision(
         admitted,
@@ -234,13 +270,34 @@ def evaluate_expectancy(
         confidence_lower_bound=estimate.p_win_conservative,
         average_win_net_bps=average_win_net_bps,
         average_loss_net_bps=average_loss_net_bps,
+        admission_mode=ADMISSION_EMPIRICAL if admitted else ADMISSION_REJECTED,
+        empirical_authority_status=EMPIRICAL_AUTHORITY_ESTABLISHED,
+        empirical_required_sample=minimum_samples,
+        empirical_parent_bucket_key=(
+            hierarchy[selected_index + 1].bucket_key
+            if selected_index + 1 < len(hierarchy) else None
+        ),
+        empirical_ev_net_bps=expected_value,
+        paper_bootstrap_eligible=False,
+        paper_bootstrap_reason=None,
+        empirical_pass=admitted,
     )
 
 
+def bootstrap_execution_permitted(*, admission_mode: str, execution_mode: str) -> bool:
+    """Permanent invariant: bootstrap evidence collection is PAPER-only."""
+    if admission_mode == ADMISSION_PAPER_BOOTSTRAP:
+        return str(execution_mode).upper() == "PAPER"
+    return True
+
+
 __all__ = (
+    "ADMISSION_EMPIRICAL", "ADMISSION_PAPER_BOOTSTRAP", "ADMISSION_REJECTED",
     "COST_POLICY_VERSION", "ENTRY_POLICY_VERSION", "EmpiricalSetupBucket", "ExpectancyDecision",
+    "EMPIRICAL_AUTHORITY_ESTABLISHED", "EMPIRICAL_AUTHORITY_NOT_ESTABLISHED",
     "CONFIDENCE_METHOD", "PROBABILITY_ESTIMATOR_VERSION", "ProbabilityEstimate",
     "PROFILE_ID", "RISK_POLICY_VERSION", "RR_EV_POLICY_VERSION",
     "SETUP_POLICY_VERSION", "STOP_POLICY_VERSION", "TARGET_POLICY_VERSION",
-    "TTL_POLICY_VERSION", "estimate_conservative_probability", "evaluate_expectancy", "policy_provenance",
+    "TTL_POLICY_VERSION", "bootstrap_execution_permitted", "estimate_conservative_probability",
+    "evaluate_expectancy", "policy_provenance",
 )

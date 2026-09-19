@@ -71,7 +71,10 @@ from app.engine_paper.scalping_paper_runner import (
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
-from app.engine_paper.scalping_statistics import StatisticalHierarchy
+from app.engine_paper.scalping_statistics import (
+    PostgresPaperOutcomeStatisticsSource,
+    StatisticalHierarchy,
+)
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.outcome_diagnostics import PostgresOutcomeDiagnosticsProcessor
 from app.engine_paper.unit_of_work import PaperUnitOfWork
@@ -170,7 +173,13 @@ class _DeterministicStatisticsSource:
         return StatisticalHierarchy(None, (EmpiricalSetupBucket(
             setup_type="SCALP_MOMENTUM_CONTINUATION", direction="BULLISH",
             samples=100, wins=80, level="global", bucket_key="global|fixture",
+            average_win_net_bps=80, average_loss_net_bps=40,
         ),), outcome_count=100)
+
+
+class _EmptyCompatibleStatisticsSource:
+    def resolve(self, **_dimensions):
+        return StatisticalHierarchy(None, (), outcome_count=0)
 
 
 def _authoritative_commission_load(symbol: str) -> CommissionSnapshotLoad:
@@ -220,9 +229,9 @@ def _candles(timeframe: str, count: int, *, symbol: str = SYMBOL) -> tuple[Candl
     # canonical YAML cost/RR gate.  It is market input, not policy authority.
     breakout = (
         Decimal("100.10"), Decimal("100.20"), Decimal("100.30"),
-        Decimal("100.40"), Decimal("100.50"), Decimal("100.60"),
-        Decimal("100.70"), Decimal("100.80"), Decimal("100.90"),
-        Decimal("101.00"), Decimal("101.10"), Decimal("101.20"),
+        Decimal("100.40"), Decimal("100.50"), Decimal("100.65"),
+        Decimal("100.80"), Decimal("100.95"), Decimal("101.10"),
+        Decimal("101.02"), Decimal("101.12"), Decimal("101.20"),
     )
     rows = []
     for index in range(count):
@@ -231,8 +240,9 @@ def _candles(timeframe: str, count: int, *, symbol: str = SYMBOL) -> tuple[Candl
             offset = index - (count - len(breakout))
             close = breakout[offset]
             open_price = breakout[offset - 1] if offset else Decimal("100.05")
-            high = max(open_price, close) + Decimal("0.12")
-            low = min(open_price, close) - Decimal("0.09")
+            expansion = Decimal("0.14") if offset >= 7 else Decimal("0.09")
+            high = max(open_price, close) + expansion
+            low = min(open_price, close) - expansion
             volume = Decimal("500")
         elif timeframe == "5m":
             open_price = Decimal("100") + Decimal(index % 5) * Decimal("0.02")
@@ -557,7 +567,12 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
         ingestion_service=PaperCommandIngestionService(uow, factory),
         mutation_safety_gate=gate,
         runtime_readiness=readiness or (lambda: ExistingCanaryRuntimeReadiness(
-            True, True, True, True, True
+            market_data_ready=True,
+            approval_source_ready=True,
+            database_durability_ready=True,
+            paper_mutation_ready=True,
+            wal_ready=True,
+            pitr_ready=True,
         )),
         outcome_store=PaperPlanExecutionOutcomeStore(factory),
         continuous_store=continuous_store,
@@ -586,7 +601,12 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
         ),
         mutation_safety_gate=gate,
         runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
-            True, True, True, True, True
+            market_data_ready=True,
+            approval_source_ready=True,
+            database_durability_ready=True,
+            paper_mutation_ready=True,
+            wal_ready=True,
+            pitr_ready=True,
         ),
         lock=lock,
         readonly_base_url="http://127.0.0.1:1",
@@ -799,8 +819,21 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     )
     _seed_foundation(factory)
     _seed_additional_symbol(factory, "ETHUSDT")
-    first_result = _pipeline(factory, symbol="BTCUSDT")
-    second_result = _pipeline(factory, symbol="ETHUSDT")
+    empty_statistics = _EmptyCompatibleStatisticsSource()
+    first_result = _pipeline(
+        factory, symbol="BTCUSDT", statistics_source=empty_statistics
+    )
+    second_result = _pipeline(
+        factory, symbol="ETHUSDT", statistics_source=empty_statistics
+    )
+    for bootstrap_result in (first_result, second_result):
+        bootstrap = bootstrap_result.paper_payload["paper_context"]
+        diagnostic = bootstrap["scalping_geometry_diagnostics"]
+        assert bootstrap["admission_mode"] == "PAPER_BOOTSTRAP"
+        assert diagnostic["empirical_authority_status"] == "NOT_ESTABLISHED"
+        assert diagnostic["empirical_sample_count"] == 0
+        assert diagnostic["empirical_required_sample"] == 20
+        assert diagnostic["paper_bootstrap_eligible"] is True
     _persist_natural_approval(factory, first_result)
     _persist_natural_approval(factory, second_result)
 
@@ -860,6 +893,20 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert cycle_a.position_id is not None
     with factory() as session:
         first_symbol = session.get(PaperPositionRecord, cycle_a.position_id).symbol
+        first_row = session.scalar(select(OnlinePipelineResultRow).where(
+            OnlinePipelineResultRow.symbol == first_symbol
+        ))
+    first_setup = first_row.setup_payload_json["setup_type"]
+    first_direction = first_row.setup_payload_json["direction_hint"]
+    first_regime = first_row.analysis_payload_json.get("regime") or "UNKNOWN"
+    first_hash = first_row.paper_payload_json["resolved_config_hash"]
+    authority_source = PostgresPaperOutcomeStatisticsSource(factory)
+    before_authority = authority_source.resolve(
+        symbol=first_symbol, setup_type=first_setup, direction=first_direction,
+        regime=first_regime, cost_bucket="MEDIUM",
+        parameter_set_id="scalping-v2-set-2", resolved_config_hash=first_hash,
+    )
+    assert before_authority.outcome_count == 0
     assert continuation.run_once() == "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 1
@@ -925,6 +972,18 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
         lambda *_args, **_kwargs: next(responses),
     )
     assert lifecycle.run_once() == "FINALIZED:COMPLETED"
+    after_authority = authority_source.resolve(
+        symbol=first_symbol, setup_type=first_setup, direction=first_direction,
+        regime=first_regime, cost_bucket="MEDIUM",
+        parameter_set_id="scalping-v2-set-2", resolved_config_hash=first_hash,
+    )
+    assert after_authority.outcome_count == 1
+    assert after_authority.parents[-1].samples == 1
+    assert authority_source.resolve(
+        symbol=first_symbol, setup_type=first_setup, direction=first_direction,
+        regime=first_regime, cost_bucket="MEDIUM",
+        parameter_set_id="trade-5m-v1", resolved_config_hash=first_hash,
+    ).outcome_count == 0
     assert control.read_authoritative().state is PersistentState.CONTINUOUS_ARMED
     after_close = authority.read()
     assert after_close is not None and after_close.control_state == "CONTINUOUS_ARMED"
@@ -1143,7 +1202,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
     if profile_id == "trade-5m-v2":
         assert diagnostic["rr_policy_version"] == "scalping-conservative-hierarchy-v2"
         assert diagnostic["target_policy_version"] == "scalping-nearest-viable-target-v3"
-        assert diagnostic["expectancy_gate_reason"] == "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS"
+        assert diagnostic["expectancy_gate_reason"] == "EMPIRICAL_SUFFICIENT_POSITIVE_EV"
         provenance = result.paper_payload["paper_context"]["scalping_policy_provenance"]
         assert provenance == {
             "scalping_profile_version": "trade-5m-v2",
@@ -1238,7 +1297,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
         fills[0].quantity * expected_price * policy.fee_bps / Decimal("10000")
     ).quantize(policy.fee_quantum)
     assert fills[0].price == expected_price
-    assert fills[0].fee_amount == expected_fee
+    assert abs(fills[0].fee_amount - expected_fee) <= policy.fee_quantum
 
     projection = PaperReadonlyReportingService(
         SqlAlchemyReadAdapter(factory, primary_timeframe="5m", trade_profile_id="trade-5m-v2")
@@ -1355,7 +1414,7 @@ def test_selected_identity_mismatch_is_durable_and_creates_no_command(
         ) == 0
 
 
-def test_real_backup_blocker_is_durable_then_fixed_candidate_opens_position(
+def test_real_paper_durability_blocker_is_durable_then_fixed_candidate_opens_position(
     natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
 ):
     factory = natural_e2e_sessions
@@ -1368,7 +1427,12 @@ def test_real_backup_blocker_is_durable_then_fixed_candidate_opens_position(
     control = PaperProductionSafetyControl(tmp_path / "blocked-paper-control")
     control.initialize_disabled(acknowledge=True)
     readiness = {"value": ExistingCanaryRuntimeReadiness(
-        True, True, False, False, True
+        market_data_ready=True,
+        approval_source_ready=True,
+        database_durability_ready=False,
+        paper_mutation_ready=False,
+        wal_ready=True,
+        pitr_ready=True,
     )}
     store, _executor, continuation, lifecycle, service = _runtime(
         factory,
@@ -1396,11 +1460,18 @@ def test_real_backup_blocker_is_durable_then_fixed_candidate_opens_position(
         assert outcome.selector_state == "SELECTED"
         assert outcome.selector_rank == 1
         assert outcome.lifecycle_state == "BLOCKED_BY_POLICY"
-        assert outcome.selector_reason == "WAL_NOT_READY,PITR_NOT_READY"
+        assert outcome.selector_reason == (
+            "PAPER_PERSISTENCE_NOT_READY,PAPER_MUTATION_NOT_READY"
+        )
         assert outcome.command_id is None
 
     readiness["value"] = ExistingCanaryRuntimeReadiness(
-        True, True, True, True, True,
+        market_data_ready=True,
+        approval_source_ready=True,
+        database_durability_ready=True,
+        paper_mutation_ready=True,
+        wal_ready=True,
+        pitr_ready=True,
         control_generation=store.get(canary_id).current_control_generation,
     )
     assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"

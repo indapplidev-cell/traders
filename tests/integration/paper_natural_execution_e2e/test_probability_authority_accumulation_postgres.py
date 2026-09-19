@@ -50,7 +50,7 @@ def test_production_statistics_exclude_prospective_evidence(
         net_win_bps=100, net_loss_bps=40, bucket=after.exact,
         parent_buckets=after.parents, minimum_samples=20,
     )
-    assert decision.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
+    assert decision.reason == "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
     assert decision.sample_size == 0
     assert source.resolve(
         symbol="ADAUSDT", setup_type="SCALP_BREAKOUT", direction="BULLISH",

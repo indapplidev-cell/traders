@@ -70,7 +70,12 @@ class _Rows:
 
 
 def _result(profile="trade-15m-v1", symbol="BTCUSDT"):
-    return SimpleNamespace(trade_profile_id=profile, symbol=symbol)
+    return SimpleNamespace(
+        trade_profile_id=profile,
+        symbol=symbol,
+        runtime_parameters_snapshot=None,
+        runtime_parameter_set_id=None,
+    )
 
 
 def test_portfolio_gate_pass_and_canonical_limit_rejections():
@@ -91,7 +96,7 @@ def test_portfolio_gate_pass_and_canonical_limit_rejections():
         average_entry_price=Decimal("100"), stop_price=Decimal("100") - Decimal(risk),
     )
     duplicate = evaluate_paper_portfolio_gate(
-        _Rows(((position("BTCUSDT"), "trade-5m-v1"),)),
+        _Rows(((position("BTCUSDT"), "trade-5m-v2"),)),
         result=_result(), candidate_direction="BULLISH",
         account_equity=Decimal("100"), evaluation_time=now,
     )

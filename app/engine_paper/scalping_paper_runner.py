@@ -44,6 +44,7 @@ class ScalpingStatisticsSource(Protocol):
         self, *, symbol: str, setup_type: str, direction: str,
         regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
         parameter_set_id: str | None = None,
+        resolved_config_hash: str | None = None,
     ) -> StatisticalHierarchy: ...
 
 
@@ -489,6 +490,17 @@ class ScalpingPaperRunner(PaperRunner):
             "rr_policy_version": diagnostic.rr_policy_version,
             "expected_value_bps": diagnostic.expected_value_bps,
             "expectancy_gate_reason": diagnostic.expectancy_gate_reason,
+            "admission_mode": diagnostic.admission_mode,
+            "empirical_authority_status": diagnostic.empirical_authority_status,
+            "empirical_evidence_status": diagnostic.empirical_evidence_status,
+            "empirical_sample_count": diagnostic.empirical_sample_count,
+            "empirical_required_sample": diagnostic.empirical_required_sample,
+            "empirical_bucket_key": diagnostic.empirical_bucket,
+            "empirical_parent_bucket_key": diagnostic.empirical_parent_bucket_key,
+            "empirical_ev_net_bps": diagnostic.empirical_ev_net_bps,
+            "paper_bootstrap_eligible": diagnostic.paper_bootstrap_eligible,
+            "paper_bootstrap_reason": diagnostic.paper_bootstrap_reason,
+            "admission_mode_at_entry": diagnostic.admission_mode,
             "parameter_set_id": self.runtime_parameters.parameter_set_id,
             "parameter_set_label": self.runtime_parameters.parameter_set_label,
             "parameter_set_version": self.runtime_parameters.parameter_set_version,
@@ -632,6 +644,7 @@ class ScalpingPaperRunner(PaperRunner):
             regime=str(getattr(context, "regime", None) or "UNKNOWN"),
             cost_bucket=cost_bucket,
             parameter_set_id=self.runtime_parameters.parameter_set_id,
+            resolved_config_hash=self.runtime_parameters.resolved_config_hash,
         )
         return replace(
             self.geometry_config,

@@ -372,6 +372,13 @@ def build_export_record(
         "required_dynamic_rr": diagnostic.get("required_dynamic_rr", diagnostic.get("dynamic_required_net_rr")),
         "expected_ev_r": diagnostic.get("expected_ev_r"),
         "fallback_bucket_used": diagnostic.get("fallback_bucket_used", diagnostic.get("probability_fallback_level")),
+        "admission_mode": diagnostic.get("admission_mode"),
+        "empirical_authority_status": diagnostic.get("empirical_authority_status"),
+        "empirical_sample_count": diagnostic.get("empirical_sample_count"),
+        "empirical_required_sample": diagnostic.get("empirical_required_sample"),
+        "empirical_ev_net_bps": diagnostic.get("empirical_ev_net_bps"),
+        "paper_bootstrap_eligible": diagnostic.get("paper_bootstrap_eligible"),
+        "paper_bootstrap_reason": diagnostic.get("paper_bootstrap_reason"),
     }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
@@ -405,6 +412,12 @@ def build_export_record(
         "geometry_calculation_version", "cost_model_version",
         "rr_policy_version", "target_policy_version",
         "price_normalization_quantum",
+        "admission_mode", "empirical_authority_status",
+        "empirical_evidence_status", "empirical_sample_count",
+        "empirical_required_sample", "empirical_bucket_key",
+        "empirical_parent_bucket_key", "empirical_ev_net_bps",
+        "rr_empirical_status", "paper_bootstrap_eligible",
+        "paper_bootstrap_reason", "bootstrap_observation_ingested",
     )
     return {
         "profile": run.trade_profile_id,

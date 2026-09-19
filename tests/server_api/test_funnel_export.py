@@ -21,7 +21,7 @@ TO = "2030-03-17T18:00:00Z"
 
 
 def _pair(profile="trade-15m-v1", symbol="BTCUSDT", boundary=1_900_000_200_000, rejected=False):
-    timeframe = "5m" if profile == "trade-5m-v1" else "15m"
+    timeframe = "5m" if profile == "trade-5m-v2" else "15m"
     stamp = datetime.fromtimestamp(boundary / 1000, timezone.utc)
     run = OnlinePipelineRun(
         id=1, run_id=f"run:{profile}:{symbol}:{boundary}", trade_profile_id=profile,
@@ -118,7 +118,7 @@ def _get(client, **params):
 def test_jsonl_is_profile_isolated_deterministic_complete_and_null_preserving():
     late = _pair(symbol="ETHUSDT", boundary=1_900_000_500_000, rejected=True)
     early = _pair(symbol="BTCUSDT", boundary=1_900_000_200_000)
-    other = _pair(profile="trade-5m-v1")
+    other = _pair(profile="trade-5m-v2")
     repo = ExportRepo((late, other, early))
     response = _get(_client(repo))
     assert response.status_code == 200
@@ -153,8 +153,8 @@ def test_symbol_filter_csv_and_summary_formats():
 
 def test_scalping_export_includes_additive_downstream_observability_fields():
     response = _get(
-        _client(ExportRepo((_pair(profile="trade-5m-v1"),))),
-        trade_profile_id="trade-5m-v1",
+        _client(ExportRepo((_pair(profile="trade-5m-v2"),))),
+        trade_profile_id="trade-5m-v2",
     )
     assert response.status_code == 200
     row = json.loads(response.text)
@@ -165,13 +165,13 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
         "portfolio_status", "final_approval",
     }
     assert required <= row.keys()
-    assert row["profile"] == "trade-5m-v1"
+    assert row["profile"] == "trade-5m-v2"
     assert row["risk_compatibility_status"] == "PASS"
     assert row["geometry_status"] == "PASS"
     assert row["target_status"] == "PASS"
     assert row["net_cost_status"] == "PASS"
     assert row["rr_status"] == "PASS"
-    assert row["portfolio_status"] == "UNAVAILABLE"
+    assert row["portfolio_status"] == "SOURCE_UNAVAILABLE"
     assert row["trade_math"]["entry_price"] == "100"
     assert row["trade_math"]["stop_price"] == "99.25"
     assert row["trade_math"]["target_price"] == "101.5"
@@ -194,6 +194,10 @@ def test_export_always_emits_rr_rejection_diagnostic_contract():
             "average_win_net_bps", "average_loss_net_bps",
             "break_even_win_rate", "required_dynamic_rr", "expected_ev_r",
         "fallback_bucket_used",
+        "admission_mode", "empirical_authority_status",
+        "empirical_sample_count", "empirical_required_sample",
+        "empirical_ev_net_bps", "paper_bootstrap_eligible",
+        "paper_bootstrap_reason",
     }
 
 
@@ -211,7 +215,7 @@ def test_empty_summary_is_explicit_and_range_format_candles_are_bounded():
     client = _client(ExportRepo(()))
     assert _get(client, format="summary-json").json()["sample_status"] == "INSUFFICIENT_SAMPLE"
     too_wide = client.get("/api/v1/trading/funnel/export", params={
-        "trade_profile_id": "trade-5m-v1", "from": "2030-03-16T17:59:59Z", "to": TO, "format": "jsonl",
+        "trade_profile_id": "trade-5m-v2", "from": "2030-03-16T17:59:59Z", "to": TO, "format": "jsonl",
     })
     assert too_wide.status_code == 422
     assert _get(client, include_candles="true").status_code == 422
@@ -229,7 +233,7 @@ def test_secret_like_raw_reason_is_dropped():
 
 
 def test_strategy_terminal_reason_and_paper_not_reached_are_not_analysis_evidence():
-    run, result = _pair(profile="trade-5m-v1")
+    run, result = _pair(profile="trade-5m-v2")
     run.strategy_status = "REJECT"
     run.risk_status = "REJECT"
     run.paper_status = "NO_PLAN"
@@ -241,7 +245,7 @@ def test_strategy_terminal_reason_and_paper_not_reached_are_not_analysis_evidenc
     result.risk_payload_json = {"risk_status": "REJECT"}
     result.paper_payload_json = {
         "paper_status": "NO_PLAN",
-        "runtime_parameter_set_id": "trade-5m-v1-runtime-v1-testhash",
+        "runtime_parameter_set_id": "scalping-v2-set-2",
     }
     result.module_reasons_json = {
         "analysis": ["LONG_LOWER_SHADOW_REJECTION"],
@@ -249,8 +253,8 @@ def test_strategy_terminal_reason_and_paper_not_reached_are_not_analysis_evidenc
         "risk": ["RISK_REJECT_SOURCE_REJECTED"],
         "paper": ["PAPER_NO_PLAN_SOURCE_NO_DECISION"],
     }
-    row = json.loads(_get(_client(ExportRepo(((run, result),))), trade_profile_id="trade-5m-v1").text)
-    assert row["first_rejection_stage"] == "STRATEGY_ELIGIBLE"
+    row = json.loads(_get(_client(ExportRepo(((run, result),))), trade_profile_id="trade-5m-v2").text)
+    assert row["first_rejection_stage"] == "STRATEGY_ADMITTED"
     assert row["first_rejection_reason_code"] == "STRATEGY_REJECT_WEAK_QUALITY"
     assert row["analysis_evidence"] == ["LONG_LOWER_SHADOW_REJECTION"]
     assert row["strategy_evidence"] == ["STRATEGY_REJECT_WEAK_QUALITY"]
@@ -259,7 +263,7 @@ def test_strategy_terminal_reason_and_paper_not_reached_are_not_analysis_evidenc
 
 
 def test_repository_uses_one_bounded_statement_and_no_profile_mixing():
-    pair = _pair(profile="trade-5m-v1")
+    pair = _pair(profile="trade-5m-v2")
 
     class Session:
         calls = 0
@@ -274,12 +278,12 @@ def test_repository_uses_one_bounded_statement_and_no_profile_mixing():
     universe = type("Universe", (), {"symbols": ("BTCUSDT",), "version_id": "v2"})()
     repo = TradingFunnelReadRepository(lambda: session, lambda: universe)
     rows = repo.export_rows(
-        "trade-5m-v1", 1, 2_000_000_000_000, None, MAX_EXPORT_ROWS,
+        "trade-5m-v2", 1, 2_000_000_000_000, None, MAX_EXPORT_ROWS,
         (1_899_000_000_000, "BTCUSDT", "run-before"),
     )
     sql = str(session.statement.compile(compile_kwargs={"literal_binds": True}))
     assert rows == (pair,) and session.calls == 1
-    assert "trade-5m-v1" in sql and "LIMIT 2881" in sql
+    assert "trade-5m-v2" in sql and "LIMIT 2881" in sql
     assert "online_pipeline_runs.closed_until_ms, online_pipeline_runs.symbol, online_pipeline_runs.run_id" in sql
     assert "OFFSET" not in sql.upper()
     assert all(token not in sql.upper() for token in ("UPDATE ", "DELETE ", "INSERT ", "ALTER "))
@@ -287,10 +291,10 @@ def test_repository_uses_one_bounded_statement_and_no_profile_mixing():
 
 def test_arbitrary_range_keyset_pages_are_stable_complete_and_tamper_validated():
     boundaries = [1_899_000_000_000 + index * 300_000 for index in range(5)]
-    repo = ExportRepo(tuple(_pair(profile="trade-5m-v1", boundary=value) for value in boundaries))
+    repo = ExportRepo(tuple(_pair(profile="trade-5m-v2", boundary=value) for value in boundaries))
     client = _client(repo)
     query = {
-        "trade_profile_id": "trade-5m-v1", "from": "2029-01-01T00:00:00Z",
+        "trade_profile_id": "trade-5m-v2", "from": "2029-01-01T00:00:00Z",
         "to": "2031-01-01T00:00:00Z", "format": "jsonl-records", "page_size": 2,
     }
     first = client.get("/api/v1/trading/funnel/export", params=query)
@@ -301,7 +305,7 @@ def test_arbitrary_range_keyset_pages_are_stable_complete_and_tamper_validated()
     snapshot = first_page["snapshot_closed_until"]
 
     # A later run arrives after the snapshot starts and must not drift into this export.
-    repo.pairs += (_pair(profile="trade-5m-v1", boundary=boundaries[-1] + 300_000),)
+    repo.pairs += (_pair(profile="trade-5m-v2", boundary=boundaries[-1] + 300_000),)
     rows = list(first_page["records"])
     cursor = first_page["next_cursor"]
     while cursor is not None:
@@ -328,7 +332,7 @@ def test_arbitrary_range_keyset_pages_are_stable_complete_and_tamper_validated()
 
 
 def test_paged_mode_accepts_both_profiles_all_range_classes_and_bounded_page_sizes():
-    pairs = (_pair(profile="trade-5m-v1"), _pair(profile="trade-15m-v1"))
+    pairs = (_pair(profile="trade-5m-v2"), _pair(profile="trade-15m-v1"))
     client = _client(ExportRepo(pairs))
     ranges = (
         ("2030-03-17T17:50:00Z", TO),
@@ -338,7 +342,7 @@ def test_paged_mode_accepts_both_profiles_all_range_classes_and_bounded_page_siz
         ("2030-02-15T18:00:00Z", TO),
         ("2020-01-01T00:00:00Z", TO),
     )
-    for profile in ("trade-5m-v1", "trade-15m-v1"):
+    for profile in ("trade-5m-v2", "trade-15m-v1"):
         for from_value, to_value in ranges:
             response = client.get("/api/v1/trading/funnel/export", params={
                 "trade_profile_id": profile, "from": from_value, "to": to_value,
@@ -352,16 +356,16 @@ def test_paged_mode_accepts_both_profiles_all_range_classes_and_bounded_page_siz
                 "format": "csv-records", "page_size": page_size,
             }).status_code == 200
     assert client.get("/api/v1/trading/funnel/export", params={
-        "trade_profile_id": "trade-5m-v1", "from": FROM, "to": TO,
+        "trade_profile_id": "trade-5m-v2", "from": FROM, "to": TO,
         "format": "jsonl-records", "page_size": 2001,
     }).status_code == 422
 
 
 def test_cursor_snapshot_mismatch_and_empty_partial_availability_are_explicit():
     boundary = 1_900_000_200_000
-    client = _client(ExportRepo((_pair(profile="trade-5m-v1", boundary=boundary),
-                                 _pair(profile="trade-5m-v1", boundary=boundary + 300_000))))
-    query = {"trade_profile_id": "trade-5m-v1", "from": "2020-01-01T00:00:00Z", "to": TO,
+    client = _client(ExportRepo((_pair(profile="trade-5m-v2", boundary=boundary),
+                                 _pair(profile="trade-5m-v2", boundary=boundary + 300_000))))
+    query = {"trade_profile_id": "trade-5m-v2", "from": "2020-01-01T00:00:00Z", "to": TO,
              "format": "jsonl-records", "page_size": 1}
     first = client.get("/api/v1/trading/funnel/export", params=query).json()
     assert first["available_from"] == boundary and first["available_from"] > first["requested_from"]

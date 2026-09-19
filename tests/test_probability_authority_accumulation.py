@@ -99,7 +99,7 @@ def test_threshold_minus_one_then_threshold_and_parent_fallback(tmp_path):
         net_win_bps=100, net_loss_bps=40, bucket=before.exact,
         parent_buckets=before.parents, minimum_samples=20,
     )
-    assert insufficient.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
+    assert insufficient.reason == "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
     assert insufficient.sample_size == 0
     assert insufficient.parent_sample_size == 19
 
@@ -150,7 +150,7 @@ def test_zero_accumulation_has_no_invented_probability():
     )
     assert decision.probability is None
     assert decision.dynamic_required_net_rr is None
-    assert decision.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
+    assert decision.reason == "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
 
 
 def test_eta_classes_and_zero_denominator_are_explicit():

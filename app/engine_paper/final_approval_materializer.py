@@ -32,6 +32,10 @@ from app.engine_paper.paper_approvals import (
 )
 from app.engine_paper.paper_trade_plan import PaperTradePlan
 from app.engine_paper.portfolio_gate import evaluate_paper_portfolio_gate
+from app.engine_paper.scalping_policy_v2 import (
+    ADMISSION_PAPER_BOOTSTRAP,
+    bootstrap_execution_permitted,
+)
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_safety.paper_domain import (
     ExecutionMode,
@@ -198,6 +202,21 @@ class NaturalFinalApprovalMaterializer:
             strategy = _typed(StrategyDecision, result.strategy_payload)
             research_risk = _typed(RiskDecision, result.risk_payload)
             plan = _typed(PaperTradePlan, result.paper_payload)
+            admission_mode = str(plan.paper_context.get("admission_mode") or "")
+            if admission_mode == ADMISSION_PAPER_BOOTSTRAP and (
+                result.trade_profile_id != "trade-5m-v2"
+                or not bootstrap_execution_permitted(
+                    admission_mode=admission_mode,
+                    execution_mode=ExecutionMode.PAPER.value,
+                )
+            ):
+                return self._not_created(
+                    result,
+                    "PAPER_BOOTSTRAP_EXECUTION_MODE_FORBIDDEN",
+                    attempted_stage="FINAL_APPROVAL",
+                    stage_status="REJECTED",
+                    safe_reason_detail="bootstrap admission is restricted to trade-5m-v2 PAPER",
+                )
             analysis = result.analysis_payload
             setup = result.setup_payload
             primary_market = result.market_data_payload[result.primary_timeframe]

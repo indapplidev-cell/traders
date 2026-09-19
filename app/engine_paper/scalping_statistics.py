@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.db.paper_models import (
@@ -41,6 +41,15 @@ class PaperOutcome:
     evidence_source: str = "CLOSED_PAPER_POSITION"
     outcome_semantics: str = "REALIZED_NET_PNL"
     net_return_bps: float | None = None
+    position_id: str | None = None
+    candidate_id: str | None = None
+    paper_plan_id: str | None = None
+    command_id: str | None = None
+    resolved_config_hash: str | None = None
+    config_epoch_id: str | None = None
+    source_commit: str | None = None
+    runtime_revision: str | None = None
+    admission_mode_at_entry: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,11 +169,16 @@ def hierarchy_from_outcomes(
     outcomes: Iterable[PaperOutcome], *, symbol: str, setup_type: str,
     direction: str, regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
     parameter_set_id: str | None = None,
+    resolved_config_hash: str | None = None,
 ) -> StatisticalHierarchy:
     """Build the configured narrow-to-global hierarchy from real outcomes."""
     rows = tuple(
         row for row in outcomes
-        if parameter_set_id is None or row.parameter_set_id == parameter_set_id
+        if (parameter_set_id is None or row.parameter_set_id == parameter_set_id)
+        and (
+            resolved_config_hash is None
+            or row.resolved_config_hash == resolved_config_hash
+        )
     )
     dimensions = (
         ("exact", lambda row: (
@@ -232,6 +246,7 @@ class PostgresPaperOutcomeStatisticsSource:
         statement = (
             select(
                 PaperPositionRecord.symbol,
+                PaperPositionRecord.position_id,
                 PaperPositionRecord.side,
                 PaperPositionRecord.realized_pnl,
                 PaperPositionRecord.entry_quantity,
@@ -240,6 +255,7 @@ class PostgresPaperOutcomeStatisticsSource:
                 OnlinePipelineResultRow.analysis_payload_json,
                 OnlinePipelineResultRow.paper_payload_json,
                 PaperPositionRecord.closed_at,
+                PaperExecutionCommandRecord.command_id,
             )
             .join(PaperOrderRecord, PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id)
             .join(
@@ -252,7 +268,10 @@ class PostgresPaperOutcomeStatisticsSource:
             )
             .join(
                 OnlinePipelineResultRow,
-                OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                and_(
+                    OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                    OnlinePipelineResultRow.symbol == PaperPositionRecord.symbol,
+                ),
             )
             .where(
                 PaperPositionRecord.state == "CLOSED",
@@ -263,30 +282,71 @@ class PostgresPaperOutcomeStatisticsSource:
         )
         with self._session_factory() as session:
             rows = tuple(session.execute(statement))
-        return tuple(PaperOutcome(
-            symbol=_text(row.symbol),
-            setup_type=_text(_nested(row.setup_payload_json, "setup_type")),
-            direction="BULLISH" if _text(row.side) == "LONG" else "BEARISH",
-            regime=_text(_nested(row.analysis_payload_json, "regime")),
-            cost_bucket=_cost_bucket(row.paper_payload_json),
-            won=float(row.realized_pnl) > 0,
-            parameter_set_id=_text(
-                _nested(row.paper_payload_json, "parameter_set_id")
-                or _nested(row.paper_payload_json, "runtime_parameter_set_id"),
-                "LEGACY_UNATTRIBUTED",
-            ).lower(),
-            observed_at_ms=_utc_ms(getattr(row, "closed_at", None)),
-            net_return_bps=(
-                float(row.realized_pnl)
-                / (float(row.entry_quantity) * float(row.average_entry_price))
-                * 10_000
-            ),
-        ) for row in rows)
+        outcomes: list[PaperOutcome] = []
+        seen_position_ids: set[str] = set()
+        for row in rows:
+            position_id = str(
+                getattr(row, "position_id", None)
+                or f"legacy:{row.symbol}:{getattr(row, 'closed_at', '')}"
+            )
+            if position_id in seen_position_ids:
+                continue
+            seen_position_ids.add(position_id)
+            context = _nested(row.paper_payload_json, "paper_context")
+            effective = _nested(row.paper_payload_json, "effective_configuration")
+            outcomes.append(PaperOutcome(
+                symbol=_text(row.symbol),
+                setup_type=_text(_nested(row.setup_payload_json, "setup_type")),
+                direction="BULLISH" if _text(row.side) == "LONG" else "BEARISH",
+                regime=_text(_nested(row.analysis_payload_json, "regime")),
+                cost_bucket=_cost_bucket(row.paper_payload_json),
+                won=float(row.realized_pnl) > 0,
+                parameter_set_id=_text(
+                    _nested(context, "parameter_set_id")
+                    or _nested(row.paper_payload_json, "parameter_set_id")
+                    or _nested(row.paper_payload_json, "runtime_parameter_set_id"),
+                    "LEGACY_UNATTRIBUTED",
+                ).lower(),
+                observed_at_ms=_utc_ms(getattr(row, "closed_at", None)),
+                net_return_bps=(
+                    float(row.realized_pnl)
+                    / (float(row.entry_quantity) * float(row.average_entry_price))
+                    * 10_000
+                ),
+                position_id=position_id,
+                candidate_id=str(_nested(row.setup_payload_json, "setup_id") or "") or None,
+                paper_plan_id=str(_nested(row.paper_payload_json, "paper_plan_id") or "") or None,
+                command_id=(
+                    str(getattr(row, "command_id", None) or "") or None
+                ),
+                resolved_config_hash=(
+                    str(
+                        _nested(context, "resolved_config_hash")
+                        or _nested(row.paper_payload_json, "resolved_config_hash")
+                        or _nested(effective, "config_content_hash")
+                        or ""
+                    ) or None
+                ),
+                config_epoch_id=(
+                    str(_nested(effective, "config_epoch_id") or "") or None
+                ),
+                source_commit=(
+                    str(_nested(effective, "source_commit") or "") or None
+                ),
+                runtime_revision=(
+                    str(_nested(effective, "source_commit") or "") or None
+                ),
+                admission_mode_at_entry=(
+                    str(_nested(context, "admission_mode_at_entry") or "") or None
+                ),
+            ))
+        return tuple(outcomes)
 
     def resolve(
         self, *, symbol: str, setup_type: str, direction: str,
         regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
         parameter_set_id: str | None = None,
+        resolved_config_hash: str | None = None,
     ) -> StatisticalHierarchy:
         # Production admission is intentionally based only on unique, closed,
         # natural PAPER positions loaded from PostgreSQL.  Prospective/counterfactual
@@ -298,6 +358,7 @@ class PostgresPaperOutcomeStatisticsSource:
             direction=_text(direction), regime=_text(regime),
             cost_bucket=_text(cost_bucket),
             parameter_set_id=parameter_set_id,
+            resolved_config_hash=resolved_config_hash,
         )
 
 

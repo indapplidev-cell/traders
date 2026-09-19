@@ -212,7 +212,7 @@ def _sum_decimals(*values: object) -> str | None:
 
 def _rr_subreason(diagnostic: Mapping[str, Any], minimum_rr: object) -> str:
     """Return one stable, non-UI RR rejection bucket from persisted inputs."""
-    if diagnostic.get("expectancy_gate_reason") == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE":
+    if "INSUFFICIENT_SAMPLE" in str(diagnostic.get("expectancy_gate_reason") or ""):
         return "INSUFFICIENT_PROBABILITY"
     net_rr = diagnostic.get("net_rr")
     dynamic = diagnostic.get("dynamic_required_net_rr")
@@ -528,6 +528,8 @@ def _downstream_trace_facts(
             or diagnostic.get("expectancy_gate_reason") in {
                 "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
                 "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+                "EMPIRICAL_SUFFICIENT_NEGATIVE_EV",
+                "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE",
             }
             or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
         )
@@ -587,6 +589,8 @@ def _downstream_trace_facts(
         or diagnostic.get("expectancy_gate_reason") in {
             "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
             "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+            "EMPIRICAL_SUFFICIENT_NEGATIVE_EV",
+            "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE",
         }
         or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
     )
@@ -827,9 +831,10 @@ def _downstream_trace_facts(
         },
         "probability_eta_to_authority_hours": None,
         "probability_authority_reason_code": (
-            "INSUFFICIENT_PROBABILITY_BUCKET_AND_PARENT"
-            if diagnostic.get("expectancy_gate_reason")
-            == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE" else None
+            diagnostic.get("paper_bootstrap_reason")
+            if "INSUFFICIENT_SAMPLE" in str(
+                diagnostic.get("expectancy_gate_reason") or ""
+            ) else None
         ),
         "probability_source": diagnostic.get("probability_estimator_version"),
         "candidate_net_rr": diagnostic.get("candidate_net_rr"),
@@ -849,6 +854,18 @@ def _downstream_trace_facts(
         ),
         "ev_reserve": diagnostic.get("ev_reserve"),
         "rr_reserve": diagnostic.get("ev_reserve"),
+        "admission_mode": diagnostic.get("admission_mode"),
+        "empirical_authority_status": diagnostic.get("empirical_authority_status"),
+        "empirical_evidence_status": diagnostic.get("empirical_evidence_status"),
+        "empirical_sample_count": diagnostic.get("empirical_sample_count"),
+        "empirical_required_sample": diagnostic.get("empirical_required_sample"),
+        "empirical_bucket_key": diagnostic.get("empirical_bucket"),
+        "empirical_parent_bucket_key": diagnostic.get("empirical_parent_bucket_key"),
+        "empirical_ev_net_bps": diagnostic.get("empirical_ev_net_bps"),
+        "rr_empirical_status": diagnostic.get("rr_empirical_status"),
+        "paper_bootstrap_eligible": diagnostic.get("paper_bootstrap_eligible"),
+        "paper_bootstrap_reason": diagnostic.get("paper_bootstrap_reason"),
+        "bootstrap_observation_ingested": diagnostic.get("bootstrap_observation_ingested"),
         "causal_opportunity_id": _first_present(
             context.get("causal_opportunity_id"), diagnostic.get("causal_opportunity_id"),
             diagnostic.get("opportunity_id"),
@@ -955,6 +972,12 @@ def _downstream_trace_facts(
         "causal_opportunity_id": "STRATEGY_ADMITTED",
         "adverse_fill_reserve_bps": "NET_COST_PASS",
         "effective_total_cost_bps": "NET_COST_PASS",
+        "admission_mode": "RR_PASS",
+        "empirical_authority_status": "RR_PASS",
+        "empirical_sample_count": "RR_PASS",
+        "empirical_required_sample": "RR_PASS",
+        "paper_bootstrap_eligible": "RR_PASS",
+        "paper_bootstrap_reason": "RR_PASS",
     }
     source_keys = {
         "p_win_conservative": ("p_win_conservative", "conservative_p_win"),
@@ -969,6 +992,12 @@ def _downstream_trace_facts(
         "causal_opportunity_id": ("causal_opportunity_id", "opportunity_id"),
         "adverse_fill_reserve_bps": ("adverse_fill_reserve_bps",),
         "effective_total_cost_bps": ("effective_total_cost_bps",),
+        "admission_mode": ("admission_mode",),
+        "empirical_authority_status": ("empirical_authority_status",),
+        "empirical_sample_count": ("empirical_sample_count",),
+        "empirical_required_sample": ("empirical_required_sample",),
+        "paper_bootstrap_eligible": ("paper_bootstrap_eligible",),
+        "paper_bootstrap_reason": ("paper_bootstrap_reason",),
     }
     insufficient_probability = "INSUFFICIENT" in str(
         diagnostic.get("expectancy_gate_reason") or ""

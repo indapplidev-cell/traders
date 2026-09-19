@@ -32,7 +32,7 @@ def test_negative_conservative_ev_never_passes_even_with_old_static_floor():
     )
     assert result.expected_ev_r < 0
     assert not result.admitted
-    assert result.reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
+    assert result.reason == "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
 
 
 def test_ev_and_reserve_thresholds_are_independent_gates():

@@ -10,7 +10,13 @@ from app.engine_paper.scalping_statistics import PaperOutcome, hierarchy_from_ou
 from app.config.trade_parameters import TRADE_PARAMETERS
 
 
-def _outcomes(count: int, wins: int):
+def _outcomes(
+    count: int,
+    wins: int,
+    *,
+    average_win_net_bps: float,
+    average_loss_net_bps: float,
+):
     return tuple(PaperOutcome(
         symbol="BTCUSDT" if index < 3 else "ETHUSDT",
         setup_type="SCALP_BREAKOUT",
@@ -18,12 +24,23 @@ def _outcomes(count: int, wins: int):
         regime="UP",
         cost_bucket="LOW",
         won=index < wins,
+        net_return_bps=(
+            average_win_net_bps if index < wins else -average_loss_net_bps
+        ),
     ) for index in range(count))
 
 
 def test_integrated_probability_ev_and_fail_closed_scenarios(natural_e2e_sessions):
     hierarchy = hierarchy_from_outcomes(
-        _outcomes(30, 24), symbol="ADAUSDT", setup_type="SCALP_BREAKOUT",
+        _outcomes(
+            30, 24, average_win_net_bps=80, average_loss_net_bps=40,
+        ), symbol="ADAUSDT", setup_type="SCALP_BREAKOUT",
+        direction="BULLISH", regime="UP", cost_bucket="LOW",
+    )
+    negative_hierarchy = hierarchy_from_outcomes(
+        _outcomes(
+            30, 6, average_win_net_bps=20, average_loss_net_bps=80,
+        ), symbol="ADAUSDT", setup_type="SCALP_BREAKOUT",
         direction="BULLISH", regime="UP", cost_bucket="LOW",
     )
     positive = evaluate_expectancy(
@@ -31,8 +48,8 @@ def test_integrated_probability_ev_and_fail_closed_scenarios(natural_e2e_session
         parent_buckets=hierarchy.parents, minimum_samples=20,
     )
     negative = evaluate_expectancy(
-        net_win_bps=20, net_loss_bps=80, bucket=hierarchy.exact,
-        parent_buckets=hierarchy.parents, minimum_samples=20,
+        net_win_bps=20, net_loss_bps=80, bucket=negative_hierarchy.exact,
+        parent_buckets=negative_hierarchy.parents, minimum_samples=20,
     )
     absent = evaluate_expectancy(
         net_win_bps=120, net_loss_bps=50, bucket=None,
@@ -44,7 +61,7 @@ def test_integrated_probability_ev_and_fail_closed_scenarios(natural_e2e_session
     assert positive.dynamic_required_net_rr is not None
     assert negative.admitted is False
     assert absent.admitted is False
-    assert absent.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
+    assert absent.reason == "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
 
 
 def test_postgres_causal_duplicate_restart_and_structural_reset(natural_e2e_sessions):
