@@ -3,13 +3,71 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2ad548b1e1b2f01a09200195855a28704c4f4764
+STATUS_AS_OF_COMMIT = 55d2614c2f79c5c9f770585163cb4ecb65505714
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-19T11:38:55Z
-RECONCILED_BY_TASK = TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01
-FILES_CHANGED = app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_statistics.py; app/engine_setup/setup_detector.py; app/server_api/funnel_export.py; scripts/engine_orchestrator_online_pipeline.py; focused tests; docs/audits/TRADERS_FUNNEL_TO_TRADE_SCALPING_FULL_DIAGNOSTIC_AND_CORRECTION_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-19T16:26:05Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_PAPER_BOOTSTRAP_DEADLOCK_REMEDIATION_01
+FILES_CHANGED = app/engine_paper/final_approval_materializer.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_statistics.py; app/server_api/funnel_export.py; app/server_api/trading_funnel.py; focused tests; docs/audits/TRADERS_SCALPING_PAPER_BOOTSTRAP_DEADLOCK_REMEDIATION_01_FINAL.md; online_trader.md.
+
+## Scalping PAPER bootstrap deadlock remediation 01
+
+```text
+TASK = TRADERS_SCALPING_PAPER_BOOTSTRAP_DEADLOCK_REMEDIATION_01
+FINAL_STATUS = FAIL_CLOSED
+FINAL_VERDICT = ARCHITECTURE_AND_NATURAL_OPEN_PATH_PASS; CLOSED_INGESTION_RUNTIME_PROOF_NOT_OBSERVED_BY_USER_DIRECTION
+PROJECT_STATE_COMMIT = 55d2614c2f79c5c9f770585163cb4ecb65505714
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 55d2614c2f79c5c9f770585163cb4ecb65505714
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+RUNTIME_REVISION = 55d2614c2f79c5c9f770585163cb4ecb65505714
+ACTIVE_PROFILE = trade-5m-v2
+ACTIVE_PARAMETER_SET = scalping-v2-set-2
+ACTIVE_CONFIG_HASH = 9d3f604ee4a3b0793bb40ba3cef9826a36e00d945c44e60811cdeede6b1ee7ce
+ACTIVE_CONFIG_EPOCH = 49a943204a0be29b3ba7d6fa05d2417f6f53653600c2e286b32cf24090f427cc
+BOOTSTRAP_DEADLOCK_REPRODUCED = PASS; SAMPLE_0_PREVIOUSLY_BLOCKED_PLAN_AND_ALL_DOWNSTREAM_EVIDENCE
+BOOTSTRAP_ARCHITECTURE_IMPLEMENTED = PASS; EXPLICIT_EMPIRICAL_OR_PAPER_BOOTSTRAP_OR_REJECT
+NORMAL_EMPIRICAL_AUTHORITY = CONSERVATIVE_PROBABILITY_TIMES_OBSERVED_AVG_WIN_NET_MINUS_LOSS_PROBABILITY_TIMES_OBSERVED_AVG_LOSS_NET
+BOOTSTRAP_SEMANTICS = INSUFFICIENT_SAMPLE; EV_NULL; RR_EMPIRICAL_NOT_ESTABLISHED; PAPER_ONLY
+AUTHORITATIVE_OUTCOMES = UNIQUE_NATURAL_CLOSED_REALIZED_PAPER_TRADE_5M_V2_CURRENT_PARAMETER_SET_AND_CONFIG_HASH
+CONTAMINATION_EXCLUSIONS = V1; RESEARCH; REPLAY; PROSPECTIVE; COUNTERFACTUAL; SYNTHETIC; DUPLICATE; OPEN; INCOMPATIBLE_CONFIG
+NO_YAML_WEAKENING = PASS
+BINANCE_FEE_AUTHORITY = BINANCE_ACCOUNT_COMMISSION_SNAPSHOT; STATIC_FEE_BOOTSTRAP_FAILS_CLOSED
+BOOTSTRAP_DISABLED_AT_SUFFICIENT_SAMPLE = PASS_TEST
+NEGATIVE_EMPIRICAL_EV_CANNOT_FALL_BACK_TO_BOOTSTRAP = PASS_TEST
+NATURAL_BOOTSTRAP_BOUNDARY = 1789834800000
+NATURAL_BOOTSTRAP_SYMBOL = SOLUSDT
+NATURAL_BOOTSTRAP_SETUP = SCALP_MOMENTUM_CONTINUATION; BEARISH
+NATURAL_BOOTSTRAP_ADMISSION_MODE = PAPER_BOOTSTRAP; SAMPLE_0_OF_20; EMPIRICAL_EV_NULL
+NATURAL_PLAN_ID = paper:SOLUSDT:5m:1789834800000:risk:SOLUSDT:5m:1789834800000:strategy:v2:e867fba9760d12268c142fd3834a3d1e06bba9b9461dcb746e7e7d15b863a974:0b23e2c7d73e7f4c:82167e4cca88591e
+NATURAL_COMMAND_ID = paper:ingestion-command:v1:67bc4edbfc598596e6881054f5ae68a2e2e27c6620cccba4baf7ad2ba07c4747
+NATURAL_POSITION_ID = paper:continuous:position:48968843e65aa640cd0523a5f3562904019eacae86eec7a199afc0c6484d8ba6
+NATURAL_POSITION_STATUS_AT_RECONCILIATION = OPEN
+NATURAL_CLOSE_AND_SAMPLE_INCREMENT = NOT_OBSERVED; USER_DIRECTED_NO_WAIT_FOR_CLOSE
+TESTS = POSTGRES_E2E_18_PASS; FOCUSED_43_PASS_1_SKIP; EXPORT_AND_15M_23_PASS; EXPLICIT_15M_AND_V1_REMOVAL_11_PASS
+ALEMBIC = LOCAL_HEAD_AND_PRODUCTION_CURRENT_0031_scalping_parameter_sets
+BUILD = PASS
+DEPLOY = ORCHESTRATOR_5M_AND_READONLY_ONLY; REVISION_MATCH
+READONLY_HEALTH = OK_READY_OPERATIONAL
+PAPER_READINESS = READY_CONTINUOUS_ARMED_CURRENT_MUTATION_READY
+LIVE_STATE = DISABLED; live_allowed=false; LIVE_DOMAIN_BLOCKED
+REAL_BINANCE_ORDER_CALLS = 0
+FIFTEEN_MINUTE_PROFILE_CHANGED = false
+CURRENT_STAGE = NATURAL_BOOTSTRAP_POSITION_LIFECYCLE_CONTINUES_UNATTENDED
+CURRENT_BLOCKER = CLOSED_REALIZED_OBSERVATION_AND_PRODUCTION_SAMPLE_INCREMENT_NOT_OBSERVED_BY_USER_DIRECTION
+NEXT_ACTION = DO_NOT_FORCE_CLOSE_OR_MUTATE; CLOSED_ONLY_STATISTICS_WILL_INCLUDE_THE_POSITION_AFTER_NATURAL_LIFECYCLE_CLOSE
+```
+
+The cold-start cycle is broken without inventing probability or payoff:
+insufficient compatible evidence can admit only a naturally occurring,
+otherwise-valid PAPER candidate. Once any compatible hierarchy bucket reaches
+20 samples, bootstrap is unavailable and the observed conservative net
+expectancy gate is mandatory. Production naturally produced one SOLUSDT plan,
+one command and one OPEN PAPER position through that path. Waiting for its
+natural close stopped on explicit user direction, so this snapshot does not
+claim the final CLOSED/ingestion/sample-increment acceptance block. Full
+evidence is recorded in
+`docs/audits/TRADERS_SCALPING_PAPER_BOOTSTRAP_DEADLOCK_REMEDIATION_01_FINAL.md`.
 
 ## Scalping funnel-to-trade full diagnostic and correction 01
 
@@ -285,11 +343,11 @@ LIVE disabled; no client translation source was edited manually.
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_PAPER_READY_DATABASE_READY_DURABILITY_READY_WALFALSE_PITRFALSE_LIVEFALSE_AT_RECONCILIATION
-SOURCE_API_STATUS = READONLYd2dbc70_OPERATORd2dbc70_ORCHESTRATORd2dbc70_AT_RECONCILIATION
-CURRENT_STAGE = POST_RECOVERY_NORMAL_PAPER_OPERATION_AND_EXISTING_CONFIG_EPOCH_SOAK
-CURRENT_BLOCKER = NONE_FOR_WAL_PITR_SELF_HEALING; 72H_CONFIG_EPOCH_SOAK_NOT_YET_ACCEPTED
-CURRENT_PREREQUISITE = PRESERVE_SUPERVISOR_AUTOSTART_AND_CONTINUE_NATURAL_PAPER_OBSERVATION
-SECONDARY_BLOCKER = DESKTOP_FUNNEL_EXPORT_RESPONSE_EXCEEDS_2000000_BYTES_AT_DEFAULT_200_ROWS; LEGACY_TRADE5MV1_EXPORT_SUITE_6_FAILURES_REMAIN_SEPARATE
+SOURCE_API_STATUS = READONLY55d2614_OPERATORd2dbc70_ORCHESTRATOR55d2614_AT_RECONCILIATION
+CURRENT_STAGE = NATURAL_BOOTSTRAP_POSITION_LIFECYCLE_CONTINUES_UNATTENDED
+CURRENT_BLOCKER = CLOSED_REALIZED_OBSERVATION_AND_PRODUCTION_SAMPLE_INCREMENT_NOT_OBSERVED_BY_USER_DIRECTION; 72H_CONFIG_EPOCH_SOAK_NOT_YET_ACCEPTED
+CURRENT_PREREQUISITE = KEEP_LIVE_DISABLED_AND_DO_NOT_FORCE_CLOSE_OR_INJECT_EMPIRICAL_AUTHORITY
+SECONDARY_BLOCKER = PREEXISTING_UNCOMMITTED_TRADING_CONFIG_ROUTE_INVENTORY_CHANGES_REMAIN_OUTSIDE_THIS_TASK
 CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT_POLICY_AND_CONTROLLED_ROLLOUT
 BACKGROUND_TIMED_GATE = NEW_CONFIG_EPOCH_2026_09_13T19_30_41_NO_72H_SOAK_STARTED_OR_ACCEPTED; PRIOR_EPOCH_SOAK_NOT_INHERITED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
@@ -8200,7 +8258,7 @@ LIVE.
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy and production-accepted | Natural DOGEUSDT and LINKUSDT v2 positions are durably visible with exact command/position identities; both closed naturally and reconciliation scans two rows as HEALTHY |
 | PAPER Operator Control API | Healthy named-set consumer; mandatory Stop/Target and SHADOW lifecycle preserved | Source `c5176c0...`, image `sha256:cdf4916d...`, schema 0031, zero restarts at acceptance; PAPER worker enabled, LIVE false. No forced command or trade |
-| Continuous correlation/readiness | Natural continuous cycle active; persisted exit supervision repaired | Generation 12 remains `CONTINUOUS_ARMED`; 53 positions are CLOSED and zero are OPEN. The defect-affected ETHUSDT position was closed once through the authorized recovery lifecycle; accounting and reconciliation are HEALTHY |
+| Continuous correlation/readiness | Natural continuous cycle active; PAPER bootstrap admission deployed | Generation 12 remains `CONTINUOUS_ARMED`; 53 historical positions are CLOSED and one natural SOLUSDT `PAPER_BOOTSTRAP` position was OPEN at reconciliation. Its close was not awaited by user direction; accounting and reconciliation remained HEALTHY |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED`; this task made zero real Binance order API calls |
 
@@ -8293,7 +8351,9 @@ The historical 5m SHADOW and v1 records remain preserved as readonly provenance,
 but neither is an active source of new Scalping decisions. Scalping v2 is the
 only active 5m `PRODUCTION_SEARCH` identity. Continuous PAPER generation 12
 owns new v2 execution with durable UTC budgets and a global one-position cap.
-At this snapshot it has 53 CLOSED positions and zero OPEN positions. The
+Before this task it had 53 CLOSED positions and zero OPEN positions. At this
+reconciliation it additionally has one naturally opened SOLUSDT
+`PAPER_BOOTSTRAP` position; its close was not awaited by user direction. The
 defect-affected ETHUSDT SHORT was closed once through the canonical authorized
 recovery lifecycle at the current causal fill price; it was not backdated or
 mutated directly in PostgreSQL. Mandatory Stop/Target supervision now
