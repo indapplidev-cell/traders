@@ -74,6 +74,27 @@ def test_v2_micro_setup_path_is_isolated_from_15m():
     assert fifteen._scalping_v2_micro_setup(legacy, context) == legacy
 
 
+def test_v2_micro_setup_does_not_promote_unknown_no_impulse_indicator_fallback():
+    context = SetupContext(
+        regime="UNKNOWN", confidence=0.25, action=None,
+        impulse_phase="NO_IMPULSE", entry_quality="NOT_EVALUATED",
+        analysis_context={
+            "scalping": {
+                "market_regime": "UNKNOWN", "base_regime": "UNKNOWN",
+                "entry_evidence_strength": "NOT_EVALUATED",
+                "volatility_state": {"recent_to_baseline_range_ratio": 1.1},
+            },
+            "technical_indicators": {"bullish_votes": 4, "bearish_votes": 1},
+            "quality_basis": {"impulse_context": {"impulse_move_pct": 0.5}},
+        },
+    )
+    legacy = evaluate_setup_rules(context)
+    promoted = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))._scalping_v2_micro_setup(
+        legacy, context,
+    )
+    assert promoted == legacy
+
+
 def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():
     positive = evaluate_expectancy(
         net_win_bps=60, net_loss_bps=40,

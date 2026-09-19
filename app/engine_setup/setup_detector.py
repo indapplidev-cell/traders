@@ -243,16 +243,16 @@ class SetupDetector:
                 "recent_to_baseline_range_ratio"
             )) or 0.0
         )
-        indicator_momentum = (
-            direction is not None
-            and impulse_move_pct >= 0.25
-            and volatility_ratio >= 0.9
-        )
+        # Indicator votes may help choose direction, but must not manufacture a
+        # momentum setup while the authoritative regime/impulse state remains
+        # UNKNOWN/NO_IMPULSE.  That fallback previously collapsed most natural
+        # v2 setups into SCALP_MOMENTUM_CONTINUATION.
         momentum = regime == "EXPANSION" or context.impulse_phase in {
             "IMPULSE_EXTENSION", "CONTROLLED_PULLBACK", "CONTROLLED_PULLBACK_CONTINUATION",
-        } or indicator_momentum
+        }
         entry_evidence = evidence in {"STRONG", "NORMAL"} or (
-            evidence == "NOT_EVALUATED" and indicator_momentum
+            evidence == "NOT_EVALUATED" and momentum
+            and impulse_move_pct >= 0.25 and volatility_ratio >= 0.9
         )
         if (
             result.status != SetupStatus.SETUP_CANDIDATE.value
