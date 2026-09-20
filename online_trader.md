@@ -3,13 +3,73 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 54e7bad382c663d433f2989c12e5efd3db6a24a2
+STATUS_AS_OF_COMMIT = d96329858673f4ec10cc38953292ffe3e5d803ee
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T12:35:37Z
-RECONCILED_BY_TASK = TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01
-FILES_CHANGED = Dockerfile; app/engine_paper/empirical_regime.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/scalping_statistics.py; app/engine_risk/risk_policy.py; app/engine_setup/causal_planning_context.py; app/engine_strategy/strategy_context.py; app/operator_control/continuation_worker.py; app/operator_control/production_executor.py; app/server_api/funnel_export.py; app/server_api/funnel_state.py; app/server_api/trading_funnel.py; docker-compose.yml; ops/production/readonly-api/compose.yaml; scripts/engine_orchestrator_online_pipeline.py; tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py; tests/operator_control_production_deployment/test_eligible_approval_continuation.py; tests/server_api/test_funnel_export.py; tests/server_api/test_funnel_lifecycle_traceability.py; docs/audits/TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T14:38:00Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01
+FILES_CHANGED = alembic/versions/0034_scalping_universe_v3.py; app/db/paper_models.py; app/engine_market_data/binance_public_rest.py; app/engine_market_data/continuous_sync_cli.py; app/engine_paper/first_canary_correlation.py; app/engine_paper/production_approval.py; app/instrument_constraints/registry.py; app/operator_control/continuous_activation.py; app/operator_control/production_executor.py; app/operator_control/service.py; app/server_api/repositories/records.py; app/server_api/repositories/sqlalchemy_read.py; app/server_api/schema_compatibility.py; app/server_api/schemas/models.py; app/server_api/schemas/paper.py; app/server_api/services/query_service.py; app/server_api/trading_funnel.py; app/trading_universe/__init__.py; app/trading_universe/activation.py; app/trading_universe/domain.py; app/trading_universe/symbol_preflight.py; scripts/engine_orchestrator_online_pipeline.py; scripts/scalping_prospective_collector.py; traders_ml/parameter_sweep/universe.py; focused tests; docs/audits/TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01_FINAL.md; online_trader.md.
+
+## Scalping twenty-symbol PAPER universe activation 01
+
+```text
+TASK = TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = TWENTY_SYMBOL_TRADE_5M_V2_PAPER_UNIVERSE_IMPLEMENTED_TESTED_DEPLOYED_AND_RUNTIME_VERIFIED_WITHOUT_TRADING_POLICY_CHANGE
+PROJECT_STATE_COMMIT = d96329858673f4ec10cc38953292ffe3e5d803ee
+IMPLEMENTATION_RUNTIME_COMMIT = d93d3a55e530f134f623aab8d8238b293b7770d8
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = c6921b87aa3cebc0d6e6bbe8e4d332bc7f1178ad
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_LOCAL_AHEAD_4; DOCUMENTATION_RECONCILIATION_PENDING
+ACTIVE_PROFILE = trade-5m-v2
+MODE = PAPER
+LIVE_STATE = DISABLED; live_allowed=false
+REAL_BINANCE_ORDER_CALLS = 0
+AUTHORITATIVE_UNIVERSE = trading-universe-v3; 20_CONFIGURED; 20_ACTIVE; 0_DISABLED; 0_DUPLICATES
+ORIGINAL_10_PRESERVED = PASS
+NEW_10 = ZECUSDT,NEARUSDT,UNIUSDT,ENAUSDT,XLMUSDT,TRXUSDT,WLDUSDT,LTCUSDT,FETUSDT,FILUSDT
+BINANCE_PREFLIGHT = PASS_20_OF_20; SPOT_USDT_TRADING_FILTER_BOOK_1M_5M_FRESH_GAPLESS_COMMISSION
+COMMISSION = BINANCE_ACCOUNT_COMMISSION_SNAPSHOT; REAL_ACCOUNT_DATA_TRUE; SYMBOLS_20; NO_STATIC_OR_SYNTHETIC_FALLBACK
+MARKET_DATA = OK_20_SYMBOLS; ORCHESTRATOR_OK_20_SYMBOLS; COLLECTOR_RUNNING; RESTARTS_0; OOM_FALSE
+EMPIRICAL = NEW_SYMBOL_NATURAL_CLOSED_SAMPLE_0; NOT_ESTABLISHED; SYMBOL_ISOLATED; NO_SYNTHETIC_HISTORY
+SELECTOR_POLICY_CHANGED = NO
+MAX_OPEN_CHANGED = NO; max_open_positions=1
+MAX_NEW_COMMANDS_CHANGED = NO; max_new_commands=1
+PORTFOLIO_CONCURRENCY_POLICY_CHANGED = NO
+STRATEGY_CHANGED = NO
+TRADING_THRESHOLDS_CHANGED = NO
+PARAMETER_TUNING = NO
+BOOTSTRAP_CHANGED = NO
+EMPIRICAL_POLICY_CHANGED = NO
+15M_CHANGED = NO; LEGACY_CONTAINER_EXITED_RESTART_NO
+V1_USED = NO
+YAML_CHANGED = NO
+TESTS = CORE_TASK_2979_PASS_1_DESELECTED; FINAL_CHANGED_SCOPE_2898_PASS_5_SKIP_WITH_8_DISCLOSED_STALE_TESTS; FINAL_V3_37_PASS_1_DESELECTED; EMPIRICAL_COST_SELECTOR_15M_47_PASS_1_DESELECTED; COMPILE_PASS
+TEST_DISCLOSURE = SEVEN_STALE_REMOVED_TRADE_5M_V1_EXPECTATIONS_AND_ONE_OBSOLETE_ALEMBIC_PREDECESSOR_EXPECTATION; UNRELATED_USER_WORKTREE_CHANGES_PRESERVED
+EXPORT_LOAD = PASS; 48_BOUNDARIES_X_20_SYMBOLS_960_ROWS_WITH_IDENTITY_AND_LIFECYCLE_PRESERVED
+ALEMBIC = PRODUCTION_0034_scalping_universe_v3
+BUILD = PASS; MARKET_DATA_ORCHESTRATOR_COLLECTOR_READONLY_OPERATOR_CONTROL
+DEPLOY = PASS
+RUNTIME_REVISION = d93d3a55e530f134f623aab8d8238b293b7770d8
+READONLY_HEALTH = PASS; HEALTHY
+OPERATOR_CONTROL_HEALTH = PASS; HEALTHY; CONTINUOUS_ARMED_GENERATION_15_SCOPE_20
+PAPER_READINESS = PASS; NO_BLOCKERS; SCHEMA_MARKET_APPROVAL_DURABILITY_MUTATION_PITR_WAL_READY
+WAITED_FOR_MARKET = NO
+WAITED_FOR_4H_REPORT = NO
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_TWENTY_SYMBOL_TRADE_5M_V2_UNIVERSE
+CURRENT_BLOCKER = NONE_FOR_TWENTY_SYMBOL_TECHNICAL_ACTIVATION; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = CONTINUE_NORMAL_PAPER_OPERATION_AND_KEEP_STRATEGY_THRESHOLDS_LIMITS_AND_LIVE_POLICY_UNCHANGED
+```
+
+The exact configured and active universe is now the original ten plus ZEC,
+NEAR, UNI, ENA, XLM, TRX, WLD, LTC, FET, and FIL USDT pairs. The existing
+quality bar and execution path are unchanged. Startup refuses unsafe symbols
+individually with canonical reasons, uses live Binance filters and real-account
+commission authority, persists per-symbol 1m/5m freshness, and exposes the
+result through the readonly projection. Full evidence, including the preflight
+and filter table, exact universe diff, commission identity, load proof, test
+disclosure, deployment state, and logical commits is in
+`docs/audits/TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01_FINAL.md`.
 
 ## PAPER lifecycle traceability 01
 
