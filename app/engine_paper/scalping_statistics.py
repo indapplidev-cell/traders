@@ -22,9 +22,13 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineRun,
 )
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
+from app.engine_paper.empirical_regime import (
+    EMPIRICAL_REGIME_MAPPING_VERSION,
+    normalize_empirical_regime,
+)
 
 
-STATISTICS_SOURCE_VERSION = "postgres-natural-paper-closed-only-v3"
+STATISTICS_SOURCE_VERSION = "postgres-natural-paper-closed-only-v4-regime-mapped"
 PROSPECTIVE_OUTCOME_SEMANTICS = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 
 
@@ -172,6 +176,7 @@ def hierarchy_from_outcomes(
     resolved_config_hash: str | None = None,
 ) -> StatisticalHierarchy:
     """Build the configured narrow-to-global hierarchy from real outcomes."""
+    lookup_regime = normalize_empirical_regime(regime).normalized_regime
     rows = tuple(
         row for row in outcomes
         if (parameter_set_id is None or row.parameter_set_id == parameter_set_id)
@@ -182,11 +187,14 @@ def hierarchy_from_outcomes(
     )
     dimensions = (
         ("exact", lambda row: (
-            row.symbol, row.setup_type, row.direction, row.regime, row.cost_bucket
-        ) == (symbol, setup_type, direction, regime, cost_bucket)),
+            row.symbol, row.setup_type, row.direction,
+            normalize_empirical_regime(row.regime).normalized_regime,
+            row.cost_bucket
+        ) == (symbol, setup_type, direction, lookup_regime, cost_bucket)),
         ("setup_direction_regime", lambda row: (
-            row.setup_type, row.direction, row.regime
-        ) == (setup_type, direction, regime)),
+            row.setup_type, row.direction,
+            normalize_empirical_regime(row.regime).normalized_regime
+        ) == (setup_type, direction, lookup_regime)),
         ("setup_direction", lambda row: (
             row.setup_type, row.direction
         ) == (setup_type, direction)),
@@ -212,7 +220,8 @@ def hierarchy_from_outcomes(
             wins=sum(row.won for row in selected),
             level=level,
             bucket_key=(
-                f"{level}|{symbol}|{setup_type}|{direction}|{regime}|{cost_bucket}"
+                f"{EMPIRICAL_REGIME_MAPPING_VERSION}|{level}|{symbol}|{setup_type}|"
+                f"{direction}|{lookup_regime}|{cost_bucket}"
             ),
             evidence_source=(
                 evidence_sources[0] if len(evidence_sources) == 1

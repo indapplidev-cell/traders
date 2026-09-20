@@ -198,6 +198,8 @@ def test_export_always_emits_rr_rejection_diagnostic_contract():
         "empirical_sample_count", "empirical_required_sample",
         "empirical_ev_net_bps", "paper_bootstrap_eligible",
         "paper_bootstrap_reason",
+        "empirical_regime_source", "empirical_regime_normalized",
+        "empirical_regime_mapping_reason", "empirical_regime_mapping_version",
     }
 
 

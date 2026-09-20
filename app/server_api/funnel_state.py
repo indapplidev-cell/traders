@@ -44,11 +44,16 @@ def canonical_stages(trace: Mapping[str, str], reasons: Mapping[str, str | None]
 def lifecycle_stages(outcome):
     # Persisted asynchronous lifecycle facts are a separate typed phase,
     # not additional synchronous decision gates or inferred approvals.
-    return tuple(StageResult(stage, bool(outcome.get(key)),
-                             'PASS' if outcome.get(key) else 'NOT_REACHED',
-                             None, None, False, 'LIFECYCLE')
-                 for stage, key in (('PAPER_COMMAND', 'command_id'),
-                                    ('POSITION', 'position_id'), ('EXIT', 'closed_at_ms')))
+    facts = (
+        ('PAPER_COMMAND', bool(outcome.get('command_id'))),
+        ('POSITION', bool(outcome.get('position_id'))),
+        ('EXIT', outcome.get('exit_status') == 'REACHED'),
+    )
+    return tuple(
+        StageResult(stage, reached, 'PASS' if reached else 'NOT_REACHED',
+                    None, None, False, 'LIFECYCLE')
+        for stage, reached in facts
+    )
 
 
 def serialize_stages(stages):

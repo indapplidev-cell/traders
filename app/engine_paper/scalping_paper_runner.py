@@ -30,6 +30,7 @@ from app.engine_risk.risk_decision import RiskDecision
 from app.engine_risk.strategy_type_contract import SCALPING_RISK_STRATEGY_TYPES
 from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
 from app.engine_paper.scalping_statistics import StatisticalHierarchy
+from app.engine_paper.empirical_regime import normalize_empirical_regime
 from app.engine_paper.binance_account_commission import (
     BinanceAccountCommissionManager, PROVIDER_VERSION,
 )
@@ -477,6 +478,13 @@ class ScalpingPaperRunner(PaperRunner):
             config = self._statistics_config(candidate, context, costs)
             diagnostic = evaluate_scalping_shadow(candidate, costs, config)
         diagnostic_payload = diagnostic.to_dict()
+        regime_mapping = normalize_empirical_regime(context.regime)
+        diagnostic_payload.update({
+            "empirical_regime_source": regime_mapping.source_regime,
+            "empirical_regime_normalized": regime_mapping.normalized_regime,
+            "empirical_regime_mapping_reason": regime_mapping.reason,
+            "empirical_regime_mapping_version": regime_mapping.version,
+        })
         paper_context = {
             "plan_policy_version": self.config.plan_policy_version,
             "causal_primitives": context.to_dict(),
@@ -637,11 +645,12 @@ class ScalpingPaperRunner(PaperRunner):
             + float(costs.depth_impact_bps or 0)
         )
         cost_bucket = "LOW" if total <= 20 else "MEDIUM" if total <= 40 else "HIGH"
+        regime_mapping = normalize_empirical_regime(context.regime)
         hierarchy = self.statistics_source.resolve(
             symbol=candidate.symbol,
             setup_type=str(getattr(context, "setup_type", None) or candidate.setup_identity or "UNKNOWN"),
             direction=candidate.direction,
-            regime=str(getattr(context, "regime", None) or "UNKNOWN"),
+            regime=regime_mapping.normalized_regime,
             cost_bucket=cost_bucket,
             parameter_set_id=self.runtime_parameters.parameter_set_id,
             resolved_config_hash=self.runtime_parameters.resolved_config_hash,

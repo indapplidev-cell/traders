@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import sys
 from pathlib import Path
 
@@ -127,6 +129,10 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     profile = resolve_trade_profile(args.trade_profile)
+    if profile.trade_profile_id == "trade-5m-v2" and args.continuous:
+        source_identity = os.environ.get("TRADERS_RUNTIME_SOURCE_IDENTITY", "")
+        if re.fullmatch(r"[0-9a-f]{40}", source_identity) is None:
+            raise SystemExit("TRADERS_RUNTIME_SOURCE_IDENTITY must be an immutable 40-hex revision")
     primary_timeframe = args.primary_timeframe or profile.trigger_timeframe
     required_timeframes = args.required_timeframes or (
         tuple(TRADE_5M_CONTEXT_MINIMUM_WINDOWS)

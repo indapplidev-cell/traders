@@ -39,6 +39,7 @@ class StrategyContext:
         diagnostics = candidate.diagnostics
         quality = candidate.quality_diagnostics
         source_context = dict(candidate.context or {})
+        source_context["regime"] = candidate.regime or candidate.source_regime or "UNKNOWN"
         scalping = source_context.get("scalping") or {}
         return cls(
             setup_status=candidate.status, setup_type=candidate.setup_type,

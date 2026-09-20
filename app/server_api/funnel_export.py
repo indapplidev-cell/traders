@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import io
 import json
+import os
 import re
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
@@ -379,6 +380,10 @@ def build_export_record(
         "empirical_ev_net_bps": diagnostic.get("empirical_ev_net_bps"),
         "paper_bootstrap_eligible": diagnostic.get("paper_bootstrap_eligible"),
         "paper_bootstrap_reason": diagnostic.get("paper_bootstrap_reason"),
+        "empirical_regime_source": diagnostic.get("empirical_regime_source"),
+        "empirical_regime_normalized": diagnostic.get("empirical_regime_normalized"),
+        "empirical_regime_mapping_reason": diagnostic.get("empirical_regime_mapping_reason"),
+        "empirical_regime_mapping_version": diagnostic.get("empirical_regime_mapping_version"),
     }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
@@ -418,7 +423,15 @@ def build_export_record(
         "empirical_parent_bucket_key", "empirical_ev_net_bps",
         "rr_empirical_status", "paper_bootstrap_eligible",
         "paper_bootstrap_reason", "bootstrap_observation_ingested",
+        "empirical_regime_source", "empirical_regime_normalized",
+        "empirical_regime_mapping_reason", "empirical_regime_mapping_version",
     )
+    configuration = effective_configuration(result)
+    runtime_revision = (
+        None if not isinstance(configuration, Mapping)
+        else configuration.get("source_commit")
+    )
+    projection_revision = os.environ.get("TRADERS_READONLY_SOURCE_IDENTITY")
     return {
         "profile": run.trade_profile_id,
         "timestamp": datetime.fromtimestamp(
@@ -439,7 +452,7 @@ def build_export_record(
         "final_approval": downstream_trace["FINAL_APPROVAL"],
         "downstream_stage_trace": downstream_trace,
         "canonical_stage_trace": stage_records,
-        "effective_configuration": effective_configuration(result),
+        "effective_configuration": configuration,
         "trade_math": {
             key: _json_scalar(_downstream_detail.get(key))
             for key in math_fields
@@ -456,6 +469,14 @@ def build_export_record(
             "parameter_set_hash": runtime.parameter_set_id.rsplit("-", 1)[-1],
             "from_ms": from_ms, "to_ms": to_ms, "query_closed_until_ms": run.closed_until_ms,
             "source_run_id": run.run_id, "trigger_source": run.trigger_source,
+            "source_commit": runtime_revision,
+            "runtime_revision": runtime_revision,
+            "image_revision": runtime_revision,
+            "projection_runtime_revision": projection_revision,
+            "revision_match": (
+                None if runtime_revision is None or projection_revision is None
+                else runtime_revision == projection_revision
+            ),
         },
         "market_analysis": {
             "symbol": run.symbol, "boundary_closed_at_ms": run.closed_until_ms,
@@ -603,11 +624,51 @@ def build_export_record(
                 if paper_trace_status == "NO_PLAN"
                 else None
             ),
-            "command_id": outcome.get("command_id"), "position_id": outcome.get("position_id"),
+            "plan_terminal_state": outcome.get("plan_terminal_state"),
+            "plan_terminal_reason": outcome.get("plan_terminal_reason"),
+            "command_id": outcome.get("command_id"),
+            "command_status": outcome.get("command_status"),
+            "command_terminal_reason": outcome.get("command_terminal_reason"),
+            "position_id": outcome.get("position_id"),
+            "position_status": outcome.get("position_status"),
+            "position_open_reason": outcome.get("position_open_reason"),
+            "position_not_open_reason": outcome.get("position_not_open_reason"),
             "entry_time_utc": _json_scalar(outcome.get("entry_time_utc")), "exit_time_utc": _json_scalar(outcome.get("exit_time_utc")),
             "holding_time_seconds": outcome.get("holding_time_seconds"), "exit_reason": outcome.get("exit_reason"),
             "gross_pnl": None, "net_pnl": _json_scalar(outcome.get("net_pnl")), "fees": _json_scalar(outcome.get("fees")),
             "slippage": None, "mfe_bps": None, "mae_bps": None,
+        },
+        "exit": {
+            "reached": outcome.get("exit_status") == "REACHED",
+            "status": outcome.get("exit_status") or "NOT_REACHED",
+            "reason": outcome.get("exit_reason"),
+            "exit_decision_at": _json_scalar(outcome.get("exit_decision_at")),
+            "exit_fill_at": _json_scalar(outcome.get("exit_fill_at")),
+            "net_pnl_protection_window_active": outcome.get("net_pnl_protection_window_active"),
+            "net_pnl_protection_triggered": outcome.get("net_pnl_protection_triggered", False),
+            "net_pnl_protection_triggered_at": _json_scalar(outcome.get("net_pnl_protection_triggered_at")),
+            "net_pnl_protection_1m_boundary": outcome.get("net_pnl_protection_1m_boundary"),
+            "modeled_executable_net_pnl": _json_scalar(outcome.get("modeled_executable_net_pnl")),
+            "modeled_executable_net_pnl_quantized": _json_scalar(outcome.get("modeled_executable_net_pnl_quantized")),
+        },
+        "timestamps": {
+            "opportunity_boundary": datetime.fromtimestamp(
+                run.closed_until_ms / 1000, timezone.utc
+            ).isoformat(),
+            "snapshot_created_at": _json_scalar(None if result is None else result.created_at),
+            "snapshot_updated_at": _json_scalar(run.updated_at),
+            "plan_created_at": _json_scalar(outcome.get("plan_created_at")),
+            "command_created_at": _json_scalar(outcome.get("command_created_at")),
+            "command_updated_at": _json_scalar(outcome.get("command_updated_at")),
+            "position_opened_at": _json_scalar(outcome.get("position_opened_at")),
+            "position_updated_at": _json_scalar(outcome.get("position_updated_at")),
+            "position_closed_at": _json_scalar(outcome.get("position_closed_at")),
+            "exit_decision_at": _json_scalar(outcome.get("exit_decision_at")),
+            "exit_fill_at": _json_scalar(outcome.get("exit_fill_at")),
+            "last_lifecycle_event_at": _json_scalar(outcome.get("last_lifecycle_event_at")),
+            "projection_generated_at": datetime.fromtimestamp(
+                generated_at_ms / 1000, timezone.utc
+            ).isoformat(),
         },
         "first_rejection_stage": first_stage, "first_rejection_reason_code": first_reason,
         "analysis_evidence": list(_mapping(source.get("module_reasons")).get("analysis") or []),

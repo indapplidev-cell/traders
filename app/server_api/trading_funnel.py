@@ -37,6 +37,8 @@ from app.server_api.schema_compatibility import (
 )
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperExitDecisionRecord,
+    PaperFillRecord,
     PaperFirstCanarySessionRecord,
     PaperOrderRecord,
     PaperPlanExecutionOutcomeRecord,
@@ -1570,6 +1572,9 @@ class TradingFunnelReadRepository:
                 PaperFirstCanarySessionRecord.terminal_reason,
                 PaperFirstCanarySessionRecord.completed_at,
                 ScalpingOutcomeDiagnosticRecord,
+                PaperPositionRecord.opened_at,
+                PaperPositionRecord.updated_at,
+                PaperPositionRecord.closed_at,
             )
             .outerjoin(
                 PaperOrderRecord,
@@ -1625,8 +1630,17 @@ class TradingFunnelReadRepository:
                         & (latest_hold.c.latest_boundary == ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms),
                     )
                 ).scalars())
+                decision_rows = tuple(session.scalars(
+                    select(PaperExitDecisionRecord)
+                    .where(PaperExitDecisionRecord.position_id.in_(position_ids))
+                    .order_by(
+                        PaperExitDecisionRecord.position_id.asc(),
+                        PaperExitDecisionRecord.decided_at.desc(),
+                    )
+                ))
             else:
                 hold_rows = ()
+                decision_rows = ()
             outcome_rows = (
                 tuple(session.execute(
                     select(PaperPlanExecutionOutcomeRecord).where(
@@ -1646,6 +1660,9 @@ class TradingFunnelReadRepository:
                 "terminal_result": row[10] or row[8],
                 "canary_state": row[9],
                 "execution_observed_at": row[11],
+                "position_opened_at": row[13],
+                "position_updated_at": row[14],
+                "position_closed_at": row[15],
                 "outcome_diagnostics": (
                     {
                         "availability": "AVAILABLE",
@@ -1673,8 +1690,24 @@ class TradingFunnelReadRepository:
             for row in rows
         }
         hold_by_position = {row.position_id: row for row in hold_rows}
+        decision_by_position: dict[str, PaperExitDecisionRecord] = {}
+        for decision in decision_rows:
+            decision_by_position.setdefault(decision.position_id, decision)
         for lifecycle in values.values():
             hold = hold_by_position.get(lifecycle.get("position_id"))
+            decision = decision_by_position.get(lifecycle.get("position_id"))
+            lifecycle["exit_reason"] = (
+                None if hold is None else hold.exit_decision_reason or hold.exit_reason
+            ) or (None if decision is None else decision.cause)
+            lifecycle["exit_decision_at"] = (
+                hold.exit_decision_at
+                if hold is not None and hold.exit_decision_at is not None
+                else None if decision is None else decision.decided_at
+            )
+            lifecycle["exit_status"] = (
+                "REACHED" if lifecycle.get("position_status") == "CLOSED"
+                and lifecycle["exit_reason"] else "NOT_REACHED"
+            )
             lifecycle["hold_revalidation"] = (
                 {
                     "availability": "AVAILABLE",
@@ -1846,9 +1879,20 @@ class TradingFunnelReadRepository:
             return {}
         statement = (
             select(
-                PaperExecutionCommandRecord.pipeline_run_id,
+                PaperPlanExecutionOutcomeRecord,
+                PaperExecutionCommandRecord.created_at,
+                PaperExecutionCommandRecord.processing_status,
                 PaperExecutionCommandRecord.command_id,
+                PaperOrderRecord.state,
+                PaperOrderRecord.reason_code,
+                PaperOrderRecord.updated_at,
                 PaperPositionRecord,
+            )
+            .select_from(PaperPlanExecutionOutcomeRecord)
+            .outerjoin(
+                PaperExecutionCommandRecord,
+                PaperExecutionCommandRecord.pipeline_run_id
+                == PaperPlanExecutionOutcomeRecord.pipeline_run_id,
             )
             .outerjoin(
                 PaperOrderRecord,
@@ -1856,24 +1900,141 @@ class TradingFunnelReadRepository:
                 & (PaperOrderRecord.order_role == "ENTRY"),
             )
             .outerjoin(PaperPositionRecord, PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id)
-            .where(PaperExecutionCommandRecord.pipeline_run_id.in_(run_ids))
-            .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
+            .where(PaperPlanExecutionOutcomeRecord.pipeline_run_id.in_(run_ids))
+            .order_by(PaperPlanExecutionOutcomeRecord.pipeline_run_id.asc())
             .limit(len(run_ids))
         )
         with self._session_factory() as session:
             rows = tuple(session.execute(statement))
+            position_ids = tuple(
+                str(row[7].position_id) for row in rows if row[7] is not None
+            )
+            decisions = tuple(session.scalars(
+                select(PaperExitDecisionRecord)
+                .where(PaperExitDecisionRecord.position_id.in_(position_ids))
+                .order_by(
+                    PaperExitDecisionRecord.position_id.asc(),
+                    PaperExitDecisionRecord.decided_at.desc(),
+                )
+            )) if position_ids else ()
+            exit_fill_ids = tuple(
+                str(row[7].exit_fill_id)
+                for row in rows if row[7] is not None and row[7].exit_fill_id
+            )
+            fills = tuple(session.scalars(
+                select(PaperFillRecord).where(PaperFillRecord.fill_id.in_(exit_fill_ids))
+            )) if exit_fill_ids else ()
+            holds = tuple(session.scalars(
+                select(ScalpingPositionHoldDecisionRecord)
+                .where(ScalpingPositionHoldDecisionRecord.position_id.in_(position_ids))
+                .order_by(
+                    ScalpingPositionHoldDecisionRecord.position_id.asc(),
+                    ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms.desc(),
+                )
+            )) if position_ids else ()
+        decision_by_position: dict[str, PaperExitDecisionRecord] = {}
+        for decision in decisions:
+            decision_by_position.setdefault(decision.position_id, decision)
+        fill_by_id = {fill.fill_id: fill for fill in fills}
+        hold_by_position: dict[str, ScalpingPositionHoldDecisionRecord] = {}
+        for hold in holds:
+            hold_by_position.setdefault(hold.position_id, hold)
         outcomes: dict[str, dict[str, object]] = {}
-        for run_id, command_id, position in rows:
-            outcomes[run_id] = {
+        for row in rows:
+            plan, command_created_at, command_status, command_id = row[:4]
+            order_status, order_reason, command_updated_at, position = row[4:]
+            decision = None if position is None else decision_by_position.get(position.position_id)
+            fill = (
+                None if position is None or not position.exit_fill_id
+                else fill_by_id.get(position.exit_fill_id)
+            )
+            hold = None if position is None else hold_by_position.get(position.position_id)
+            plan_reason = plan.terminal_reason or plan.selector_reason
+            if command_id is not None:
+                plan_terminal_state = "POSITION_OPENED" if position is not None else "COMMAND_CREATED"
+                plan_terminal_reason = (
+                    "POSITION_OPENED" if position is not None else "COMMAND_CREATED"
+                )
+            else:
+                plan_terminal_state = {
+                    "EXPIRED_BEFORE_EXECUTION": "COMMAND_EXPIRED",
+                    "EXECUTION_FAILED": "COMMAND_REJECTED",
+                    "BLOCKED_BY_POLICY": "COMMAND_BLOCKED",
+                    "NOT_SELECTED": "COMMAND_BLOCKED",
+                }.get(plan.lifecycle_state, plan.lifecycle_state)
+                plan_terminal_reason = plan_reason or plan_terminal_state
+            position_not_open_reason = None
+            if command_id is not None and position is None:
+                position_not_open_reason = (
+                    order_reason or plan.terminal_reason or
+                    (f"ENTRY_ORDER_{order_status}" if order_status else "COMMAND_PENDING_EXECUTION")
+                )
+            authoritative_exit_reason = (
+                None if hold is None else hold.exit_decision_reason or hold.exit_reason
+            ) or (None if decision is None else decision.cause)
+            outcomes[plan.pipeline_run_id] = {
+                "plan_terminal_state": plan_terminal_state,
+                "plan_terminal_reason": plan_terminal_reason,
+                "plan_created_at": datetime.fromtimestamp(
+                    plan.plan_created_at_ms / 1000, timezone.utc
+                ),
+                "last_lifecycle_event_at": max(
+                    value for value in (
+                        plan.updated_at, command_updated_at,
+                        None if position is None else position.updated_at,
+                        None if decision is None else decision.decided_at,
+                        None if fill is None else fill.filled_at,
+                    ) if value is not None
+                ),
                 "command_id": command_id,
+                "command_status": command_status,
+                "command_terminal_reason": (
+                    order_reason if command_id is not None and position is None else None
+                ),
+                "command_created_at": command_created_at,
+                "command_updated_at": command_updated_at or command_created_at,
                 "position_id": None if position is None else position.position_id,
+                "position_status": None if position is None else position.state,
+                "position_open_reason": None if position is None else "ENTRY_FILL_APPLIED",
+                "position_not_open_reason": position_not_open_reason,
+                "position_opened_at": None if position is None else position.opened_at,
+                "position_updated_at": None if position is None else position.updated_at,
+                "position_closed_at": None if position is None else position.closed_at,
                 "entry_time_utc": None if position is None else position.opened_at,
                 "exit_time_utc": None if position is None else position.closed_at,
                 "holding_time_seconds": (
                     None if position is None or position.closed_at is None
                     else (position.closed_at - position.opened_at).total_seconds()
                 ),
-                "exit_reason": None if position is None else position.reason_code,
+                "exit_reason": authoritative_exit_reason,
+                "exit_status": (
+                    "REACHED" if position is not None and position.state == "CLOSED"
+                    and authoritative_exit_reason else "NOT_REACHED"
+                ),
+                "exit_decision_at": (
+                    hold.exit_decision_at
+                    if hold is not None and hold.exit_decision_at is not None
+                    else None if decision is None else decision.decided_at
+                ),
+                "exit_fill_at": None if fill is None else fill.filled_at,
+                "net_pnl_protection_window_active": (
+                    None if hold is None else hold.net_pnl_protection_window_active
+                ),
+                "net_pnl_protection_triggered": (
+                    False if hold is None else hold.net_pnl_protection_triggered
+                ),
+                "net_pnl_protection_triggered_at": (
+                    None if hold is None else hold.net_pnl_protection_triggered_at
+                ),
+                "net_pnl_protection_1m_boundary": (
+                    None if hold is None else hold.net_pnl_protection_1m_boundary
+                ),
+                "modeled_executable_net_pnl": (
+                    None if hold is None else hold.net_exit_pnl_current
+                ),
+                "modeled_executable_net_pnl_quantized": (
+                    None if hold is None else hold.net_exit_pnl_quantized
+                ),
                 "net_pnl": None if position is None else position.realized_pnl,
                 "fees": None if position is None else position.entry_fees + position.exit_fees,
             }
@@ -2106,6 +2267,24 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                         lifecycle.get("position_status")
                         or ("OPENED" if row.position_opened else "NOT_REACHED")
                     ),
+                    "position_open_reason": (
+                        "ENTRY_FILL_APPLIED" if lifecycle.get("position_id") else None
+                    ),
+                    "position_not_open_reason": (
+                        execution_terminal or lifecycle.get("terminal_result")
+                        if lifecycle.get("command_id") and not lifecycle.get("position_id")
+                        else None
+                    ),
+                    "exit": {
+                        "reached": lifecycle.get("exit_status") == "REACHED",
+                        "status": lifecycle.get("exit_status", "NOT_REACHED"),
+                        "reason": lifecycle.get("exit_reason"),
+                        "exit_decision_at": lifecycle.get("exit_decision_at"),
+                        "exit_fill_at": (
+                            _mapping(lifecycle.get("hold_revalidation")).get("exit_fill_at")
+                            or lifecycle.get("position_closed_at")
+                        ),
+                    },
                     "execution_block_reason": (
                         execution_terminal
                         if execution_lifecycle_state == "BLOCKED_BY_POLICY"
