@@ -99,6 +99,20 @@ def test_v3_activation_preserves_v2_history_and_expands_only_the_new_runtime(sto
     assert len(universe.active_universe().symbols) == 20
 
 
+def test_continuous_cycle_persists_v3_universe_lineage(stores):
+    _, canaries = stores
+    cycle = canaries.reserve_continuous_cycle(
+        candidate_identity="candidate-v3",
+        generation=15,
+        control_transition_id="transition-v3",
+        allowed_symbols=SCALPING_TRADING_UNIVERSE.symbols,
+        universe_version_id=SCALPING_TRADING_UNIVERSE.version_id,
+        now=NOW,
+    )
+    assert cycle.universe_version_id == "trading-universe-v3"
+    assert cycle.allowed_symbols == SCALPING_TRADING_UNIVERSE.symbols
+
+
 def test_active_canary_blocks_activation_and_controlled_waiting_stop_preserves_lineage(stores):
     universe, canaries = stores
     canary = canaries.reserve_arm(

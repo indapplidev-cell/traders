@@ -16,6 +16,16 @@ depends_on = None
 
 def upgrade() -> None:
     op.drop_constraint(
+        "ck_paper_first_canary_universe_version",
+        "paper_first_canary_sessions",
+        type_="check",
+    )
+    op.create_check_constraint(
+        "ck_paper_first_canary_universe_version",
+        "paper_first_canary_sessions",
+        "universe_version_id IN ('trading-universe-v1','trading-universe-v2','trading-universe-v3')",
+    )
+    op.drop_constraint(
         "ck_trading_universe_runtime_active_version",
         "trading_universe_runtime_state",
         type_="check",

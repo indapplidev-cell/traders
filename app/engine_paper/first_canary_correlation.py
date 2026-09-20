@@ -113,7 +113,9 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
             LEGACY_EXACTLY_ONE_POLICY_VERSION,
             MULTI_SYMBOL_SELECTION_POLICY_VERSION,
         }
-        or row.universe_version_id not in {"trading-universe-v1", "trading-universe-v2"}
+        or row.universe_version_id not in {
+            "trading-universe-v1", "trading-universe-v2", "trading-universe-v3"
+        }
     ):
         raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
     return PaperFirstCanarySession(
@@ -365,8 +367,12 @@ class PaperFirstCanaryRepository:
         control_transition_id: str,
         allowed_symbols: tuple[str, ...],
         now: datetime,
+        universe_version_id: str = "trading-universe-v2",
     ) -> PaperFirstCanarySession:
-        """Create or recover one v2-only execution cycle under continuous authority."""
+        """Create or recover one versioned execution cycle under continuous authority."""
+
+        if universe_version_id not in {"trading-universe-v2", "trading-universe-v3"}:
+            raise CanaryCorrelationError("TRADING_UNIVERSE_VERSION_INVALID")
 
         active = self.current()
         deterministic_id = continuous_cycle_id(generation, candidate_identity)
@@ -391,7 +397,7 @@ class PaperFirstCanaryRepository:
             start_request_fingerprint=f"continuous:{candidate_identity}"[:64],
             current_control_generation=generation,
             max_new_commands=1, max_open_positions=1, allowed_symbols=list(allowed_symbols),
-            universe_version_id="trading-universe-v2",
+            universe_version_id=universe_version_id,
             selection_policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION,
             approval_id=None, command_count=0, command_id=None, position_count=0,
             position_id=None, trade_report_available=False,

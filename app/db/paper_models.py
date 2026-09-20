@@ -192,7 +192,7 @@ class PaperFirstCanarySessionRecord(Base):
             name="ck_paper_first_canary_selection_policy",
         ),
         CheckConstraint(
-            "universe_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            "universe_version_id IN ('trading-universe-v1','trading-universe-v2','trading-universe-v3')",
             name="ck_paper_first_canary_universe_version",
         ),
         CheckConstraint(

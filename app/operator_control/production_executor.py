@@ -38,6 +38,15 @@ from app.engine_paper.eligible_approval_ranking import (
     EligibleApprovalSelectionResult,
     ProductionEligibleApprovalSelector,
 )
+from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE
+
+
+def _continuous_universe_version(allowed_symbols: tuple[str, ...]) -> str:
+    return (
+        SCALPING_TRADING_UNIVERSE.version_id
+        if allowed_symbols == SCALPING_TRADING_UNIVERSE.symbols
+        else "trading-universe-v2"
+    )
 from app.engine_paper.production_approval import (
     EXECUTION_PROFILES_BY_TIMEFRAME,
     EXECUTION_TIMEFRAMES,
@@ -259,7 +268,9 @@ class ProductionPaperFirstCanaryExecutor:
         authority = SimpleNamespace(
             allowed_symbols=state.arming_scope.allowed_symbols,
             selection_policy_version="eligible-approval-ranking-v1",
-            universe_version_id="trading-universe-v2",
+            universe_version_id=_continuous_universe_version(
+                state.arming_scope.allowed_symbols
+            ),
             current_control_generation=state.generation,
         )
         request_id = _id(
@@ -382,7 +393,9 @@ class ProductionPaperFirstCanaryExecutor:
         authority = SimpleNamespace(
             allowed_symbols=state.arming_scope.allowed_symbols,
             selection_policy_version="eligible-approval-ranking-v1",
-            universe_version_id="trading-universe-v2",
+            universe_version_id=_continuous_universe_version(
+                state.arming_scope.allowed_symbols
+            ),
             current_control_generation=state.generation,
         )
         if self._outcome_store is not None and self._entry_refinement is not None:
@@ -526,6 +539,7 @@ class ProductionPaperFirstCanaryExecutor:
                     generation=state.generation,
                     control_transition_id=state.transition_id,
                     allowed_symbols=state.arming_scope.allowed_symbols,
+                    universe_version_id=authority.universe_version_id,
                     now=datetime.now(timezone.utc),
                 )
             except CanaryCorrelationError as error:
