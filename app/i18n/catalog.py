@@ -381,6 +381,8 @@ EN = {
 
 RU.update({
     "navigation.paper": "PAPER Торговля",
+    "navigation.trade_control": "Контроль сделки",
+    "trade_control.title": "Контроль сделки",
     "paper.title": "PAPER Торговля",
     "paper.source": "ИСТОЧНИК ДАННЫХ: MOCK",
     "paper.source.mock": "ИСТОЧНИК ДАННЫХ: MOCK",
@@ -388,7 +390,7 @@ RU.update({
     "paper.live_disabled": "LIVE = DISABLED",
     "paper.system": "ГОТОВНОСТЬ / СОСТОЯНИЕ СИСТЕМЫ",
     "paper.control": "PAPER УПРАВЛЕНИЕ",
-    "paper.account": "PAPER СЧЁТ",
+    "paper.account": "Paper расчет",
     "paper.position": "АКТИВНАЯ ПОЗИЦИЯ",
     "paper.history": "ИСТОРИЯ СДЕЛОК",
     "paper.report": "ОТЧЁТ ПО СДЕЛКЕ",
@@ -465,6 +467,8 @@ RU.update({
 
 EN.update({
     "navigation.paper": "PAPER Trading",
+    "navigation.trade_control": "Trade Control",
+    "trade_control.title": "Trade Control",
     "paper.title": "PAPER Trading",
     "paper.source": "DATA SOURCE: MOCK",
     "paper.source.mock": "DATA SOURCE: MOCK",
@@ -472,7 +476,7 @@ EN.update({
     "paper.live_disabled": "LIVE = DISABLED",
     "paper.system": "READINESS / SYSTEM STATUS",
     "paper.control": "PAPER CONTROL",
-    "paper.account": "PAPER ACCOUNT",
+    "paper.account": "Paper Calculation",
     "paper.position": "ACTIVE POSITION",
     "paper.history": "TRADE HISTORY",
     "paper.report": "TRADE REPORT",
@@ -742,6 +746,7 @@ RU.update({
     "navigation.setups.shortcut": "(С) Сценарии",
     "navigation.incidents.shortcut": "(И) Инциденты",
     "navigation.paper.shortcut": "(Т) PAPER торговля",
+    "navigation.trade_control.shortcut": "(К) Контроль сделки",
     "navigation.settings.shortcut": "(Н) Настройки",
     "common.refresh": "Обновить (F5)",
     "paper.refresh": "Обновить (F5)",
@@ -749,7 +754,7 @@ RU.update({
     "help.keyboard.body": (
         "Alt+О — Обзор\nAlt+Р — Рынок\nAlt+П — Торговые пары\n"
         "Alt+А — Анализ\nAlt+С — Сценарии\nAlt+И — Инциденты\n"
-        "Alt+Т — PAPER торговля\nAlt+Н — Настройки\n"
+        "Alt+Т — PAPER торговля\nAlt+К — Контроль сделки\nAlt+Н — Настройки\n"
         "F5 — Обновить текущий экран"
     ),
 })
@@ -761,6 +766,7 @@ EN.update({
     "navigation.setups.shortcut": "(C) Scenarios",
     "navigation.incidents.shortcut": "(I) Incidents",
     "navigation.paper.shortcut": "(T) PAPER Trading",
+    "navigation.trade_control.shortcut": "(K) Trade Control",
     "navigation.settings.shortcut": "(S) Settings",
     "common.refresh": "Refresh (F5)",
     "paper.refresh": "Refresh (F5)",
@@ -768,7 +774,7 @@ EN.update({
     "help.keyboard.body": (
         "Alt+O — Overview\nAlt+M — Market\nAlt+P — Trading Pairs\n"
         "Alt+A — Analysis\nAlt+C — Scenarios\nAlt+I — Incidents\n"
-        "Alt+T — PAPER Trading\nAlt+S — Settings\n"
+        "Alt+T — PAPER Trading\nAlt+K — Trade Control\nAlt+S — Settings\n"
         "F5 — Refresh current page"
     ),
 })
