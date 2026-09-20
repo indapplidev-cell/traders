@@ -3,13 +3,38 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ed38b675fd5d02edad8d3dc0314676cddec5e99f
+STATUS_AS_OF_COMMIT = fe07dae26459ad575d8a4c1df7c9495d876e75a0
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T01:06:09Z
-RECONCILED_BY_TASK = TRADERS_DIRTY_WORKTREE_AND_SCHEMA_TEST_RECONCILIATION_01
-FILES_CHANGED = app/engine_safety/pitr_lineage.py; app/server_api/__init__.py; app/server_api/paper_runtime_observation.py; app/server_api/repositories/__init__.py; app/server_api/services/__init__.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; tests/readonly_production_runtime_observation/test_observation.py; traders_ml/parameter_sweep/effective_config.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/winners.py; tests/research/test_parameter_sweep_winners.py; tests/test_db_models.py; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T01:17:38Z
+RECONCILED_BY_TASK = TRADERS_FUNNEL_STATISTICAL_AUTHORITY_I18N_01
+FILES_CHANGED = app/i18n/catalog.py; tests/server_api/test_i18n.py; online_trader.md.
+
+## Funnel statistical-authority i18n correction 01
+
+```text
+TASK = TRADERS_FUNNEL_STATISTICAL_AUTHORITY_I18N_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = RUSSIAN_FUNNEL_DETAIL_LABEL_TRANSLATED_TESTED_COMMITTED_AND_PUSHED
+PROJECT_STATE_COMMIT = fe07dae26459ad575d8a4c1df7c9495d876e75a0
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = fe07dae26459ad575d8a4c1df7c9495d876e75a0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+I18N_KEY = funnel.detail.probability_authority_status
+RUSSIAN_LABEL = Статус статистической достоверности
+FOCUSED_TEST = PASS; 1_PASSED
+COMPILE_AND_DIFF_CHECK = PASS
+WIDER_I18N_DISCLOSURE = 12_PASS_3_PREEXISTING_CONTRACT_FAILURES_FOR_MISSING_NET_PNL_ENUM_ROUTE_COUNT_AND_STALE_DESKTOP_BOOTSTRAP
+DESKTOP_RUNTIME_VERIFICATION = NOT_PERFORMED; NO_TK_UI_ACTION_REQUESTED
+CURRENT_STAGE = NORMAL_PAPER_OPERATION_WITH_CORRECTED_FUNNEL_RUSSIAN_LABEL
+CURRENT_BLOCKER = NONE_FOR_THIS_I18N_TASK
+NEXT_ACTION = REFRESH_OR_REOPEN_THE_DESKTOP_CLIENT_AFTER_SERVER_CATALOG_UPDATE; RECONCILE_THE_THREE_PREEXISTING_I18N_CONTRACT_FAILURES_SEPARATELY
+```
+
+The Russian Trading Funnel detail label no longer mixes Russian and English:
+`Статус statistical authority` is now `Статус статистической достоверности`.
+The exact catalog value is protected by a focused regression assertion. Existing
+unrelated user-owned worktree changes were not staged or modified.
 
 ## Dirty worktree and schema-test reconciliation 01
 
