@@ -3,13 +3,53 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = fe07dae26459ad575d8a4c1df7c9495d876e75a0
+STATUS_AS_OF_COMMIT = bb1d61a36d98f3d29381f1b6ac4c500402023afc
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T01:17:38Z
-RECONCILED_BY_TASK = TRADERS_FUNNEL_STATISTICAL_AUTHORITY_I18N_01
-FILES_CHANGED = app/i18n/catalog.py; tests/server_api/test_i18n.py; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T06:27:05Z
+RECONCILED_BY_TASK = TRADERS_WAL_PITR_SELF_HEALING_AND_ROOT_RELOCATION_01
+FILES_CHANGED = docker-compose.yml; ops/production/readonly-api/compose.yaml; scripts/production_backup.py; scripts/production_wal_archive_remediation.py; scripts/engine_orchestrator_online_pipeline.py; tests/test_recovery_self_healing.py; tests/production_backup_pitr_controlled_change/test_runtime_contract.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; tests/engine_orchestrator/test_5m_runtime_parameterization_and_owner.py; docs/operations/paper_production_backup_pitr_controlled_change.md; docs/operations/pitr_wal_ack_daemon_safe_inspector_recovery.md; docs/audits/TRADERS_WAL_PITR_SELF_HEALING_AND_ROOT_RELOCATION_01_FINAL.md; online_trader.md.
+
+## WAL/PITR self-healing and recovery-root relocation 01
+
+```text
+TASK = TRADERS_WAL_PITR_SELF_HEALING_AND_ROOT_RELOCATION_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = WAL_PITR_RECOVERED_AUTOMATIC_RESTART_PROVEN_AND_RECOVERY_ROOT_RELOCATED
+PROJECT_STATE_COMMIT = bb1d61a36d98f3d29381f1b6ac4c500402023afc
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 4edee7e5db01e148da02f7f603f90362374d20f1
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_LOCAL_AHEAD_1; DOCUMENTATION_RECONCILIATION_PENDING
+ROOT_CAUSE = WINDOWS_TASK_HAD_EMPTY_WORKING_DIRECTORY; PYTHONW_STARTED_OUTSIDE_REPOSITORY_AND_FAILED_DURING_RELATIVE_CONFIG_BOOTSTRAP
+RELIABILITY_HARDENING = FRESH_MATCHING_SUPERVISOR_PUBLICATION_REQUIRED_FOR_PID_LOCK; BATTERY_START_ALLOWED; BATTERY_STOP_DISABLED; EXECUTION_LIMIT_DISABLED; STARTUP_FALLBACK_WORKING_DIRECTORY_SET
+CONTROLLED_AUTOMATIC_RESTART = PASS; GENERATION_4868_TO_4869; SUPERVISOR_READY; WORKER_READY
+RECOVERY_ROOT_BEFORE = D:/traders_ml_recovery/postgres
+RECOVERY_ROOT_AFTER = D:/disk_E/game_projects/traders/traders_ml_recovery/postgres
+OLD_ROOT_EXISTS = false
+RELOCATED = 5062_FILES; 77089539756_BYTES; SAME_VOLUME_MOVE
+WAL_ARCHIVE = PASS; BACKLOG_0; PENDING_0; ACTIVE_UNRESOLVED_0; COVERAGE_3712_OF_3712; MISSING_0
+PITR = PASS; LINEAGE_VALID_TRUE; PHYSICAL_GAP_FALSE; CONTIGUOUS_WINDOW_SECONDS_3450400
+READONLY = HEALTHY; WAL_READY_TRUE; PITR_READY_TRUE; BACKUP_RECOVERY_READY_TRUE
+POSTGRES = HEALTHY; RESTARTS_0
+MARKET_DATA = RUNNING; RESTARTS_0_AFTER_RECREATE
+ONLINE_ORCHESTRATOR_5M = RUNNING; RESTARTS_0_AFTER_0033_SCHEMA_GUARD_REBUILD
+PAPER = READY; CONTINUOUS_ARMED; MUTATION_READY_TRUE
+LIVE_STATE = DISABLED; live_allowed=false
+TESTS = RECOVERY_1254_PASS_1_SKIP; WATCHDOG_FOCUSED_35_PASS; SCHEMA_GUARD_FOCUSED_1_PASS; COMPILE_PASS; COMPOSE_CONFIG_PASS
+WIDER_TEST_DISCLOSURE = 7_PREEXISTING_STALE_TRADE_5M_V1_EXPECTATIONS; 3_PASS_5_SKIP
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_AUTOMATIC_WAL_PITR_SELF_HEALING
+CURRENT_BLOCKER = NONE_FOR_WAL_PITR_RECOVERY; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = CONTINUE_NORMAL_PAPER_OBSERVATION; KEEP_LIVE_DISABLED_UNTIL_SEPARATELY_AUTHORIZED
+```
+
+The WAL/PITR data was intact; the stale UI reflected a dead recovery owner and
+an ineffective Windows restart path. The scheduler now starts from the project
+working directory, retains operation across battery transitions, and rejects a
+numeric PID lock unless the matching supervisor publication is fresh. A
+controlled termination proved a new scheduled generation and full READY
+recovery without manual WAL acknowledgement. The host recovery archive is now
+inside the operator-approved Traders root. Internal PostgreSQL `pg_wal` remains
+inside managed PGDATA, as required by PostgreSQL storage semantics.
 
 ## Funnel statistical-authority i18n correction 01
 
