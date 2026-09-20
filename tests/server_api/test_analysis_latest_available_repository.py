@@ -461,11 +461,13 @@ def test_aggregate_latest_analysis_is_one_query_latest_only_and_deterministic():
     assert statements[0].count(" limit ") >= 3
 
 
-def test_aggregate_matches_single_symbol_latest_semantics_for_ten_symbol_bound():
+def test_aggregate_matches_single_symbol_latest_semantics_for_twenty_symbol_bound():
     _engine, sessions, adapter, _client = _database()
     symbols = (
         "BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "AVAXUSDT",
         "BNBUSDT", "DOGEUSDT", "LINKUSDT", "SUIUSDT", "XRPUSDT",
+        "ZECUSDT", "NEARUSDT", "UNIUSDT", "ENAUSDT", "XLMUSDT",
+        "TRXUSDT", "WLDUSDT", "LTCUSDT", "FETUSDT", "FILUSDT",
     )
     for symbol in symbols[:-1]:
         old = _run(f"{symbol}-old", OLD_BOUNDARY, symbol=symbol)

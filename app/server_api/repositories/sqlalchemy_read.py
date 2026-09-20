@@ -19,8 +19,14 @@ from sqlalchemy.orm import Session, aliased, defer
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
 from app.engine_market_data.continuous_sync_state import MarketDataSyncState
-from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS
-from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, TARGET_TIMEFRAMES, TradingUniverseVersion, runtime_universe
+from app.trading_universe.domain import (
+    MAX_TRADING_UNIVERSE_SYMBOLS,
+    PREPARED_NEXT_TRADING_UNIVERSE,
+    TARGET_TIMEFRAMES,
+    TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS,
+    TradingUniverseVersion,
+    runtime_universe,
+)
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper_fill, orm_values_to_paper_position
 from app.db.paper_models import (
@@ -407,11 +413,13 @@ class SqlAlchemyReadAdapter:
                     and state.status == "OK"
                     and state.missing_count == 0
                     and state.source.endswith("_public_rest")
-                    and counts.get((symbol, timeframe), 0) >= DEFAULT_MINIMUM_WINDOWS[timeframe]
+                    and counts.get((symbol, timeframe), 0)
+                    >= TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS[timeframe]
                 )
             )
             history_ready = all(
-                counts.get((symbol, timeframe), 0) >= DEFAULT_MINIMUM_WINDOWS[timeframe]
+                counts.get((symbol, timeframe), 0)
+                >= TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS[timeframe]
                 for timeframe in TARGET_TIMEFRAMES
             )
             run = latest_run.get(symbol)
@@ -485,7 +493,7 @@ class SqlAlchemyReadAdapter:
     def list_latest_analyses(self, symbols: tuple[str, ...]) -> tuple[AnalysisRecord, ...]:
         """One SQL query, at most one latest-available row per active symbol."""
         bounded = tuple(dict.fromkeys(value.upper() for value in symbols))
-        if not bounded or len(bounded) > 10:
+        if not bounded or len(bounded) > MAX_TRADING_UNIVERSE_SYMBOLS:
             return ()
         analyzed = AnalysisSnapshotStatus.ANALYZED.value
         latest_keys = []

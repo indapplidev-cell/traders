@@ -11,6 +11,7 @@ from app.trading_universe import (
     LEGACY_TRADING_UNIVERSE_V2,
     PREPARED_NEXT_TRADING_UNIVERSE,
     TARGET_TIMEFRAMES,
+    TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS,
     bind_new_canary,
     expand_legacy_scalping_symbols,
     market_data_streams,
@@ -60,6 +61,7 @@ def test_market_data_plan_is_exactly_120_unique_deterministic_streams():
     assert len(first) == len(set(first)) == 120
     assert first[:6] == tuple(("BTCUSDT", timeframe) for timeframe in TARGET_TIMEFRAMES)
     assert first[-6:] == tuple(("FILUSDT", timeframe) for timeframe in TARGET_TIMEFRAMES)
+    assert tuple(TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS) == TARGET_TIMEFRAMES
 
 
 def test_deployed_v2_argv_expands_only_for_scalping_v2_and_leaves_15m_unchanged():

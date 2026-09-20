@@ -15,6 +15,19 @@ from app.engine_market_data.market_symbol import normalize_market_symbol
 
 TARGET_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
 SCALPING_REQUIRED_TIMEFRAMES = ("1m", "5m")
+MAX_TRADING_UNIVERSE_SYMBOLS = 20
+
+# Preserve the original market-data preparation contract independently from
+# whichever strategy profile is active. The readiness projection covers all
+# six collected streams; Scalping still consumes only its configured frames.
+TRADING_UNIVERSE_READINESS_MINIMUM_WINDOWS = {
+    "1m": 240,
+    "5m": 288,
+    "15m": 480,
+    "1h": 240,
+    "4h": 180,
+    "1d": 240,
+}
 
 
 class TradingUniverseActivationState(StrEnum):
@@ -32,8 +45,14 @@ class TradingUniverseVersion:
         normalized = tuple(normalize_market_symbol(value) for value in self.symbols)
         if not self.version_id or normalized != self.symbols:
             raise ValueError("trading universe must have a stable id and normalized symbols")
-        if not normalized or len(normalized) > 20 or len(set(normalized)) != len(normalized):
-            raise ValueError("trading universe must contain 1..20 unique symbols")
+        if (
+            not normalized
+            or len(normalized) > MAX_TRADING_UNIVERSE_SYMBOLS
+            or len(set(normalized)) != len(normalized)
+        ):
+            raise ValueError(
+                f"trading universe must contain 1..{MAX_TRADING_UNIVERSE_SYMBOLS} unique symbols"
+            )
 
 
 ACTIVE_TRADING_UNIVERSE = TradingUniverseVersion(

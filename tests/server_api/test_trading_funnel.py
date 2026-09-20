@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.app_factory import create_app
+from app.server_api.schemas.models import TradingFunnelSnapshot
 from app.server_api.trading_funnel import (
     CANONICAL_DOWNSTREAM_STAGES,
     MAX_HORIZON_MS,
@@ -99,6 +100,15 @@ def _project_5m(pairs, eligible=None):
     return build_projection(
         tuple(pairs), universe, NOW_MS, eligible or {}, "trade-5m-v2"
     )
+
+
+def test_projection_schema_accepts_twenty_symbol_scalping_universe():
+    projection = build_projection(
+        (), runtime_universe("trading-universe-v3"), NOW_MS, {}, "trade-5m-v2"
+    )
+    value = TradingFunnelSnapshot.model_validate(projection)
+    assert len(value.universe_symbols) == 20
+    assert value.current_cycle is None
 
 
 def test_projection_distinguishes_upstream_final_approval_from_production_eligibility():

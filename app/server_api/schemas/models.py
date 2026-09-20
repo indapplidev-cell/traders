@@ -5,6 +5,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.trading_universe.domain import MAX_TRADING_UNIVERSE_SYMBOLS
+
 
 UtcTimestamp = Annotated[str, StringConstraints(pattern=r"Z$")]
 DecimalString = Annotated[str, StringConstraints(pattern=r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$")]
@@ -343,9 +345,9 @@ class FunnelEligibleCompetitor(ContractModel):
 class FunnelCycle(ContractModel):
     boundary_close_ms: int = Field(ge=0)
     boundary_start_ms: int = Field(ge=0)
-    symbols_expected: int = Field(ge=1, le=10)
-    symbols_seen: int = Field(ge=0, le=10)
-    symbols_processed: int = Field(ge=0, le=10)
+    symbols_expected: int = Field(ge=1, le=MAX_TRADING_UNIVERSE_SYMBOLS)
+    symbols_seen: int = Field(ge=0, le=MAX_TRADING_UNIVERSE_SYMBOLS)
+    symbols_processed: int = Field(ge=0, le=MAX_TRADING_UNIVERSE_SYMBOLS)
     cycle_complete: bool
     stage_counts: dict[str, int]
     downstream_stage_counts: dict[str, int | None] = Field(default_factory=dict)
@@ -381,7 +383,9 @@ class TradingFunnelSnapshot(ContractModel):
     profile_mode: Literal["PRODUCTION_SEARCH", "SHADOW_SEARCH"]
     decision_timeframe: Literal["15m", "5m"]
     universe_id: str
-    universe_symbols: list[Symbol] = Field(default_factory=list, max_length=10)
+    universe_symbols: list[Symbol] = Field(
+        default_factory=list, max_length=MAX_TRADING_UNIVERSE_SYMBOLS
+    )
     selection_policy_version: Literal["eligible-approval-ranking-v1"]
     count_unit: dict[str, Literal["SYMBOL"]]
     downstream_stage_order: list[str] = Field(default_factory=list)
@@ -434,7 +438,7 @@ class AnalysisEnvelope(BaseModel):
 
 class AnalysisList(BaseModel):
     items: list[AnalysisSnapshot]
-    active_symbol_count: int = Field(ge=0, le=10)
+    active_symbol_count: int = Field(ge=0, le=MAX_TRADING_UNIVERSE_SYMBOLS)
     active_symbols: list[Symbol]
 
 
