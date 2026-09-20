@@ -1924,14 +1924,35 @@ class TradingFunnelReadRepository:
             fills = tuple(session.scalars(
                 select(PaperFillRecord).where(PaperFillRecord.fill_id.in_(exit_fill_ids))
             )) if exit_fill_ids else ()
-            holds = tuple(session.scalars(
-                select(ScalpingPositionHoldDecisionRecord)
-                .where(ScalpingPositionHoldDecisionRecord.position_id.in_(position_ids))
-                .order_by(
-                    ScalpingPositionHoldDecisionRecord.position_id.asc(),
-                    ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms.desc(),
+            if position_ids:
+                latest_export_hold = (
+                    select(
+                        ScalpingPositionHoldDecisionRecord.position_id,
+                        func.max(
+                            ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms
+                        ).label("latest_boundary"),
+                    )
+                    .where(
+                        ScalpingPositionHoldDecisionRecord.position_id.in_(position_ids)
+                    )
+                    .group_by(ScalpingPositionHoldDecisionRecord.position_id)
+                    .subquery()
                 )
-            )) if position_ids else ()
+                holds = tuple(session.scalars(
+                    select(ScalpingPositionHoldDecisionRecord)
+                    .join(
+                        latest_export_hold,
+                        (
+                            latest_export_hold.c.position_id
+                            == ScalpingPositionHoldDecisionRecord.position_id
+                        ) & (
+                            latest_export_hold.c.latest_boundary
+                            == ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms
+                        ),
+                    )
+                ))
+            else:
+                holds = ()
         decision_by_position: dict[str, PaperExitDecisionRecord] = {}
         for decision in decisions:
             decision_by_position.setdefault(decision.position_id, decision)
