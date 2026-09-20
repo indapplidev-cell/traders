@@ -25,7 +25,9 @@ services:
     restart: unless-stopped
     init: true
     cpus: "1.00"
-    mem_limit: 512m
+    # A complete 4h/480-row funnel export materializes the bounded report and
+    # summary together; 1 GiB prevents the read-only worker from being OOM-killed.
+    mem_limit: 1g
     pids_limit: 64
     env_file:
       - ../../../.env.production.local
