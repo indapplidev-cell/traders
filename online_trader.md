@@ -7,9 +7,44 @@ STATUS_AS_OF_COMMIT = 4600b72002db5d30fc02cae00d75e0222a810824
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T21:28:54Z
-RECONCILED_BY_TASK = TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01
-FILES_CHANGED = app/i18n/catalog.py; app/i18n/help_source.py; docs/audits/TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01_FINAL.md; online_trader.md; ../traders-client/src/traders_client/application/client_state.py; ../traders-client/src/traders_client/application/app_controller.py; ../traders-client/src/traders_client/i18n/keys.py; ../traders-client/src/traders_client/ui/auto_refresh.py; ../traders-client/src/traders_client/ui/keyboard_shortcuts.py; ../traders-client/src/traders_client/ui/main_window.py; ../traders-client/src/traders_client/ui/paper_trading_view.py; ../traders-client/src/traders_client/ui/trade_control_view.py; ../traders-client/tests/test_auto_refresh.py; ../traders-client/tests/test_i18n_gui.py; ../traders-client/tests/test_keyboard_shortcuts.py; ../traders-client/tests/test_paper_foundation.py; ../traders-client/tests/test_trade_control_split.py; ../traders-client/tests/test_trading_criteria_visibility.py; ../traders-client/client_status.md.
+RECONCILED_AT_UTC = 2026-09-20T22:26:33Z
+RECONCILED_BY_TASK = TRADERS_DESKTOP_TWENTY_SYMBOL_TRADING_PAIRS_CONTRACT_RECOVERY_01
+FILES_CHANGED = online_trader.md; ../traders-client/src/traders_client/api_contract/models.py; ../traders-client/tests/test_trading_universe_visibility.py; ../traders-client/client_status.md.
+
+## Desktop twenty-symbol Trading Pairs contract recovery 01
+
+```text
+TASK = TRADERS_DESKTOP_TWENTY_SYMBOL_TRADING_PAIRS_CONTRACT_RECOVERY_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = CURRENT_PRODUCTION_TWENTY_SYMBOL_UNIVERSE_IS_ACCEPTED_AND_VISIBLE_WITHOUT_FALSE_CONTRACT_ERROR
+STATUS_AS_OF_SERVER_PROJECT_COMMIT = 4600b72002db5d30fc02cae00d75e0222a810824
+CLIENT_IMPLEMENTATION_COMMIT = 6a98b88d78a37635ac089e92ce36ac3fe72ab7bb
+CLIENT_DOCUMENTATION_COMMIT = 714432bab4f02672f24305972fd1ea229df4b353
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 4600b72002db5d30fc02cae00d75e0222a810824
+PUSH_STATE_AT_RECONCILIATION = SERVER_PROJECT_STATE_UNCHANGED; CLIENT_MAIN_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+ROOT_CAUSE = DESKTOP_TRADING_UNIVERSE_DTO_RETAINED_HISTORICAL_MAXIMUM_10_WHILE_SERVER_CONTRACT_IS_20
+FIX = CLIENT_MAXIMUM_20_WITH_21_REJECTED_FAIL_CLOSED
+PRODUCTION_API = TRADING_UNIVERSE_V3; ACTIVE_20_OF_20; READY_STREAMS_120_OF_120
+TESTS = TARGETED_5_PASS; FOCUSED_41_PASS_12_SUBTESTS; FULL_1520_PASS_2_SKIP_3030_SUBTESTS_WITH_7_DISCLOSED_UNRELATED_EXISTING_FAILURES; COMPILE_PASS
+DESKTOP_ACCEPTANCE = PASS; PID_15432; HWND_1973552; FOREGROUND_AND_FULL_DESKTOP_CROPPED_CAPTURE; 20_ROWS_VISIBLE
+CAPTURE_SHA256 = FA9A6D399F7C81F552A7297C64BA2A2C4CF5FE99ABECD3C045BD120D04D14820
+SERVER_CHANGED = NO
+SCHEMA_CHANGED = NO
+STRATEGY_CHANGED = NO
+RISK_CHANGED = NO
+SELECTOR_CHANGED = NO
+YAML_CHANGED = NO
+LIVE_STATE = DISABLED; UNCHANGED
+REAL_BINANCE_ORDER_CALLS = 0
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_TWENTY_SYMBOL_READONLY_DESKTOP_VISIBILITY
+CURRENT_BLOCKER = NONE_FOR_TRADING_PAIRS_VISIBILITY; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = CONTINUE_NORMAL_PAPER_OBSERVATION_WITHOUT_STRATEGY_RISK_SELECTOR_YAML_OR_LIVE_CHANGE
+```
+
+The server response was valid. The false generic error came from the Desktop
+client's stale ten-symbol DTO guard. The corrected source-tree client consumes
+the current 20-symbol read-only contract, preserves an explicit upper bound,
+and visibly renders all active symbols after restart.
 
 ## Desktop Paper information / Trade Control split 01
 
