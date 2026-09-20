@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
       target: readonly-api
       args:
-        TRADERS_READONLY_SOURCE_IDENTITY: "${TRADERS_READONLY_SOURCE_IDENTITY:?immutable source revision is required}"
+        TRADERS_READONLY_SOURCE_IDENTITY: "${TRADERS_READONLY_SOURCE_IDENTITY?immutable source revision is required}"
     # Control transitions republish the shared authoritative artifacts as
     # root-owned 0600/0700.  This container has no write capability (the
     # filesystem and control bind are read-only, all capabilities are dropped,

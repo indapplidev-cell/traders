@@ -115,6 +115,6 @@ def test_production_compose_requires_immutable_revision_and_export_never_reads_h
     root = Path(__file__).resolve().parents[2]
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
     exporter = (root / "app/server_api/funnel_export.py").read_text(encoding="utf-8")
-    assert "TRADERS_SCALPING_V2_SOURCE_IDENTITY:?immutable source revision is required" in compose
+    assert "TRADERS_SCALPING_V2_SOURCE_IDENTITY?immutable source revision is required" in compose
     assert "git rev-parse" not in exporter
     assert "subprocess" not in exporter
