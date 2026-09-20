@@ -756,11 +756,11 @@ class ScalpingPositionHoldDecisionRecord(Base):
             name="ck_scalping_hold_validity",
         ),
         CheckConstraint(
-            "lifecycle_state IN ('FRESH','AT_RISK','STALE','EXTENSION_ALLOWED','EXTENSION_EXHAUSTED','FORCE_EXIT')",
+            "lifecycle_state IN ('FRESH','AT_RISK','STALE','EXTENSION_ALLOWED','EXTENSION_EXHAUSTED','NET_PNL_PROTECTION_ACTIVE','NET_PNL_PROTECTION_TRIGGERED','FORCE_EXIT')",
             name="ck_scalping_hold_state",
         ),
         CheckConstraint(
-            "(lifecycle_state = 'FORCE_EXIT') = (exit_reason IS NOT NULL)",
+            "(lifecycle_state IN ('FORCE_EXIT','NET_PNL_PROTECTION_TRIGGERED')) = (exit_reason IS NOT NULL)",
             name="ck_scalping_hold_exit_complete",
         ),
         Index(
@@ -787,6 +787,25 @@ class ScalpingPositionHoldDecisionRecord(Base):
     policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     config_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     provenance: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    soft_timeout_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    hard_timeout_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    net_exit_pnl_current: Mapped[Decimal | None] = mapped_column(
+        Numeric(MONEY_PRECISION, MONEY_SCALE)
+    )
+    net_exit_pnl_currency: Mapped[str | None] = mapped_column(String(16))
+    net_exit_pnl_quantized: Mapped[Decimal | None] = mapped_column(
+        Numeric(MONEY_PRECISION, MONEY_SCALE)
+    )
+    net_pnl_protection_window_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    net_pnl_protection_triggered: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    net_pnl_protection_triggered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    net_pnl_protection_1m_boundary: Mapped[int | None] = mapped_column(BigInteger)
+    exit_candidate_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    exit_decision_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    exit_decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    exit_fill_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PaperOrderRecord(Base):

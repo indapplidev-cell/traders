@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, localcontext
 from enum import StrEnum
 from hashlib import sha256
 import json
-from typing import Callable, Iterable, Mapping
+from typing import Callable, Iterable, Mapping, Protocol
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
@@ -26,10 +27,13 @@ from app.db.paper_models import (
 from app.engine_analysis import AnalysisWindowConfig, EngineAnalysisCandle, run_engine_analysis
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow
 from app.engine_paper.fill_simulator import PaperFillCandle
+from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_position.paper_models import PaperPosition
 
 
-POLICY_VERSION = "scalping-hold-lifecycle-v1"
+POLICY_VERSION = "scalping-hold-lifecycle-v2-net-pnl-protection"
+MONEY_QUANTUM = Decimal("0.000000000000000001")
+NET_PNL_CURRENCY = "USDT"
 
 
 class HoldValidity(StrEnum):
@@ -47,6 +51,8 @@ class HoldLifecycleState(StrEnum):
     STALE = "STALE"
     EXTENSION_ALLOWED = "EXTENSION_ALLOWED"
     EXTENSION_EXHAUSTED = "EXTENSION_EXHAUSTED"
+    NET_PNL_PROTECTION_ACTIVE = "NET_PNL_PROTECTION_ACTIVE"
+    NET_PNL_PROTECTION_TRIGGERED = "NET_PNL_PROTECTION_TRIGGERED"
     FORCE_EXIT = "FORCE_EXIT"
 
 
@@ -56,7 +62,116 @@ class HoldExitReason(StrEnum):
     STRUCTURE_INVALIDATED = "STRUCTURE_INVALIDATED"
     SETUP_INVALIDATED = "SETUP_INVALIDATED"
     STALE_SCALP = "STALE_SCALP"
+    NET_PNL_PROTECTION = "NET_PNL_PROTECTION"
     MAX_HOLD_TIME = "MAX_HOLD_TIME"
+
+
+class CurrentCostSource(Protocol):
+    def load(
+        self, symbol: str, entry: float, *, safety_margin_bps: float
+    ) -> ShadowCostInputs: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ModeledNetExitPnl:
+    """Executable exit economics evaluated entirely with Decimal arithmetic."""
+
+    raw_net_exit_pnl: Decimal
+    quantized_net_exit_pnl: Decimal
+    currency: str
+    executable_reference_price: Decimal
+    gross_pnl: Decimal
+    entry_fee_incurred: Decimal
+    expected_exit_fee: Decimal
+    spread_cost: Decimal
+    exit_slippage_cost: Decimal
+    depth_impact_cost: Decimal
+    adverse_fill_reserve: Decimal
+    cost_provenance: Mapping[str, object]
+
+
+def modeled_executable_net_exit_pnl(
+    *,
+    position: PaperPosition,
+    closed_1m_price: Decimal,
+    costs: ShadowCostInputs,
+) -> ModeledNetExitPnl | None:
+    """Return fail-closed executable net PnL for one closed 1m boundary.
+
+    The persisted average entry already contains entry slippage and the
+    persisted entry fee is the actually incurred fee.  Every still-unrealized
+    exit cost is deducted explicitly.  No binary-float comparison participates
+    in the trigger decision.
+    """
+
+    if (
+        not costs.commission_authoritative
+        or costs.fee_source != "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT"
+        or not costs.causally_usable
+        or costs.spread_bps is None
+        or costs.depth_impact_bps is None
+    ):
+        return None
+    try:
+        price = Decimal(closed_1m_price)
+        quantity = Decimal(position.remaining_quantity)
+        entry = Decimal(position.average_entry_price)
+        entry_fee = Decimal(position.entry_fees)
+        rates = {
+            "exit_fee": Decimal(str(costs.exit_fee_bps)),
+            "spread": Decimal(str(costs.spread_bps)),
+            "exit_slippage": Decimal(str(costs.exit_slippage_bps)),
+            "depth_impact": Decimal(str(costs.depth_impact_bps)),
+            "adverse_fill_reserve": Decimal(str(costs.adverse_fill_reserve_bps)),
+            "safety_margin": Decimal(str(costs.safety_margin_bps)),
+        }
+        if (
+            not price.is_finite() or price <= 0
+            or not quantity.is_finite() or quantity <= 0
+            or not entry.is_finite() or entry <= 0
+            or not entry_fee.is_finite() or entry_fee < 0
+            or any(not value.is_finite() or value < 0 for value in rates.values())
+        ):
+            return None
+        with localcontext() as context:
+            context.prec = 80
+            direction = Decimal("1") if position.side.value == "LONG" else Decimal("-1")
+            gross = direction * (price - entry) * quantity
+            notional = price * quantity
+            components = {
+                name: notional * rate / Decimal("10000")
+                for name, rate in rates.items()
+            }
+            raw = gross - entry_fee - sum(components.values(), Decimal("0"))
+            quantized = raw.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_EVEN)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return ModeledNetExitPnl(
+        raw_net_exit_pnl=raw,
+        quantized_net_exit_pnl=quantized,
+        currency=NET_PNL_CURRENCY,
+        executable_reference_price=price,
+        gross_pnl=gross,
+        entry_fee_incurred=entry_fee,
+        expected_exit_fee=components["exit_fee"],
+        spread_cost=components["spread"],
+        exit_slippage_cost=components["exit_slippage"],
+        depth_impact_cost=components["depth_impact"],
+        adverse_fill_reserve=(
+            components["adverse_fill_reserve"] + components["safety_margin"]
+        ),
+        cost_provenance={
+            "fee_source": costs.fee_source,
+            "commission_snapshot_id": costs.commission_snapshot_id,
+            "commission_provenance": dict(costs.commission_provenance),
+            "spread_source": costs.spread_source,
+            "depth_impact_source": costs.depth_impact_source,
+            "economic_input_timestamp_ms": costs.economic_input_timestamp_ms,
+            "decision_cutoff_timestamp_ms": costs.decision_cutoff_timestamp_ms,
+            "entry_slippage_source": "PERSISTED_AVERAGE_ENTRY_PRICE",
+            "entry_fee_source": "PERSISTED_INCURRED_ENTRY_FEE",
+        },
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,10 +213,27 @@ class ScalpingHoldDecision:
     extension_until_ms: int | None
     thesis: ScalpingEntryThesis
     evidence: CanonicalHoldEvidence
+    soft_timeout_seconds: int
+    hard_timeout_seconds: int
+    net_exit_pnl_current: Decimal | None
+    net_exit_pnl_currency: str | None
+    net_exit_pnl_quantized: Decimal | None
+    net_exit_details: Mapping[str, object] | None
+    net_pnl_protection_window_active: bool
+    net_pnl_protection_triggered: bool
+    net_pnl_protection_triggered_at: datetime | None
+    net_pnl_protection_1m_boundary: int | None
+    exit_candidate_reason: str | None
+    exit_decision_reason: str | None
+    exit_decision_at: datetime | None
+    exit_fill_at: datetime | None
 
     @property
     def force_exit(self) -> bool:
-        return self.lifecycle_state is HoldLifecycleState.FORCE_EXIT
+        return self.lifecycle_state in {
+            HoldLifecycleState.FORCE_EXIT,
+            HoldLifecycleState.NET_PNL_PROTECTION_TRIGGERED,
+        }
 
 
 _CONTINUATION_SETUPS = frozenset({
@@ -167,6 +299,7 @@ def evaluate_hold_lifecycle(
     evidence: CanonicalHoldEvidence,
     prior_extension_count: int = 0,
     prior_extension_until_ms: int | None = None,
+    modeled_net_exit: ModeledNetExitPnl | None = None,
 ) -> ScalpingHoldDecision:
     policy = SCALPING_V2.exit_policy.stale_position
     evaluated_at = datetime.fromtimestamp(evidence.boundary_ms / 1000, tz=timezone.utc)
@@ -176,6 +309,11 @@ def evaluate_hold_lifecycle(
     reason: HoldExitReason | None = None
     count = prior_extension_count
     extension_until = prior_extension_until_ms
+    protection_window = (
+        holding > policy.soft_timeout_seconds
+        and holding < policy.hard_timeout_seconds
+    )
+    protection_triggered = False
 
     # The hard limit is absolute and independent of analysis/cost availability.
     if holding >= policy.hard_timeout_seconds:
@@ -190,11 +328,33 @@ def evaluate_hold_lifecycle(
         )
         if validity is not HoldValidity.VALID:
             state, reason = HoldLifecycleState.FORCE_EXIT, HoldExitReason.STALE_SCALP
+        elif (
+            prior_extension_count > 0
+            and (extension_until is None or evidence.boundary_ms >= extension_until)
+        ):
+            # Existing STALE_SCALP authority keeps priority over the additive
+            # protection; an expired thesis may not be relabelled as profit
+            # protection merely because its exit economics are positive.
+            state, reason = HoldLifecycleState.FORCE_EXIT, HoldExitReason.STALE_SCALP
+        elif (
+            protection_window
+            and modeled_net_exit is not None
+            and modeled_net_exit.quantized_net_exit_pnl > Decimal("0")
+        ):
+            state = HoldLifecycleState.NET_PNL_PROTECTION_TRIGGERED
+            reason = HoldExitReason.NET_PNL_PROTECTION
+            protection_triggered = True
         elif prior_extension_count == 0 and policy.extension_allowed and policy.max_extensions > 0:
-            state = HoldLifecycleState.EXTENSION_ALLOWED
+            state = (
+                HoldLifecycleState.NET_PNL_PROTECTION_ACTIVE
+                if protection_window else HoldLifecycleState.EXTENSION_ALLOWED
+            )
             count, extension_until = 1, maximum_until
         elif extension_until is not None and evidence.boundary_ms < extension_until:
-            state = HoldLifecycleState.EXTENSION_ALLOWED
+            state = (
+                HoldLifecycleState.NET_PNL_PROTECTION_ACTIVE
+                if protection_window else HoldLifecycleState.EXTENSION_ALLOWED
+            )
         else:
             state, reason = HoldLifecycleState.FORCE_EXIT, HoldExitReason.STALE_SCALP
     elif validity in {HoldValidity.DATA_UNAVAILABLE, HoldValidity.ERROR, HoldValidity.STALE}:
@@ -205,6 +365,56 @@ def evaluate_hold_lifecycle(
         evaluated_at=evaluated_at, holding_seconds=holding, validity=validity,
         lifecycle_state=state, exit_reason=reason, extension_count=count,
         extension_until_ms=extension_until, thesis=thesis, evidence=evidence,
+        soft_timeout_seconds=policy.soft_timeout_seconds,
+        hard_timeout_seconds=policy.hard_timeout_seconds,
+        net_exit_pnl_current=(
+            None if modeled_net_exit is None else modeled_net_exit.raw_net_exit_pnl
+        ),
+        net_exit_pnl_currency=(
+            None if modeled_net_exit is None else modeled_net_exit.currency
+        ),
+        net_exit_pnl_quantized=(
+            None if modeled_net_exit is None else modeled_net_exit.quantized_net_exit_pnl
+        ),
+        net_exit_details=(
+            None if modeled_net_exit is None else {
+                "executable_reference_price": format(
+                    modeled_net_exit.executable_reference_price, "f"
+                ),
+                "gross_pnl": format(modeled_net_exit.gross_pnl, "f"),
+                "entry_fee_incurred": format(
+                    modeled_net_exit.entry_fee_incurred, "f"
+                ),
+                "expected_exit_fee": format(
+                    modeled_net_exit.expected_exit_fee, "f"
+                ),
+                "spread_cost": format(modeled_net_exit.spread_cost, "f"),
+                "exit_slippage_cost": format(
+                    modeled_net_exit.exit_slippage_cost, "f"
+                ),
+                "depth_impact_cost": format(
+                    modeled_net_exit.depth_impact_cost, "f"
+                ),
+                "adverse_fill_reserve": format(
+                    modeled_net_exit.adverse_fill_reserve, "f"
+                ),
+                "cost_provenance": dict(modeled_net_exit.cost_provenance),
+            }
+        ),
+        net_pnl_protection_window_active=protection_window,
+        net_pnl_protection_triggered=protection_triggered,
+        net_pnl_protection_triggered_at=evaluated_at if protection_triggered else None,
+        net_pnl_protection_1m_boundary=(
+            evidence.boundary_ms if protection_triggered else None
+        ),
+        exit_candidate_reason=(
+            reason.value if reason is not None else
+            "NET_PNL_UNAVAILABLE" if protection_window and modeled_net_exit is None else
+            "NET_PNL_NOT_STRICTLY_POSITIVE" if protection_window else None
+        ),
+        exit_decision_reason=reason.value if reason is not None else None,
+        exit_decision_at=evaluated_at if reason is not None else None,
+        exit_fill_at=None,
     )
 
 
@@ -246,8 +456,28 @@ def canonical_hold_evidence(
 
 
 class PostgresScalpingHoldLifecycleService:
-    def __init__(self, session_factory: Callable[[], Session]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], Session],
+        cost_source: CurrentCostSource,
+    ) -> None:
         self._sessions = session_factory
+        self._cost_source = cost_source
+
+    def mark_exit_filled(self, position_id: str, filled_at: datetime) -> None:
+        """Attach canonical fill completion without mutating position state."""
+
+        with self._sessions() as session:
+            session.execute(
+                update(ScalpingPositionHoldDecisionRecord)
+                .where(
+                    ScalpingPositionHoldDecisionRecord.position_id == position_id,
+                    ScalpingPositionHoldDecisionRecord.net_pnl_protection_triggered.is_(True),
+                    ScalpingPositionHoldDecisionRecord.exit_fill_at.is_(None),
+                )
+                .values(exit_fill_at=filled_at)
+            )
+            session.commit()
 
     def _thesis(self, position: PaperPosition) -> ScalpingEntryThesis:
         with self._sessions() as session:
@@ -302,10 +532,33 @@ class PostgresScalpingHoldLifecycleService:
         selected: ScalpingHoldDecision | None = None
         for candle in candidates:
             evidence = canonical_hold_evidence(position.symbol, ordered, candle.close_boundary_ms)
+            modeled_net_exit = None
+            holding = max(0, int((
+                datetime.fromtimestamp(candle.close_boundary_ms / 1000, tz=timezone.utc)
+                - position.opened_at.astimezone(timezone.utc)
+            ).total_seconds()))
+            policy = SCALPING_V2.exit_policy.stale_position
+            if policy.soft_timeout_seconds < holding < policy.hard_timeout_seconds:
+                try:
+                    costs = self._cost_source.load(
+                        position.symbol,
+                        float(candle.close_price),
+                        safety_margin_bps=0.0,
+                    )
+                    modeled_net_exit = modeled_executable_net_exit_pnl(
+                        position=position,
+                        closed_1m_price=candle.close_price,
+                        costs=costs,
+                    )
+                except Exception:
+                    # Fee/book/depth unavailability is explicitly fail-closed
+                    # for this protection and never suppresses causal exits.
+                    modeled_net_exit = None
             decision = evaluate_hold_lifecycle(
                 position_id=position.position_id, opened_at=position.opened_at,
                 thesis=thesis, evidence=evidence, prior_extension_count=count,
                 prior_extension_until_ms=extension_until,
+                modeled_net_exit=modeled_net_exit,
             )
             count, extension_until = decision.extension_count, decision.extension_until_ms
             self._persist(decision)
@@ -326,6 +579,17 @@ class PostgresScalpingHoldLifecycleService:
             }, sort_keys=True, default=str).encode()).hexdigest(),
             "signal_timeframe": "5m", "hold_timeframe": "1m",
             "future_bars_used": False,
+            "net_pnl_numeric_type": "Decimal",
+            "net_pnl_quantum": format(MONEY_QUANTUM, "f"),
+            "net_pnl_costs": (
+                None if decision.net_exit_pnl_current is None else {
+                    "raw_net_exit_pnl": format(decision.net_exit_pnl_current, "f"),
+                    "quantized_net_exit_pnl": format(
+                        decision.net_exit_pnl_quantized, "f"
+                    ),
+                    **dict(decision.net_exit_details or {}),
+                }
+            ),
         }
         with self._sessions() as session:
             session.merge(ScalpingPositionHoldDecisionRecord(
@@ -342,12 +606,27 @@ class PostgresScalpingHoldLifecycleService:
                 policy_version=POLICY_VERSION,
                 config_hash=decision.thesis.config_hash,
                 provenance=provenance,
+                soft_timeout_seconds=decision.soft_timeout_seconds,
+                hard_timeout_seconds=decision.hard_timeout_seconds,
+                net_exit_pnl_current=decision.net_exit_pnl_quantized,
+                net_exit_pnl_currency=decision.net_exit_pnl_currency,
+                net_exit_pnl_quantized=decision.net_exit_pnl_quantized,
+                net_pnl_protection_window_active=decision.net_pnl_protection_window_active,
+                net_pnl_protection_triggered=decision.net_pnl_protection_triggered,
+                net_pnl_protection_triggered_at=decision.net_pnl_protection_triggered_at,
+                net_pnl_protection_1m_boundary=decision.net_pnl_protection_1m_boundary,
+                exit_candidate_reason=decision.exit_candidate_reason,
+                exit_decision_reason=decision.exit_decision_reason,
+                exit_decision_at=decision.exit_decision_at,
+                exit_fill_at=decision.exit_fill_at,
             ))
             session.commit()
 
 
 __all__ = (
     "CanonicalHoldEvidence", "HoldExitReason", "HoldLifecycleState", "HoldValidity",
-    "PostgresScalpingHoldLifecycleService", "ScalpingEntryThesis", "ScalpingHoldDecision",
-    "canonical_hold_evidence", "classify_hold_validity", "evaluate_hold_lifecycle",
+    "MONEY_QUANTUM", "ModeledNetExitPnl", "PostgresScalpingHoldLifecycleService",
+    "ScalpingEntryThesis", "ScalpingHoldDecision", "canonical_hold_evidence",
+    "classify_hold_validity", "evaluate_hold_lifecycle",
+    "modeled_executable_net_exit_pnl",
 )

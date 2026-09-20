@@ -747,6 +747,9 @@ class PaperExitEvaluationService:
             reason = (
                 PaperReasonCode.PAPER_EXIT_OPERATOR_RECOVERY_CLOSE_AFTER_MISSED_STOP
             )
+        elif trigger.cause is PaperExitCause.NET_PNL_PROTECTION:
+            decision_price = candle.close_price
+            reason = PaperReasonCode.PAPER_EXIT_NET_PNL_PROTECTION_TRIGGERED
         else:
             decision_price = candle.close_price
             reason = PaperReasonCode.PAPER_EXIT_SYSTEM_SAFETY_TRIGGERED

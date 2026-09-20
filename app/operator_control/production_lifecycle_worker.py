@@ -838,6 +838,15 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 self._canary_store.fail_safe(canary.canary_id, reason)
                 return f"SAFE_FAILURE:{reason}"
             if lifecycle is PaperLifecycleState.POSITION_CLOSED:
+                if (
+                    self._scalping_hold_lifecycle is not None
+                    and graph.positions
+                    and graph.positions[0].closed_at is not None
+                ):
+                    self._scalping_hold_lifecycle.mark_exit_filled(
+                        graph.positions[0].position_id,
+                        graph.positions[0].closed_at,
+                    )
                 if self._outcome_diagnostics is not None and graph.positions:
                     self._outcome_diagnostics.process(graph.positions[0].position_id)
                 return self._finalize(canary, state)

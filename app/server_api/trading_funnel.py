@@ -1345,7 +1345,7 @@ class TradingFunnelReadRepository:
                         ("0029_stale_position_shadow",),
                         ("0030_paper_recovery_close",),
                         ("0031_scalping_parameter_sets",),
-                        ("0032_scalping_hold_lifecycle",),
+                        ("0033_net_pnl_protection",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1681,9 +1681,29 @@ class TradingFunnelReadRepository:
                     "evaluation_closed_until_ms": hold.evaluation_closed_until_ms,
                     "evaluated_at": hold.evaluated_at,
                     "holding_seconds": hold.holding_seconds,
+                    "soft_timeout_seconds": hold.soft_timeout_seconds,
+                    "hard_timeout_seconds": hold.hard_timeout_seconds,
                     "validity": hold.validity,
                     "lifecycle_state": hold.lifecycle_state,
                     "exit_reason": hold.exit_reason,
+                    "net_exit_pnl_current": hold.net_exit_pnl_current,
+                    "net_exit_pnl_currency": hold.net_exit_pnl_currency,
+                    "net_exit_pnl_quantized": hold.net_exit_pnl_quantized,
+                    "net_exit_details": hold.provenance.get("net_pnl_costs"),
+                    "net_pnl_protection_window_active": (
+                        hold.net_pnl_protection_window_active
+                    ),
+                    "net_pnl_protection_triggered": hold.net_pnl_protection_triggered,
+                    "net_pnl_protection_triggered_at": (
+                        hold.net_pnl_protection_triggered_at
+                    ),
+                    "net_pnl_protection_1m_boundary": (
+                        hold.net_pnl_protection_1m_boundary
+                    ),
+                    "exit_candidate_reason": hold.exit_candidate_reason,
+                    "exit_decision_reason": hold.exit_decision_reason,
+                    "exit_decision_at": hold.exit_decision_at,
+                    "exit_fill_at": hold.exit_fill_at,
                     "extension_count": hold.extension_count,
                     "extension_until_ms": hold.extension_until_ms,
                     "thesis": hold.thesis,

@@ -144,6 +144,7 @@ class PaperExitTriggerCandidate:
             raise TypeError("trigger hit flags must be boolean")
         if self.cause in {
             PaperExitCause.SYSTEM_SAFETY_EXIT,
+            PaperExitCause.NET_PNL_PROTECTION,
             PaperExitCause.OPERATOR_RECOVERY_CLOSE,
         }:
             if self.safety_directive_id is None or self.trigger_candle_open_time_ms is not None:
@@ -364,6 +365,8 @@ def evaluate_paper_exit_window(
                 cause = (
                     PaperExitCause.OPERATOR_RECOVERY_CLOSE
                     if safety_directive.recovery_close
+                    else PaperExitCause.NET_PNL_PROTECTION
+                    if safety_directive.reason == "NET_PNL_PROTECTION"
                     else PaperExitCause.SYSTEM_SAFETY_EXIT
                 )
                 opened = None

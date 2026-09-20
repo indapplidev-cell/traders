@@ -343,7 +343,9 @@ def create_runtime_app(
             stale_position_shadow=PostgresStalePositionShadowService(
                 sessions, scalping_cost_source,
             ),
-            scalping_hold_lifecycle=PostgresScalpingHoldLifecycleService(sessions),
+            scalping_hold_lifecycle=PostgresScalpingHoldLifecycleService(
+                sessions, scalping_cost_source,
+            ),
         )
         runtime_health_publisher = PaperRuntimeHealthPublisher(
             resolve_production_control_root(),
