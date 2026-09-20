@@ -3,13 +3,72 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = bb1d61a36d98f3d29381f1b6ac4c500402023afc
+STATUS_AS_OF_COMMIT = 54e7bad382c663d433f2989c12e5efd3db6a24a2
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T06:27:05Z
-RECONCILED_BY_TASK = TRADERS_WAL_PITR_SELF_HEALING_AND_ROOT_RELOCATION_01
-FILES_CHANGED = docker-compose.yml; ops/production/readonly-api/compose.yaml; scripts/production_backup.py; scripts/production_wal_archive_remediation.py; scripts/engine_orchestrator_online_pipeline.py; tests/test_recovery_self_healing.py; tests/production_backup_pitr_controlled_change/test_runtime_contract.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; tests/engine_orchestrator/test_5m_runtime_parameterization_and_owner.py; docs/operations/paper_production_backup_pitr_controlled_change.md; docs/operations/pitr_wal_ack_daemon_safe_inspector_recovery.md; docs/audits/TRADERS_WAL_PITR_SELF_HEALING_AND_ROOT_RELOCATION_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T12:35:37Z
+RECONCILED_BY_TASK = TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01
+FILES_CHANGED = Dockerfile; app/engine_paper/empirical_regime.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/scalping_statistics.py; app/engine_risk/risk_policy.py; app/engine_setup/causal_planning_context.py; app/engine_strategy/strategy_context.py; app/operator_control/continuation_worker.py; app/operator_control/production_executor.py; app/server_api/funnel_export.py; app/server_api/funnel_state.py; app/server_api/trading_funnel.py; docker-compose.yml; ops/production/readonly-api/compose.yaml; scripts/engine_orchestrator_online_pipeline.py; tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py; tests/operator_control_production_deployment/test_eligible_approval_continuation.py; tests/server_api/test_funnel_export.py; tests/server_api/test_funnel_lifecycle_traceability.py; docs/audits/TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01_FINAL.md; online_trader.md.
+
+## PAPER lifecycle traceability 01
+
+```text
+TASK = TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = PAPER_LIFECYCLE_CAUSALITY_EXIT_PROVENANCE_AND_REGIME_MAPPING_IMPLEMENTED_TESTED_BUILT_DEPLOYED_AND_RUNTIME_VERIFIED
+PROJECT_STATE_COMMIT = 54e7bad382c663d433f2989c12e5efd3db6a24a2
+IMPLEMENTATION_RUNTIME_COMMIT = 668dd099dcdf27d6c90d055cf7c2ed876c006c8d
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 88f340eb57f26668d0e854259713ab84be97a1a5
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_LOCAL_AHEAD_6; DOCUMENTATION_RECONCILIATION_PENDING
+ACTIVE_PROFILE = trade-5m-v2
+MODE = PAPER
+LIVE_STATE = DISABLED; allow_live=false
+REAL_BINANCE_ORDER_CALLS = 0
+PLAN_COMMAND_POSITION_TRACEABILITY = PASS_FOR_FINAL_IMPLEMENTATION; PLAN_OUTCOME_ROOTED_PROJECTION; CAPACITY_BLOCKERS_PERSISTED_WITHOUT_COMMAND_CREATION
+LIFECYCLE_IDEMPOTENCY = PASS; MAX_ONE_COMMAND_AND_POSITION_PER_PLAN
+CLOSED_POSITION_EXIT_REASON = PASS; AUTHORITATIVE_TYPED_REASON_WITH_DECISION_AND_FILL_TIMES
+NO_CLOSED_WITH_EXIT_NOT_REACHED = PASS_FOR_AUTHORITATIVE_EXIT_GRAPH
+NET_PNL_PROTECTION_PROJECTION = PASS; BUSINESS_RULE_UNCHANGED
+SOURCE_COMMIT_NOT_UNSET = PASS_FOR_NEW_REVISION_CARRYING_ROWS; HISTORICAL_UNSET_PRESERVED
+RUNTIME_REVISION_LINEAGE = PASS; BUILD_ARG_TO_IMAGE_LABEL_TO_RUNTIME_TO_ROW_AND_EXPORT
+REGIME_MAPPING = empirical-regime-v1; EXPLICIT_VERSIONED_MAPPING_SHARED_BY_PERSISTENCE_AND_LOOKUP
+HISTORICAL_BUCKET_REWRITE = NO; VERSION_ISOLATION_ACTIVE
+TIMESTAMP_SEMANTICS = PASS; EVENT_TRANSITION_EXIT_AND_PROJECTION_TIMES_SEPARATE
+MAX_OPEN_CHANGED = NO; max_open_positions=1
+MAX_NEW_COMMANDS_CHANGED = NO; max_new_commands=1
+PORTFOLIO_CONCURRENCY_POLICY_CHANGED = NO
+TRADING_THRESHOLDS_CHANGED = NO
+PARAMETER_TUNING = NO
+BOOTSTRAP_CHANGED = NO
+EMPIRICAL_POLICY_CHANGED = NO
+15M_CHANGED = NO
+V1_USED = NO
+TESTS = FOCUSED_97_PASS; FOLLOWUP_56_PASS; POSTGRES_TRANSACTIONAL_285_PASS_2_WARNINGS; FINAL_LIFECYCLE_EXPORT_31_PASS; COMPILE_PASS
+TEST_DISCLOSURE = TRACKED_COMPOSE_SECURITY_HAS_PREEXISTING_BINANCE_CREDENTIAL_REFERENCE_DEFAULT_FINDING; TWO_PREEXISTING_ACTIVE_WINNER_RUNTIME_EPOCH_EXPECTATIONS_REMAIN
+ALEMBIC = LOCAL_AND_PRODUCTION_0033_net_pnl_protection
+BUILD = PASS; ORCHESTRATOR_AND_READONLY
+DEPLOY = PASS
+RUNTIME_REVISION = 668dd099dcdf27d6c90d055cf7c2ed876c006c8d
+RUNTIME_HEALTH = PASS; BOTH_RUNNING; RESTARTS_0; OOM_FALSE; REVISION_LABEL_MATCH
+READONLY_HEALTH = PASS; HEALTHY; 1_GIB_BOUND; API_OK_CURRENT_OPERATIONAL_READY
+PAPER_READINESS = PASS; CONTINUOUS_ARMED; max_open=1; max_new=1; allow_live=false
+FOUR_HOUR_TECHNICAL_CORROBORATION = 480_ROWS; 48_BOUNDARIES; 10_SYMBOLS; EXPORT_COMPLETED_WITHOUT_OOM; TWO_CLOSED_TYPED_STALE_SCALP_AND_STOP_LOSS
+FOUR_HOUR_HISTORICAL_DISCLOSURE = TWO_PRE_FINAL_CAPACITY_OBSERVATION_SNAPSHOT_PLANS_REMAIN_WITHOUT_BACKFILLED_OUTCOME; NEXT_ALL_NEW_NATURAL_WINDOW_IS_SEPARATE_USER_ACCEPTANCE
+WAITED_FOR_MARKET = NO
+WAITED_FOR_4H_REPORT = NO
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_AUTHORITATIVE_LIFECYCLE_TRACEABILITY
+CURRENT_BLOCKER = NONE_FOR_TECHNICAL_TASK; NEXT_NATURAL_FOUR_HOUR_WINDOW_ACCEPTANCE_IS_SEPARATE_AND_WAS_NOT_AWAITED
+NEXT_ACTION = USER_MAY_VALIDATE_THE_NEXT_NATURAL_FOUR_HOUR_EXPORT; KEEP_LIVE_DISABLED_AND_LIMITS_UNCHANGED
+```
+
+The export now answers why a plan did or did not create a command, why a command
+did or did not open a position, why a closed position exited, which immutable
+runtime revision produced a row, how analysis regime became an empirical bucket,
+and when the event, state transition, and projection refresh occurred. The current
+historical window was not rewritten: its pre-final gaps and `UNSET` revisions stay
+visible rather than receiving inferred data. Full evidence is in
+`docs/audits/TRADERS_PAPER_LIFECYCLE_TRACEABILITY_01_FINAL.md`.
 
 ## WAL/PITR self-healing and recovery-root relocation 01
 
