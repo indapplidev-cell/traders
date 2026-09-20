@@ -70,6 +70,20 @@ def upgrade() -> None:
         "trading_universe_symbol_preflight",
         ["universe_version_id", "active"],
     )
+    op.execute(sa.text("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'traders_paper_runtime') THEN
+                GRANT SELECT ON TABLE trading_universe_symbol_preflight
+                    TO traders_paper_runtime;
+            END IF;
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'traders_readonly_api') THEN
+                GRANT SELECT ON TABLE trading_universe_symbol_preflight
+                    TO traders_readonly_api;
+            END IF;
+        END
+        $$;
+    """))
 
 
 def downgrade() -> None:
