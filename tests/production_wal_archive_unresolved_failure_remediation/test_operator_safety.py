@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import json
 import subprocess
 from pathlib import Path
 
@@ -184,8 +186,13 @@ def test_windows_autostart_is_bounded_and_verified(tmp_path, monkeypatch) -> Non
     assert remediation.install_windows_daemon_autostart(tmp_path, interval_seconds=3)
     assert calls[0][0:4] == ["schtasks.exe", "/Create", "/TN", remediation.WINDOWS_AUTOSTART_TASK]
     assert calls[1][0:4] == ["schtasks.exe", "/Create", "/TN", remediation.WINDOWS_WATCHDOG_TASK]
-    assert calls[2] == ["schtasks.exe", "/Query", "/TN", remediation.WINDOWS_AUTOSTART_TASK]
-    assert calls[3] == ["schtasks.exe", "/Query", "/TN", remediation.WINDOWS_WATCHDOG_TASK]
+    assert calls[2][0:4] == ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command"]
+    assert "AllowStartIfOnBatteries" in calls[2][-1]
+    assert "DontStopIfGoingOnBatteries" in calls[2][-1]
+    assert "New-ScheduledTaskAction" in calls[2][-1]
+    assert "-WorkingDirectory" in calls[2][-1]
+    assert calls[3] == ["schtasks.exe", "/Query", "/TN", remediation.WINDOWS_AUTOSTART_TASK]
+    assert calls[4] == ["schtasks.exe", "/Query", "/TN", remediation.WINDOWS_WATCHDOG_TASK]
     assert "ONLOGON" in calls[0]
     assert "MINUTE" in calls[1]
     assert "watchdog" in calls[0][-2]
@@ -197,11 +204,23 @@ def test_recovery_watchdog_leaves_a_live_supervisor_untouched(tmp_path, monkeypa
     catalog.mkdir()
     lock = catalog / remediation.SUPERVISOR_LOCK
     lock.write_text("4321", encoding="ascii")
+    (catalog / remediation.SUPERVISOR_STATE).write_text(json.dumps({
+        "process_id": 4321,
+        "heartbeat_at": datetime.now(timezone.utc).isoformat(),
+    }), encoding="utf-8")
     monkeypatch.setattr(remediation, "SAFE_ROOT", tmp_path)
     monkeypatch.setattr(remediation, "_process_is_alive", lambda pid: pid == 4321)
     monkeypatch.setattr(remediation, "run_recovery_supervisor", lambda *_args, **_kwargs: pytest.fail("must not restart"))
 
     remediation.run_recovery_watchdog(tmp_path, interval_seconds=3)
+
+
+def test_pythonw_watchdog_fast_path_has_no_stdout_failure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(remediation, "SAFE_ROOT", tmp_path)
+    monkeypatch.setattr(remediation, "run_recovery_watchdog", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(remediation.sys, "stdout", None)
+
+    assert remediation.main(["watchdog", "--root", str(tmp_path)]) == 0
 
 
 def test_windows_autostart_falls_back_to_current_user_startup(tmp_path, monkeypatch) -> None:
@@ -231,6 +250,7 @@ def test_windows_autostart_falls_back_to_current_user_startup(tmp_path, monkeypa
     assert "production_wal_archive_remediation.py" in content
     assert "--interval-seconds 3" in content
     assert "WScript.Shell" in content
+    assert "CurrentDirectory" in content
 
 
 def test_remediator_does_not_depend_on_paper_foundation_or_market_data_adapter() -> None:

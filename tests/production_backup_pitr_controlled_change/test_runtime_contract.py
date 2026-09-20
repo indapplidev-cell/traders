@@ -51,7 +51,7 @@ def test_compose_pitr_contract_is_no_secret_and_targeted() -> None:
     assert "archive_mode=on" in text
     assert "wal_level=replica" in text
     assert "archive_timeout=900" in text
-    assert "D:/traders_ml_recovery/postgres:/var/lib/postgresql/recovery" in text
+    assert "D:/disk_E/game_projects/traders/traders_ml_recovery/postgres:/var/lib/postgresql/recovery" in text
     assert "cmp -s" in text
     assert ".ack" in text
     assert "300" in text

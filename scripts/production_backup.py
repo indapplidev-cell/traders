@@ -41,7 +41,11 @@ CONTAINER = "traders-ml-postgres-1"
 DB_USER = "traders_ml"
 DB_NAME = "traders_ml"
 CONTAINER_RECOVERY_ROOT = "/var/lib/postgresql/recovery"
-SAFE_ROOT = Path(r"D:\traders_ml_recovery\postgres")
+# Keep the production recovery archive beside the repository, under the
+# operator-approved Traders workspace.  Deriving the path from this checkout
+# avoids a second machine-global storage root that can silently outlive or
+# drift away from the deployment configuration.
+SAFE_ROOT = ROOT.parent / "traders_ml_recovery" / "postgres"
 
 
 class OperationFailure(RuntimeError):

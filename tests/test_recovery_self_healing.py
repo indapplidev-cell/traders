@@ -162,3 +162,31 @@ def test_three_repeated_recovery_cycles_are_not_sticky():
         state=state.advance("RECOVERING","PITR_VERIFICATION_PENDING",now+timedelta(seconds=cycle*6+2),3)
         state=state.advance("READY","WAL_ARCHIVE_READY",now+timedelta(seconds=cycle*6+3),3)
         assert state.state=="READY" and state.next_recheck_at
+
+
+def test_watchdog_rejects_reused_supervisor_pid_with_stale_heartbeat(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    catalog = tmp_path / "catalog"
+    catalog.mkdir()
+    (catalog / daemon.SUPERVISOR_LOCK).write_text("42", encoding="ascii")
+    (catalog / daemon.SUPERVISOR_STATE).write_text(json.dumps({
+        "process_id": 42,
+        "heartbeat_at": (
+            now - timedelta(seconds=daemon._DAEMON_POLICY.heartbeat_freshness_seconds + 1)
+        ).isoformat(),
+    }), encoding="utf-8")
+    monkeypatch.setattr(daemon, "_process_is_alive", lambda pid: pid == 42)
+    assert not daemon._supervisor_owner_is_current(tmp_path, now=now)
+
+
+def test_watchdog_accepts_only_matching_fresh_supervisor_publication(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    catalog = tmp_path / "catalog"
+    catalog.mkdir()
+    (catalog / daemon.SUPERVISOR_LOCK).write_text("42", encoding="ascii")
+    (catalog / daemon.SUPERVISOR_STATE).write_text(json.dumps({
+        "process_id": 42,
+        "heartbeat_at": now.isoformat(),
+    }), encoding="utf-8")
+    monkeypatch.setattr(daemon, "_process_is_alive", lambda pid: pid == 42)
+    assert daemon._supervisor_owner_is_current(tmp_path, now=now)

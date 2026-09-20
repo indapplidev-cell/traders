@@ -108,9 +108,11 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0029_stale_position_shadow",
             "0030_paper_recovery_close",
             "0031_scalping_parameter_sets",
+            "0032_scalping_hold_lifecycle",
+            "0033_net_pnl_protection",
         }:
             raise RuntimeError(
-                "online runtime requires schema 0020 through 0031"
+                "online runtime requires schema 0020 through 0033"
             )
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "

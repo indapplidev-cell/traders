@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
@@ -47,6 +48,7 @@ HOST_ACK_ARCHIVE_COMMAND = (
     "test -f /var/lib/postgresql/wal_export/%f.ack"
 )
 _DAEMON_POLICY = RUNTIME_POLICY.wal_ack_daemon
+MAX_ARTIFACT_FUTURE_SKEW_SECONDS = RUNTIME_POLICY.paper_readiness.artifact_future_skew_tolerance_seconds
 DAEMON_STATE_WRITE_ATTEMPTS = _DAEMON_POLICY.state_write_attempts
 DAEMON_STATE_WRITE_RETRY_SECONDS = _DAEMON_POLICY.state_write_retry_seconds
 WINDOWS_AUTOSTART_TASK = "TradersML-WALAckDaemon"
@@ -370,6 +372,26 @@ def _read_lock_pid(lock: Path) -> int:
         return 0
 
 
+def _supervisor_owner_is_current(root: Path, *, now: datetime | None = None) -> bool:
+    """Prove that the supervisor lock belongs to the fresh published owner.
+
+    A bare PID is not an identity on Windows: after an unclean shutdown the OS
+    may reuse it for an unrelated process.  The watchdog therefore requires a
+    matching, fresh supervisor publication before trusting the lock.
+    """
+    now = now or datetime.now(timezone.utc)
+    catalog = root / "catalog"
+    pid = _read_lock_pid(catalog / SUPERVISOR_LOCK)
+    if not _process_is_alive(pid):
+        return False
+    state = _read_json_object(catalog / SUPERVISOR_STATE)
+    heartbeat = _utc(state.get("heartbeat_at"))
+    if state.get("process_id") != pid or heartbeat is None:
+        return False
+    age = (now - heartbeat.astimezone(timezone.utc)).total_seconds()
+    return -MAX_ARTIFACT_FUTURE_SKEW_SECONDS <= age <= _DAEMON_POLICY.heartbeat_freshness_seconds
+
+
 def _completed_recheck_projection(
     worker: dict[str, object], previous: dict[str, object],
 ) -> dict[str, object]:
@@ -406,10 +428,11 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
     if not pythonw.is_file():
         raise OperationFailure("PYTHONW_UNAVAILABLE")
     script = Path(__file__).resolve()
-    task_action = (
-        f'"{pythonw}" "{script}" watchdog --root "{root.resolve()}" '
+    task_arguments = (
+        f'"{script}" watchdog --root "{root.resolve()}" '
         f"--interval-seconds {interval_seconds}"
     )
+    task_action = f'"{pythonw}" {task_arguments}'
     # A logon trigger alone cannot recover a supervisor which exits later in
     # the same session.  Keep it for immediate startup and add a bounded
     # per-minute watchdog: the supervisor lock makes repeated launches safe.
@@ -423,6 +446,25 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
          "/RL", "LIMITED", "/TR", task_action, "/F"],
         capture_output=True, text=True, timeout=30, check=False,
     )
+    if not watchdog.returncode:
+        ps_pythonw = str(pythonw).replace("'", "''")
+        ps_arguments = task_arguments.replace("'", "''")
+        ps_working_directory = str(ROOT).replace("'", "''")
+        settings_script = (
+            "$settings=New-ScheduledTaskSettingsSet "
+            "-AllowStartIfOnBatteries -DontStopIfGoingOnBatteries "
+            "-ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; "
+            f"$action=New-ScheduledTaskAction -Execute '{ps_pythonw}' "
+            f"-Argument '{ps_arguments}' -WorkingDirectory '{ps_working_directory}'; "
+            f"Set-ScheduledTask -TaskName '{WINDOWS_WATCHDOG_TASK}' "
+            "-Action $action -Settings $settings | Out-Null"
+        )
+        hardened = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", settings_script],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+        if hardened.returncode:
+            raise OperationFailure("RECOVERY_WATCHDOG_SETTINGS_HARDENING_FAILED")
     if not created.returncode and not watchdog.returncode:
         verified = [
             subprocess.run(
@@ -454,7 +496,12 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
         raise OperationFailure("WINDOWS_STARTUP_DIRECTORY_UNAVAILABLE")
     launcher = startup / WINDOWS_STARTUP_LAUNCHER
     vbs_action = task_action.replace('"', '""')
-    content = f'CreateObject("WScript.Shell").Run "{vbs_action}", 0, False\n'
+    vbs_root = str(ROOT).replace('"', '""')
+    content = (
+        'Set shell = CreateObject("WScript.Shell")\n'
+        f'shell.CurrentDirectory = "{vbs_root}"\n'
+        f'shell.Run "{vbs_action}", 0, False\n'
+    )
     pending = launcher.with_suffix(".vbs.pending")
     try:
         pending.write_text(content, encoding="utf-8")
@@ -722,9 +769,31 @@ def run_recovery_watchdog(root: Path, *, interval_seconds: int) -> None:
     if root.resolve() != SAFE_ROOT.resolve():
         raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
     lock = root / "catalog" / SUPERVISOR_LOCK
-    if _process_is_alive(_read_lock_pid(lock)):
+    if _supervisor_owner_is_current(root):
         return
+    # The lock is stale even if its numeric PID was reused by another process.
+    # Recheck immediately before removal so two watchdog launches do not
+    # replace a supervisor that became authoritative in the meantime.
+    if _supervisor_owner_is_current(root):
+        return
+    try:
+        lock.unlink()
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        raise OperationFailure("RECOVERY_SUPERVISOR_STALE_LOCK_RECOVERY_FAILED") from error
     run_recovery_supervisor(root, interval_seconds=interval_seconds)
+
+
+def _emit_result(payload: dict[str, object]) -> None:
+    """Emit CLI JSON only when the host process has a console stream.
+
+    ``pythonw.exe`` deliberately has no stdout.  Calling ``print`` after the
+    healthy watchdog fast path made every scheduled no-op look like exit code
+    1 even though the supervisor was healthy.
+    """
+    if getattr(sys, "stdout", None) is not None:
+        print(json.dumps(payload, sort_keys=True))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -762,12 +831,25 @@ def main(argv: list[str] | None = None) -> int:
         else:
             run_recovery_watchdog(args.root, interval_seconds=args.interval_seconds)
             result = {"status": "STOPPED"}
-        print(json.dumps(result, sort_keys=True))
+        _emit_result(result)
         return 0
     except (OSError, ValueError, json.JSONDecodeError, OperationFailure, subprocess.TimeoutExpired) as error:
-        print(json.dumps({"status": "FAILED", "error_class": str(error)}))
+        _emit_result({"status": "FAILED", "error_class": str(error)})
         return 2
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except BaseException:
+        # pythonw has no stderr. Preserve an unexpected bootstrap traceback in
+        # the approved recovery root so Task Scheduler failures are diagnosable.
+        try:
+            (SAFE_ROOT / "catalog" / "wal_watchdog_bootstrap_error.log").write_text(
+                traceback.format_exc(), encoding="utf-8"
+            )
+        except OSError:
+            pass
+        raise

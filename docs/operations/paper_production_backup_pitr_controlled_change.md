@@ -17,8 +17,10 @@ RECOVERY_APPROVAL_ROLE = TRADERS_LOCAL_OPERATOR
 TWO_PERSON_APPROVAL_REQUIRED_FOR_PAPER = NO
 ```
 
-The approved local root is `D:\traders_ml_recovery\postgres`. It is outside
-the Git repositories, evidence inbox, temporary directories and PGDATA. The
+The approved local root is
+`D:\disk_E\game_projects\traders\traders_ml_recovery\postgres`. It is inside
+the operator-approved Traders workspace but outside the Git repositories,
+evidence inbox, temporary directories and PGDATA. The
 root and all children use protected Windows ACL inheritance with no broad
 write grant. It remains on the same host failure domain; this is not an
 off-host disaster-recovery copy.

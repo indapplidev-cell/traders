@@ -22,7 +22,7 @@ services:
       - "5433:5432"
     volumes:
       - traders_ml_postgres_data:/var/lib/postgresql/data
-      - D:/traders_ml_recovery/postgres:/var/lib/postgresql/recovery
+      - D:/disk_E/game_projects/traders/traders_ml_recovery/postgres:/var/lib/postgresql/recovery
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U traders_ml -d traders_ml"]
       interval: 10s

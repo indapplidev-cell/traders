@@ -52,7 +52,7 @@ services:
         target: /run/traders-paper-identity
         read_only: true
       - type: bind
-        source: D:/traders_ml_recovery/postgres
+        source: ../../../../traders_ml_recovery/postgres
         target: /run/traders-recovery
         read_only: true
       - type: bind

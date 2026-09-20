@@ -6,7 +6,7 @@ Install the canonical owner for the current Windows operator at logon:
 
 ```powershell
 python scripts/production_wal_archive_remediation.py install-daemon-autostart `
-  --root D:\traders_ml_recovery\postgres --interval-seconds 3
+  --root D:\disk_E\game_projects\traders\traders_ml_recovery\postgres --interval-seconds 3
 ```
 
 The installer prefers a LIMITED scheduled task and uses the current-user
@@ -22,7 +22,7 @@ lines or protected bindings:
 ```powershell
 python scripts/safe_wal_ack_inspector.py
 python scripts/production_wal_archive_remediation.py diagnose `
-  --root D:\traders_ml_recovery\postgres
+  --root D:\disk_E\game_projects\traders\traders_ml_recovery\postgres
 ```
 
 Task: `TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01`
