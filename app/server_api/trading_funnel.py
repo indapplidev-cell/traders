@@ -1488,7 +1488,11 @@ class TradingFunnelReadRepository:
                             latest_plan_by_symbol.values()
                         )
                         rows = (*rows, *historical_plans)
-            self._row_cache[profile_id] = (current, rows)
+            # TTL starts when the expensive materialization completes. With a
+            # twenty-symbol projection the query itself can outlive the TTL;
+            # stamping it at query start would make the fresh result expire
+            # immediately and force every waiting desktop page to reload it.
+            self._row_cache[profile_id] = (self._monotonic(), rows)
             return rows
 
     def project(self, now_ms: int, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
