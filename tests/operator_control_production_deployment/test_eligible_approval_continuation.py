@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
 from threading import Event, Lock, Thread
+from types import SimpleNamespace
 
 import pytest
 
@@ -161,6 +162,39 @@ def test_future_approval_continues_same_canary_once_and_replay_stops():
     assert store.value.command_count == 1 and store.value.position_count == 0
     assert subject.run_once() == "NO_WAITING_CANARY"
     assert executor.calls == 1 and store.created_canaries == 1
+
+
+def test_continuous_capacity_block_persists_observation_without_execution():
+    store = Store(waiting_canary(
+        state=PaperFirstCanaryState.RUNNING,
+        authority_mode="CONTINUOUS",
+        command_count=1,
+        command_id="paper:command:existing",
+    ))
+
+    class CapacityExecutor:
+        observed = []
+
+        def expire_due_outcomes(self):
+            return 0
+
+        def observe_continuous_capacity_blocked(self, blocker_code):
+            self.observed.append(blocker_code)
+
+    executor = CapacityExecutor()
+    subject = PaperFirstCanaryEligibleApprovalContinuationWorker(
+        control=Control(PersistentState.CONTINUOUS_ARMED),
+        canary_store=store,
+        executor=executor,
+        lock=AlwaysLock(),
+        poll_seconds=5.0,
+        continuous_store=SimpleNamespace(reconcile=lambda **_kwargs: SimpleNamespace(
+            control_state="CONTINUOUS_ARMED", enabled=True, pause_reason=None,
+        )),
+    )
+
+    assert subject.run_once() == "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
+    assert executor.observed == ["MAX_OPEN_POSITIONS_REACHED"]
 
 
 def test_real_production_approval_adapter_future_visibility_uses_existing_ingestion_boundary():

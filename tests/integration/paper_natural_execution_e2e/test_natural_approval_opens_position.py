@@ -911,6 +911,15 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 1
         assert session.scalar(select(func.count()).select_from(PaperPositionRecord).where(PaperPositionRecord.state == "OPEN")) == 1
+        blocked = session.scalar(
+            select(PaperPlanExecutionOutcomeRecord).where(
+                PaperPlanExecutionOutcomeRecord.command_id.is_(None),
+                PaperPlanExecutionOutcomeRecord.lifecycle_state == "BLOCKED_BY_POLICY",
+            )
+        )
+        assert blocked is not None
+        assert blocked.selector_reason == "MAX_OPEN_POSITIONS_REACHED"
+        assert blocked.attempt_count == 1
 
     repository = CandleRepository(factory)
     for index in range(1, 4):

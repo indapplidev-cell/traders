@@ -135,6 +135,11 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
                 if canary.authority_mode != "CONTINUOUS":
                     return "SAFE_FAILURE:LEGACY_CANARY_ACTIVE_DURING_CONTINUOUS_MODE"
                 if canary.command_id is not None:
+                    observe_blocked = getattr(
+                        self._executor, "observe_continuous_capacity_blocked", None
+                    )
+                    if observe_blocked is not None:
+                        observe_blocked("MAX_OPEN_POSITIONS_REACHED")
                     return "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
             with self._lock.acquire(f"continuous-generation-{control.generation}") as acquired:
                 if not acquired:

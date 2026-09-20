@@ -241,6 +241,41 @@ class ProductionPaperFirstCanaryExecutor:
             int(datetime.now(timezone.utc).timestamp() * 1000)
         )
 
+    def observe_continuous_capacity_blocked(self, blocker_code: str) -> None:
+        """Persist the exact no-command reason without changing execution capacity.
+
+        Capacity checks intentionally remain fail-closed and keep their existing
+        limits.  We still read the already-persisted eligible approvals so every
+        PAPER plan receives a selector/lifecycle outcome instead of disappearing
+        from the Plan -> Command projection while another command or position owns
+        the single available slot.
+        """
+
+        if self._outcome_store is None:
+            return
+        state = self._control.read_authoritative()
+        if state.state is not PersistentState.CONTINUOUS_ARMED or state.arming_scope is None:
+            return
+        authority = SimpleNamespace(
+            allowed_symbols=state.arming_scope.allowed_symbols,
+            selection_policy_version="eligible-approval-ranking-v1",
+            universe_version_id="trading-universe-v2",
+            current_control_generation=state.generation,
+        )
+        request_id = _id(
+            str(state.generation), "continuous-capacity-observation", continuous=True
+        )
+        results = self._read_approvals(authority, request_id, timeframes=("5m",))
+        if self._approval_source_error(results):
+            return
+        selection = self._select_candidate(authority, results, exclude_executed=True)
+        if selection.failure_code is not None or selection.winner is None:
+            return
+        self._outcome_store.record_attempt(
+            selection.winner.lineage.source_run_id,
+            blocker_codes=(blocker_code,),
+        )
+
     @staticmethod
     def _approval_source_error(results) -> tuple[str, ...]:
         unhealthy = tuple(
@@ -383,8 +418,12 @@ class ProductionPaperFirstCanaryExecutor:
                         candidate.lineage.source_run_id, shadow
                     )
         if budget.open_positions >= 1:
+            self.observe_continuous_capacity_blocked("MAX_OPEN_POSITIONS_REACHED")
             return ("MAX_OPEN_POSITIONS_REACHED",)
         if budget.in_flight_commands >= 1:
+            self.observe_continuous_capacity_blocked(
+                "MAX_NEW_COMMANDS_PER_CYCLE_REACHED"
+            )
             return ("MAX_NEW_COMMANDS_PER_CYCLE_REACHED",)
         request_id = _id(
             str(state.generation), "continuous-approval-poll", continuous=True
