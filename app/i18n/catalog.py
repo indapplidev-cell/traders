@@ -881,7 +881,7 @@ RU.update({
     "funnel.detail.probability_sample_size": "Размер выборки вероятности",
     "funnel.detail.probability_required_sample_size": "Требуемый размер выборки",
     "funnel.detail.probability_authority_ratio": "Доля statistical authority",
-    "funnel.detail.probability_authority_status": "Статус statistical authority",
+    "funnel.detail.probability_authority_status": "Статус статистической достоверности",
     "funnel.detail.probability_parent_used": "Использован родительский bucket",
     "funnel.detail.probability_eta": "ETA до authority",
     "funnel.detail.probability_insufficient_reason": "Недостаточно статистики вероятности: bucket {samples} / {required}; parent authority unavailable",

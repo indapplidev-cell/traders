@@ -198,6 +198,9 @@ def test_known_scalping_rejection_reasons_are_operator_readable_and_bilingual():
 def test_scalping_v2_economics_causal_diagnostic_labels_and_semantics_are_complete():
     ru = catalog_payload("ru")["translations"]
     en = catalog_payload("en")["translations"]
+    assert ru["funnel.detail.probability_authority_status"] == (
+        "Статус статистической достоверности"
+    )
     fields = (
         "p_win_conservative", "expected_ev_r", "dynamic_required_net_rr",
         "probability_source", "probability_bucket", "probability_sample_size",
