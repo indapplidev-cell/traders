@@ -3,13 +3,65 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = c72d737bd129d8243c1d3ac9747e6bb5ecdcabe5
+STATUS_AS_OF_COMMIT = 4600b72002db5d30fc02cae00d75e0222a810824
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T19:23:25Z
-RECONCILED_BY_TASK = TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01
-FILES_CHANGED = app/server_api/repositories/sqlalchemy_read.py; app/server_api/schemas/models.py; app/server_api/trading_funnel.py; app/trading_universe/__init__.py; app/trading_universe/domain.py; tests/server_api/test_analysis_latest_available_repository.py; tests/server_api/test_api_v1.py; tests/server_api/test_trading_funnel.py; tests/trading_universe/test_domain_and_readonly.py; docs/audits/TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T21:28:54Z
+RECONCILED_BY_TASK = TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01
+FILES_CHANGED = app/i18n/catalog.py; app/i18n/help_source.py; docs/audits/TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01_FINAL.md; online_trader.md; ../traders-client/src/traders_client/application/client_state.py; ../traders-client/src/traders_client/application/app_controller.py; ../traders-client/src/traders_client/i18n/keys.py; ../traders-client/src/traders_client/ui/auto_refresh.py; ../traders-client/src/traders_client/ui/keyboard_shortcuts.py; ../traders-client/src/traders_client/ui/main_window.py; ../traders-client/src/traders_client/ui/paper_trading_view.py; ../traders-client/src/traders_client/ui/trade_control_view.py; ../traders-client/tests/test_auto_refresh.py; ../traders-client/tests/test_i18n_gui.py; ../traders-client/tests/test_keyboard_shortcuts.py; ../traders-client/tests/test_paper_foundation.py; ../traders-client/tests/test_trade_control_split.py; ../traders-client/tests/test_trading_criteria_visibility.py; ../traders-client/client_status.md.
+
+## Desktop Paper information / Trade Control split 01
+
+```text
+TASK = TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = PAPER_INFORMATION_PROJECTION_AND_TRADE_CONTROL_ARE_SEPARATE_LAZY_LIFECYCLE_SCOPES_AND_THE_DEPLOYED_READONLY_CATALOG_IS_INTEGRATED
+PROJECT_STATE_COMMIT = 4600b72002db5d30fc02cae00d75e0222a810824
+SERVER_IMPLEMENTATION_COMMIT = 44f97d3b2e45f677744ab5feceed602e4cf684be
+CLIENT_IMPLEMENTATION_COMMIT = e502ca5b45bb3cb1601811577b1a2b7c21487f62
+CLIENT_TEST_COMMIT = 9a646a405f75e18e00350d3db9366c812ef7f224
+CLIENT_DOCUMENTATION_COMMIT = 7de4d0fc7357146608610e3e16913e88af5f1fa5
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 4600b72002db5d30fc02cae00d75e0222a810824
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING; CLIENT_MAIN_PUSHED
+MODE = PAPER
+ACTIVE_PROFILE = trade-5m-v2
+ACTIVE_UNIVERSE = trading-universe-v3; 20_ACTIVE
+PAPER_RUNTIME = ENABLED
+LIVE_STATE = DISABLED; live_allowed=false
+REAL_BINANCE_ORDER_CALLS = 0
+PAPER_SCREEN = FIVE_BLOCK_INFORMATION_PROJECTION_ONLY
+TRADE_CONTROL_SCREEN = LAZY_SINGLE_INSTANCE_CRITERIA_READINESS_AND_CONTROL_OWNER
+REQUEST_LIFECYCLE = ACTIVE_PAGE_ONLY; CANCEL_ON_LEAVE; STALE_CONTROL_SEQUENCE_REJECTED
+HISTORY = LATEST_20
+RECONCILIATION = FIRST_AND_AT_MOST_ONCE_PER_60_SECONDS
+TRADE_REPORT = ON_DEMAND_ONLY
+PERFORMANCE = PAPER_BASE_CALLS_11_TO_6_FIRST_SLOW_OR_4_FAST; TRADE_CONTROL_ENDPOINT_CALLS_FROM_PAPER_0
+TESTS = CLIENT_FOCUSED_77_PASS_18_DESELECTED_28_SUBTESTS; CLIENT_RELEVANT_101_PASS_2_SKIP_18_DESELECTED_1648_SUBTESTS; SERVER_RELEVANT_47_PASS_2_DESELECTED; COMPILE_PASS
+DEPLOY = PASS; READONLY_ONLY
+RUNTIME_REVISION = 44f97d3b2e45f677744ab5feceed602e4cf684be
+READONLY_HEALTH = PASS; HEALTHY
+I18N_CATALOG = i18n-b2b08df419169a86; RU_TRADE_CONTROL_PASS
+ALEMBIC = 0034_scalping_universe_v3; UNCHANGED
+DESKTOP_ACCEPTANCE = PASS; PAPER_PID_5904_HWND_859564; TRADE_CONTROL_PID_2232_HWND_334870; PID_BOUND_FOREGROUND_AND_FULL_DESKTOP_CROPPED_CAPTURE
+STRATEGY_CHANGED = NO
+TRADING_THRESHOLDS_CHANGED = NO
+RISK_CHANGED = NO
+SELECTOR_CHANGED = NO
+YAML_CHANGED = NO
+UNIVERSE_CHANGED = NO
+LEGACY_15M_CHANGED = NO
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_SPLIT_INFORMATION_AND_CONTROL_PROJECTIONS
+CURRENT_BLOCKER = NONE_FOR_DESKTOP_SPLIT; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = CONTINUE_NORMAL_PAPER_OBSERVATION_AND_KEEP_STRATEGY_RISK_SELECTOR_YAML_UNIVERSE_15M_AND_LIVE_POLICY_UNCHANGED
+```
+
+The client now applies a real projection policy: Paper owns only bounded
+informational reads, while criteria and all PAPER control state/actions belong
+to a lazily created, page-scoped Trade Control screen. Navigation, RU/EN labels,
+refresh ownership, cancellation, stale-response protection, failure isolation,
+and server-owned catalog deployment were verified together. Full evidence is
+in `docs/audits/TRADERS_DESKTOP_PAPER_TRADE_CONTROL_SPLIT_01_FINAL.md`.
 
 ## Read-only twenty-symbol client recovery 01
 
