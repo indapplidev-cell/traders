@@ -3,13 +3,57 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 036da245df1f6e432251783fd10b839ac56d653d
+STATUS_AS_OF_COMMIT = ed38b675fd5d02edad8d3dc0314676cddec5e99f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T00:34:56Z
-RECONCILED_BY_TASK = TRADERS_SCALPING_NET_PNL_PROTECTION_01
-FILES_CHANGED = alembic/versions/0033_net_pnl_protection.py; app/db/paper_models.py; app/engine_paper/exit_evaluation_service.py; app/engine_paper/exit_evaluator.py; app/engine_paper/scalping_hold_lifecycle.py; app/engine_safety/paper_domain.py; app/operator_control/production_lifecycle_worker.py; app/operator_control/runtime.py; app/server_api/schema_compatibility.py; app/server_api/schemas/paper.py; app/server_api/trading_funnel.py; tests/engine_paper/test_net_pnl_protection.py; tests/paper_exit_evaluation_retry/test_net_pnl_protection_service.py; docs/audits/TRADERS_SCALPING_NET_PNL_PROTECTION_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T01:06:09Z
+RECONCILED_BY_TASK = TRADERS_DIRTY_WORKTREE_AND_SCHEMA_TEST_RECONCILIATION_01
+FILES_CHANGED = app/engine_safety/pitr_lineage.py; app/server_api/__init__.py; app/server_api/paper_runtime_observation.py; app/server_api/repositories/__init__.py; app/server_api/services/__init__.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; tests/readonly_production_runtime_observation/test_observation.py; traders_ml/parameter_sweep/effective_config.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/winners.py; tests/research/test_parameter_sweep_winners.py; tests/test_db_models.py; online_trader.md.
+
+## Dirty worktree and schema-test reconciliation 01
+
+```text
+TASK = TRADERS_DIRTY_WORKTREE_AND_SCHEMA_TEST_RECONCILIATION_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = RELATED_READONLY_RECOVERY_RESEARCH_AND_SCHEMA_TEST_CHANGES_RECONCILED_COMMITTED_PUSHED_AND_READONLY_DEPLOYED
+PROJECT_STATE_COMMIT = ed38b675fd5d02edad8d3dc0314676cddec5e99f
+READONLY_RECOVERY_COMMIT = da917073c0a364ba867cfd79b66c6ee89569a80a
+RESEARCH_EFFECTIVE_CONFIG_COMMIT = db62dd6bbb1a0c64d0a970a8215e207771347292
+SCHEMA_TEST_COMMIT = ed38b675fd5d02edad8d3dc0314676cddec5e99f
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ed38b675fd5d02edad8d3dc0314676cddec5e99f
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+READONLY_RUNTIME_REVISION = ed38b675fd5d02edad8d3dc0314676cddec5e99f
+READONLY_IMAGE = sha256:9e9b24cd0f3e5393ed471d3d4a571fce3ab494e8457b913894d094ad638cc216
+READONLY_HEALTH = PASS; HEALTHY; RESTARTS_0; API_OK_CURRENT_OPERATIONAL_READY
+PAPER_READINESS = PASS; READY_CONTINUOUS_ARMED_SCHEMA_READY_DATABASE_DURABILITY_READY_MUTATION_READY
+LIVE_STATE = DISABLED; live_allowed=false
+ALEMBIC = PRODUCTION_CURRENT_0033_net_pnl_protection
+PITR_IMPLEMENTATION = ONE_CANONICAL_DEPENDENCY_LIGHT_LINEAGE_OBSERVER_SHARED_BY_READONLY_CALLERS
+IMPORT_BOUNDARIES = LAZY_SERVER_API_SERVICE_AND_REPOSITORY_EXPORTS; CIRCULAR_IMPORT_REGRESSION_REMOVED
+RECOVERY_WATCHDOG_TESTS = COMMITTED_FOR_EXISTING_SUPERVISOR_AND_WINDOWS_WATCHDOG_IMPLEMENTATION
+RESEARCH_WINNER_CONFIGURATION = FULL_EFFECTIVE_CONFIGURATION_AND_PARAMETER_PROVENANCE_PERSISTED_AND_DISPLAYABLE
+SCHEMA_TABLE_TEST = DERIVED_FROM_SQLALCHEMY_BASE_METADATA; NO_STALE_MANUAL_TABLE_INVENTORY
+SCHEMAS_REMOVED = NONE; AUDITED_LEGACY_ML_TABLES_REMAIN_REFERENCED_BY_REPOSITORIES_ANALYSIS_AND_ALEMBIC
+ARTIFACT_DELETIONS_COMMITTED = NO; DELETED_FILES_REMAIN_USER_OWNED_AND_ARE_REFERENCED_BY_EXISTING_AUDIT_EVIDENCE
+TESTS = READONLY_RECOVERY_SCHEMA_52_PASS; WINNERS_15_PASS; EXPANDED_SEARCH_17_PASS; COMPILE_PASS
+WIDER_SERVER_DISCLOSURE = 261_PASS_7_SKIP_6_PREEXISTING_STALE_ROUTE_COUNT_AND_I18N_CONTRACT_FAILURES; OUTSIDE_REQUESTED_SCHEMA_TABLE_FIX
+CURRENT_STAGE = NORMAL_PAPER_OPERATION_WITH_RECONCILED_READONLY_OBSERVER_AND_RESEARCH_WINNER_PROVENANCE
+CURRENT_BLOCKER = NONE_FOR_THIS_TASK; GLOBAL_WAL_PITR_DIAGNOSTICS_REMAIN_STALE_AND_LIVE_DURABILITY_REMAINS_BLOCKED
+NEXT_ACTION = PRESERVE_USER_OWNED_ARTIFACT_DELETIONS_UNTIL_SEPARATE_EVIDENCE_RETENTION_DECISION; UPDATE_OTHER_STALE_SERVER_CONTRACT_TESTS_IN_A_SEPARATE_TASK
+```
+
+The dirty-tree audit separated three coherent project changes and committed
+them independently. Readonly recovery now imports one canonical PITR lineage
+observer without constructing unrelated HTTP services or creating circular
+imports. Parameter-sweep winners retain the searched values together with the
+full effective configuration and provenance used to evaluate them. The old
+database-table test no longer duplicates a manually maintained schema list;
+it verifies that every table registered in SQLAlchemy metadata is actually
+created. No table was removed because the audited legacy ML tables still have
+live repositories, analysis consumers and Alembic history. Mass deletions of
+historical sweep artifacts were not committed because existing audit documents
+reference them as evidence.
 
 ## Scalping net PnL protection 01
 
