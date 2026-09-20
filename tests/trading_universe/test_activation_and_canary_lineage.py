@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.paper_models import TradingUniverseRuntimeStateRecord
+from app.db.paper_models import TradingUniverseRuntimeStateRecord, TradingUniverseSymbolPreflightRecord
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
 from app.engine_safety.paper_production_control import (
     ArmReadinessPreflight,
@@ -21,6 +21,7 @@ from app.trading_universe.activation import (
     SqlAlchemyTradingUniverseStore,
     TradingUniverseActivationError,
 )
+from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE
 
 
 NOW = datetime(2026, 8, 14, tzinfo=timezone.utc)
@@ -41,6 +42,13 @@ def stores():
             activation_reason="INITIAL_V1_BASELINE",
             runtime_revision="0015",
         ))
+        session.add_all(TradingUniverseSymbolPreflightRecord(
+            environment="PRODUCTION", universe_version_id="trading-universe-v3",
+            symbol=symbol, configured=True, active=True, status="PASS", reason=None,
+            one_minute_fresh=True, five_minute_fresh=True,
+            commission_authority="BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
+            observed_at=NOW, authority_details={"fixture": True},
+        ) for symbol in SCALPING_TRADING_UNIVERSE.symbols)
     yield SqlAlchemyTradingUniverseStore(sessions), SqlAlchemyPaperFirstCanaryStore(sessions)
     engine.dispose()
 
@@ -67,6 +75,28 @@ def test_v2_activation_is_single_transaction_and_idempotent(stores):
         reason="CONTROLLED_V2_ACTIVATION_AFTER_V1_STOP",
         runtime_revision="revision-under-test",
     ) == state
+
+
+def test_v3_activation_preserves_v2_history_and_expands_only_the_new_runtime(stores):
+    universe, _ = stores
+    universe.activate(
+        expected_active_version_id="trading-universe-v1",
+        target_version_id="trading-universe-v2",
+        reason="CONTROLLED_V2_ACTIVATION_AFTER_V1_STOP",
+        runtime_revision="revision-under-test",
+        now=NOW,
+    )
+    state = universe.activate(
+        expected_active_version_id="trading-universe-v2",
+        target_version_id="trading-universe-v3",
+        reason="SCALPING_V3_TWENTY_SYMBOL_ACTIVATION",
+        runtime_revision="revision-under-test",
+        now=NOW,
+    )
+    assert state.active_version_id == "trading-universe-v3"
+    assert state.previous_version_id == "trading-universe-v2"
+    assert state.generation == 3
+    assert len(universe.active_universe().symbols) == 20
 
 
 def test_active_canary_blocks_activation_and_controlled_waiting_stop_preserves_lineage(stores):

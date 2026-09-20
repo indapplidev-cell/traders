@@ -177,16 +177,16 @@ def test_1300_deterministic_closed_snapshot_matrix(case):
     assert all("FOR UPDATE" not in str(value).upper() for value in session.statements)
 
 
-def test_full_60_stream_snapshot_is_atomic_bounded_and_ordered():
+def test_full_120_stream_snapshot_is_atomic_bounded_and_ordered():
     as_of = aligned_boundary("1d") + 1
     reader = FakeReader(market.SYMBOL_ALLOWLIST, market.TIMEFRAME_ALLOWLIST, 4, as_of=as_of)
     service, session = adapter(reader)
     result = service.read(request(market.SYMBOL_ALLOWLIST, market.TIMEFRAME_ALLOWLIST, 4, as_of=as_of))
     assert result.outcome is market.PaperProductionMarketDataOutcome.READY
-    assert len(result.data.snapshots) == 10
-    assert sum(len(groups) for groups in (item.candles for item in result.data.snapshots)) == 60
-    assert result.query_count == 62  # transaction control + one health read + 60 candle reads
-    assert result.rows_read == 240
+    assert len(result.data.snapshots) == 20
+    assert sum(len(groups) for groups in (item.candles for item in result.data.snapshots)) == 120
+    assert result.query_count == 122  # transaction control + one health read + 120 candle reads
+    assert result.rows_read == 480
     assert session.begin_count == 1
 
 
@@ -260,7 +260,7 @@ def test_missing_timeframe_and_insufficient_history_are_distinct():
 
 
 @pytest.mark.parametrize("symbols,timeframes,history,expected", [
-    (("LTCUSDT",), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
+    (("NOTINUNIVERSE",), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT", "BTCUSDT"), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT",), ("30m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT",), ("1m", "1m"), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),

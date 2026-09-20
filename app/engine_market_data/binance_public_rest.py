@@ -1,6 +1,7 @@
 """Binance Spot public REST client; no credentials or private endpoints."""
 
 import time
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
@@ -99,6 +100,18 @@ class BinancePublicRestClient:
         if not isinstance(payload, dict) or not isinstance(payload.get("serverTime"), int):
             raise PublicMarketDataError("Unexpected Binance time response")
         return payload["serverTime"]
+
+    def fetch_exchange_info(self, symbols: tuple[str, ...] | list[str]) -> dict[str, Any]:
+        normalized = tuple(dict.fromkeys(normalize_market_symbol(value) for value in symbols))
+        if not normalized or len(normalized) > 100:
+            raise ValueError("exchange-info scope must contain 1..100 unique symbols")
+        payload = self._request_json(
+            "/api/v3/exchangeInfo",
+            {"symbols": json.dumps(normalized, separators=(",", ":"))},
+        )
+        if not isinstance(payload, dict) or not isinstance(payload.get("symbols"), list):
+            raise PublicMarketDataError("Unexpected Binance exchangeInfo response")
+        return payload
 
     def fetch_book_ticker(self, symbol: str) -> PublicBookTicker:
         symbol = normalize_market_symbol(symbol)

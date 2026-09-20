@@ -184,7 +184,7 @@ def test_current_v1_and_future_v2_universes_are_rankable_without_activation():
     assert select(v1).winner is not None
     assert SYMBOL_ALLOWLIST == PREPARED_NEXT_TRADING_UNIVERSE.symbols
     v2 = [candidate(symbol, index) for index, symbol in enumerate(SYMBOL_ALLOWLIST, 1)]
-    assert len(v2) == 10 and select(v2).winner is not None
+    assert len(v2) == 20 and select(v2).winner is not None
     assert PREPARED_NEXT_TRADING_UNIVERSE.activation_state.value == "PREPARED_NOT_ACTIVE"
 
 

@@ -226,7 +226,12 @@ class TradingUniverseSymbolStatus(ContractModel):
     setup_ready: bool
     strategy_compatible: bool
     risk_compatible: bool
-    trading_activation_state: Literal["ACTIVE", "PREPARED_NOT_ACTIVE"]
+    trading_activation_state: Literal["ACTIVE", "PREPARED_NOT_ACTIVE", "DISABLED_FAIL_CLOSED"]
+    preflight_status: Literal["PASS", "SYMBOL_FAIL_CLOSED", "NOT_AVAILABLE"] = "NOT_AVAILABLE"
+    disabled_reason: str | None = None
+    one_minute_fresh: bool | None = None
+    five_minute_fresh: bool | None = None
+    commission_authority: str | None = None
 
 
 class TradingUniverseSnapshot(ContractModel):
@@ -234,10 +239,10 @@ class TradingUniverseSnapshot(ContractModel):
     prepared_universe_version: str
     active_symbols: list[Symbol]
     prepared_symbols: list[Symbol]
-    active_symbol_count: int = Field(ge=0, le=10)
-    target_symbol_count: Literal[10] = 10
-    ready_market_data_streams: int = Field(ge=0, le=60)
-    target_market_data_streams: Literal[60] = 60
+    active_symbol_count: int = Field(ge=0, le=20)
+    target_symbol_count: Literal[20] = 20
+    ready_market_data_streams: int = Field(ge=0, le=120)
+    target_market_data_streams: Literal[120] = 120
     symbols: list[TradingUniverseSymbolStatus]
 
 

@@ -8,7 +8,7 @@ ALL_SYMBOLS_ID = "ALL"
 
 
 def resolve_parameter_sweep_universe() -> tuple[str, tuple[str, ...]]:
-    """Return the existing v2 authority; Parameter Sweep owns no symbol list."""
+    """Return the current Scalping authority; Parameter Sweep owns no symbol list."""
     universe = resolve_universe(PREPARED_NEXT_TRADING_UNIVERSE.version_id)
     return universe.version_id, universe.symbols
 

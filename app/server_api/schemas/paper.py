@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0033_net_pnl_protection"
-    ] = "0033_net_pnl_protection"
+        "0034_scalping_universe_v3"
+    ] = "0034_scalping_universe_v3"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool

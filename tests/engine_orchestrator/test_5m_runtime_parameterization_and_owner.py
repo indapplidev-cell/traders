@@ -220,7 +220,8 @@ def test_5m_startup_order_validates_then_acquires_before_daemon_loop():
     assert '"0024_continuous_paper_authority"' in source
     assert '"0032_scalping_hold_lifecycle"' in source
     assert '"0033_net_pnl_protection"' in source
-    assert "requires schema 0020 through 0033" in source
+    assert '"0034_scalping_universe_v3"' in source
+    assert "requires schema 0020 through 0034" in source
     assert source.index("runtime_parameters = config.runtime_parameters") < source.index(
         "validate_5m_schema_capabilities(sessions)"
     ) < source.index("owner.acquire()") < source.index("daemon.run(")
@@ -541,9 +542,9 @@ def test_5m_owner_key_is_profile_specific_and_does_not_block_15m(owner_postgres)
     owner.close()
 
 
-def test_isolated_shared_boundary_exact10_profiles_are_distinct(owner_postgres):
+def test_isolated_shared_boundary_exact20_profiles_are_distinct(owner_postgres):
     symbols = PREPARED_NEXT_TRADING_UNIVERSE.symbols
-    assert len(symbols) == 10
+    assert len(symbols) == 20
     owner = PostgresProfileOwner(owner_postgres, "trade-5m-v1")
     owner.acquire()
     store_15m = PipelineResultStore(owner_postgres)
@@ -563,15 +564,15 @@ def test_isolated_shared_boundary_exact10_profiles_are_distinct(owner_postgres):
         for symbol in symbols
     }
     assert None not in runs_15m and None not in runs_5m
-    assert len(runs_15m) == len(runs_5m) == 10
+    assert len(runs_15m) == len(runs_5m) == 20
     assert runs_15m.isdisjoint(runs_5m)
     with owner_postgres() as session:
         rows = list(session.scalars(select(OnlinePipelineRun)))
-        assert sum(row.trade_profile_id == "trade-15m-v1" for row in rows) == 10
-        assert sum(row.trade_profile_id == "trade-5m-v1" for row in rows) == 10
+        assert sum(row.trade_profile_id == "trade-15m-v1" for row in rows) == 20
+        assert sum(row.trade_profile_id == "trade-5m-v1" for row in rows) == 20
         cursor_ids = {
             (row.trade_profile_id, row.symbol, row.primary_timeframe, row.closed_until_ms)
             for row in rows
         }
-        assert len(cursor_ids) == 20
+        assert len(cursor_ids) == 40
     owner.close()

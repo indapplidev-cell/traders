@@ -346,11 +346,11 @@ class TradingUniverseRuntimeStateRecord(Base):
     __table_args__ = (
         CheckConstraint("environment = 'PRODUCTION'", name="ck_trading_universe_runtime_environment"),
         CheckConstraint(
-            "active_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            "active_version_id IN ('trading-universe-v1','trading-universe-v2','trading-universe-v3')",
             name="ck_trading_universe_runtime_active_version",
         ),
         CheckConstraint(
-            "previous_version_id IS NULL OR previous_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            "previous_version_id IS NULL OR previous_version_id IN ('trading-universe-v1','trading-universe-v2','trading-universe-v3')",
             name="ck_trading_universe_runtime_previous_version",
         ),
         CheckConstraint("generation >= 1", name="ck_trading_universe_runtime_generation"),
@@ -363,6 +363,32 @@ class TradingUniverseRuntimeStateRecord(Base):
     activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     activation_reason: Mapped[str] = mapped_column(String(REASON_CODE_LENGTH), nullable=False)
     runtime_revision: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class TradingUniverseSymbolPreflightRecord(Base):
+    """Latest normalized fail-closed symbol authority snapshot."""
+
+    __tablename__ = "trading_universe_symbol_preflight"
+    __table_args__ = (
+        CheckConstraint("environment = 'PRODUCTION'", name="ck_trading_universe_preflight_environment"),
+        CheckConstraint("status IN ('PASS','SYMBOL_FAIL_CLOSED')", name="ck_trading_universe_preflight_status"),
+        CheckConstraint("configured = true", name="ck_trading_universe_preflight_configured"),
+        CheckConstraint("active = (status = 'PASS')", name="ck_trading_universe_preflight_active_status"),
+        Index("ix_trading_universe_preflight_active", "universe_version_id", "active"),
+    )
+
+    environment: Mapped[str] = mapped_column(String(32), primary_key=True)
+    universe_version_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(32), primary_key=True)
+    configured: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(64))
+    one_minute_fresh: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    five_minute_fresh: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    commission_authority: Mapped[str] = mapped_column(String(64), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    authority_details: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
 
 
 EXECUTION_MODES = tuple(item.value for item in ExecutionMode)

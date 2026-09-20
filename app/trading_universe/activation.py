@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.paper_models import PaperFirstCanarySessionRecord, TradingUniverseRuntimeStateRecord
+from app.db.paper_models import (
+    PaperFirstCanarySessionRecord, TradingUniverseRuntimeStateRecord,
+    TradingUniverseSymbolPreflightRecord,
+)
 from app.engine_paper.first_canary_correlation import TERMINAL_CANARY_STATES
 from app.trading_universe.domain import TradingUniverseVersion, resolve_universe, runtime_universe
 
@@ -85,6 +88,29 @@ class SqlAlchemyTradingUniverseStore:
                     return _snapshot(row)
                 if row.active_version_id != expected_active_version_id:
                     raise TradingUniverseActivationError("STALE_ACTIVE_UNIVERSE")
+                activation_time = now or datetime.now(timezone.utc)
+                if target.version_id == "trading-universe-v3":
+                    preflight = tuple(session.scalars(select(
+                        TradingUniverseSymbolPreflightRecord
+                    ).where(
+                        TradingUniverseSymbolPreflightRecord.environment == "PRODUCTION",
+                        TradingUniverseSymbolPreflightRecord.universe_version_id == target.version_id,
+                    )))
+                    by_symbol = {item.symbol: item for item in preflight}
+                    minimum_observed_at = activation_time - timedelta(minutes=15)
+                    if set(by_symbol) != set(target.symbols) or any(
+                        not item.active
+                        or item.status != "PASS"
+                        or not item.one_minute_fresh
+                        or not item.five_minute_fresh
+                        or item.commission_authority != "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT"
+                        or (
+                            item.observed_at.replace(tzinfo=timezone.utc)
+                            if item.observed_at.tzinfo is None else item.observed_at
+                        ) < minimum_observed_at
+                        for item in by_symbol.values()
+                    ):
+                        raise TradingUniverseActivationError("SYMBOL_PREFLIGHT_NOT_READY")
                 active_canary = session.scalar(
                     select(PaperFirstCanarySessionRecord.canary_id)
                     .where(PaperFirstCanarySessionRecord.state.not_in(tuple(TERMINAL_CANARY_STATES)))
@@ -95,7 +121,7 @@ class SqlAlchemyTradingUniverseStore:
                 row.previous_version_id = row.active_version_id
                 row.active_version_id = target.version_id
                 row.generation += 1
-                row.activated_at = now or datetime.now(timezone.utc)
+                row.activated_at = activation_time
                 row.activation_reason = reason
                 row.runtime_revision = runtime_revision
                 session.flush()

@@ -499,7 +499,7 @@ def test_cancellation_before_acquisition_and_after_query_returns_no_partial_cand
     (("BTCUSDT", "BTCUSDT"), {}, approval.PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT",), {"max_run_lookback": 9}, approval.PaperProductionApprovalOutcome.BOUNDED_LIMIT_EXCEEDED),
     (("BTCUSDT",), {"max_results_per_module": 9}, approval.PaperProductionApprovalOutcome.BOUNDED_LIMIT_EXCEEDED),
-    (("BTCUSDT",), {"max_candidates": 11}, approval.PaperProductionApprovalOutcome.BOUNDED_LIMIT_EXCEEDED),
+    (("BTCUSDT",), {"max_candidates": 21}, approval.PaperProductionApprovalOutcome.BOUNDED_LIMIT_EXCEEDED),
     (("BTCUSDT",), {"primary_timeframe": "1m"}, approval.PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED),
 ])
 def test_allowlist_and_bounds_are_fail_closed_before_database_read(symbols, changes, outcome):

@@ -18,7 +18,7 @@ class _CountingSession:
         return ()
 
 
-def test_trading_universe_readiness_has_three_bounded_database_round_trips():
+def test_trading_universe_readiness_has_four_bounded_database_round_trips():
     session = _CountingSession()
 
     @contextmanager
@@ -28,8 +28,8 @@ def test_trading_universe_readiness_has_three_bounded_database_round_trips():
     adapter = SqlAlchemyReadAdapter(sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1")
     result = adapter.trading_universe_readiness()
 
-    assert len(result) == 10
-    assert len(session.statements) == 3
+    assert len(result) == 20
+    assert len(session.statements) == 4
     rendered = [str(statement.compile(compile_kwargs={"literal_binds": True})) for statement in session.statements]
     assert rendered[1].count("UNION ALL") == 5
     assert "row_number() OVER" in rendered[2]

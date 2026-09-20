@@ -12,7 +12,7 @@ from app.engine_market_data.continuous_sync_daemon import ContinuousSyncDaemon
 from app.engine_market_data.db.candle_repository import CandleRepository
 from app.engine_market_data.db.session import create_market_data_session_factory
 from app.engine_market_data.sync_state_repository import SyncStateRepository
-from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, expand_legacy_scalping_symbols
 
 
 class _DryRunRepository:
@@ -73,7 +73,8 @@ def build_parser() -> argparse.ArgumentParser:
 def config_from_args(args: argparse.Namespace) -> ContinuousSyncConfig:
     depths = {timeframe: getattr(args, f"warmup_depth_{timeframe}") for timeframe in DEFAULT_WARMUP_DEPTHS}
     return ContinuousSyncConfig(
-        symbols=_csv(args.symbols), timeframes=_csv(args.timeframes), warmup=args.warmup,
+        symbols=list(expand_legacy_scalping_symbols(_csv(args.symbols))),
+        timeframes=_csv(args.timeframes), warmup=args.warmup,
         continuous=args.continuous, gap_check=args.gap_check, dry_run=args.dry_run,
         warmup_depths=depths, gap_check_windows=dict(DEFAULT_GAP_CHECK_WINDOWS),
         poll_interval_seconds=args.poll_interval_seconds,

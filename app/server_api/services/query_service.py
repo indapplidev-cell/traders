@@ -141,10 +141,16 @@ class ApiQueryService:
             raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading universe readiness is not configured.")
         records = repository.trading_universe_readiness()
         active_universe = repository.active_trading_universe()
-        active = set(active_universe.symbols)
+        preflight_available = any(record.preflight_status != "NOT_AVAILABLE" for record in records)
+        effective_active = (
+            tuple(record.symbol for record in records if record.preflight_status == "PASS")
+            if preflight_available else active_universe.symbols
+        )
+        active = set(effective_active)
         items = []
         for record in records:
             is_active = record.symbol in active
+            disabled_reason = record.disabled_reason
             items.append(TradingUniverseSymbolStatus(
                 symbol=record.symbol,
                 universe_version=(active_universe.version_id if is_active else PREPARED_NEXT_TRADING_UNIVERSE.version_id),
@@ -155,14 +161,22 @@ class ApiQueryService:
                 setup_ready=record.setup_ready,
                 strategy_compatible=record.strategy_compatible,
                 risk_compatible=record.risk_compatible,
-                trading_activation_state=("ACTIVE" if is_active else "PREPARED_NOT_ACTIVE"),
+                trading_activation_state=(
+                    "ACTIVE" if is_active else
+                    "DISABLED_FAIL_CLOSED" if disabled_reason else "PREPARED_NOT_ACTIVE"
+                ),
+                preflight_status=record.preflight_status,
+                disabled_reason=None if disabled_reason is None else str(disabled_reason),
+                one_minute_fresh=record.one_minute_fresh,
+                five_minute_fresh=record.five_minute_fresh,
+                commission_authority=record.commission_authority,
             ))
         data = TradingUniverseSnapshot(
             active_universe_version=active_universe.version_id,
             prepared_universe_version=PREPARED_NEXT_TRADING_UNIVERSE.version_id,
-            active_symbols=list(active_universe.symbols),
+            active_symbols=list(effective_active),
             prepared_symbols=list(PREPARED_NEXT_TRADING_UNIVERSE.symbols),
-            active_symbol_count=len(active_universe.symbols),
+            active_symbol_count=len(effective_active),
             ready_market_data_streams=sum(item.ready_streams for item in items),
             symbols=items,
         )

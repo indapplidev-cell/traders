@@ -186,6 +186,36 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
     assert row["trade_math"]["ttl_ms"] == 300_000
 
 
+def test_scalping_four_hour_twenty_symbol_export_is_complete_and_identity_safe():
+    symbols = (
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+        "LINKUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT",
+        "ZECUSDT", "NEARUSDT", "UNIUSDT", "ENAUSDT", "XLMUSDT",
+        "TRXUSDT", "WLDUSDT", "LTCUSDT", "FETUSDT", "FILUSDT",
+    )
+    end_ms = int(NOW.timestamp() * 1000) - 300_000
+    boundaries = tuple(end_ms - (47 - index) * 300_000 for index in range(48))
+    pairs = tuple(
+        _pair(profile="trade-5m-v2", symbol=symbol, boundary=boundary)
+        for boundary in boundaries for symbol in symbols
+    )
+    response = _client(ExportRepo(pairs)).get(
+        "/api/v1/trading/funnel/export",
+        params={
+            "trade_profile_id": "trade-5m-v2",
+            "from": datetime.fromtimestamp(boundaries[0] / 1000, timezone.utc).isoformat().replace("+00:00", "Z"),
+            "to": datetime.fromtimestamp(boundaries[-1] / 1000, timezone.utc).isoformat().replace("+00:00", "Z"),
+            "format": "jsonl",
+        },
+    )
+    assert response.status_code == 200
+    rows = [json.loads(line) for line in response.text.splitlines()]
+    assert len(rows) == 48 * 20 == 960
+    assert {row["market_analysis"]["symbol"] for row in rows} == set(symbols)
+    assert len({row["market_analysis"]["boundary_closed_at_ms"] for row in rows}) == 48
+    assert all(row["provenance"]["trade_profile_id"] == "trade-5m-v2" for row in rows)
+
+
 def test_export_always_emits_rr_rejection_diagnostic_contract():
     row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
     assert set(row["rr_rejection"]) == {

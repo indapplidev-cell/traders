@@ -21,6 +21,7 @@ from app.engine_observation.scalping_prospective_collector import (
     ProspectiveCalibrationCollector,
 )
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.trading_universe.domain import expand_legacy_scalping_symbols
 
 def build_parser() -> argparse.ArgumentParser:
     policy = RUNTIME_POLICY.collector
@@ -60,7 +61,9 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("DATABASE_URL is required")
     config = CollectorConfig(
         output_directory=args.output_dir,
-        symbols=tuple(item.strip().upper() for item in args.symbols.split(",") if item.strip()),
+        symbols=expand_legacy_scalping_symbols(
+            tuple(item.strip().upper() for item in args.symbols.split(",") if item.strip())
+        ),
         parameter_set_id=args.parameter_set_id,
         runtime_source_commit=args.runtime_source_commit,
         runtime_artifact_id=args.runtime_artifact_id,

@@ -28,6 +28,9 @@ from app.engine_paper.scalping_paper_runner import (
 from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsSource
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.binance_account_commission import BinanceAccountCommissionManager
+from app.engine_market_data.binance_public_rest import BinancePublicRestClient
+from app.trading_universe.domain import expand_legacy_scalping_symbols
+from app.trading_universe.symbol_preflight import persist_symbol_preflight, run_symbol_preflight
 from app.config.trade_parameters import TRADE_PARAMETERS
 from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_orchestrator.profile_owner import (
@@ -112,9 +115,10 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0031_scalping_parameter_sets",
             "0032_scalping_hold_lifecycle",
             "0033_net_pnl_protection",
+            "0034_scalping_universe_v3",
         }:
             raise RuntimeError(
-                "online runtime requires schema 0020 through 0033"
+                "online runtime requires schema 0020 through 0034"
             )
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
@@ -129,6 +133,9 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     profile = resolve_trade_profile(args.trade_profile)
+    args.symbols = expand_legacy_scalping_symbols(
+        args.symbols, trade_profile_id=profile.trade_profile_id,
+    )
     if profile.trade_profile_id == "trade-5m-v2" and args.continuous:
         source_identity = os.environ.get("TRADERS_RUNTIME_SOURCE_IDENTITY", "")
         if re.fullmatch(r"[0-9a-f]{40}", source_identity) is None:
@@ -147,6 +154,30 @@ def main(argv: list[str] | None = None) -> int:
     health_report = args.health_report
     if profile.trade_profile_id in SCALPING_PROFILE_IDS and health_report == Path("reports/engine_orchestrator/latest_health.json"):
         health_report = Path("reports/engine_orchestrator/latest_health_trade_5m.json")
+    commission_manager = (
+        BinanceAccountCommissionManager.from_environment(args.symbols)
+        if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
+    )
+    sessions = create_market_data_session_factory()
+    if profile.trade_profile_id == "trade-5m-v2" and args.continuous:
+        preflight = run_symbol_preflight(
+            args.symbols,
+            public_client=BinancePublicRestClient(),
+            commission_manager=commission_manager,
+        )
+        print(json.dumps({
+            "event": "binance_symbol_preflight",
+            "configured_symbols": len(preflight.configured_symbols),
+            "active_symbols": len(preflight.active_symbols),
+            "disabled_symbols": list(preflight.disabled_symbols),
+            "disabled_reasons": {
+                item.symbol: item.reason for item in preflight.symbols if not item.active
+            },
+        }, sort_keys=True))
+        if not preflight.active_symbols:
+            raise SystemExit("SYMBOL_PREFLIGHT_NO_ACTIVE_SYMBOLS")
+        persist_symbol_preflight(sessions, preflight)
+        args.symbols = preflight.active_symbols
     config = OrchestratorConfig(
         symbols=args.symbols, trade_profile_id=profile.trade_profile_id,
         primary_timeframe=primary_timeframe,
@@ -172,7 +203,6 @@ def main(argv: list[str] | None = None) -> int:
         "TRADE_PARAMETERS_CONFIG_HASH": TRADE_PARAMETERS.config_hash,
         "ACTIVE_PROFILE_IDS": sorted(ACTIVE_RUNTIME_PROFILE_IDS),
     }, sort_keys=True))
-    sessions = create_market_data_session_factory()
     owner = None
     if profile.trade_profile_id in SCALPING_PROFILE_IDS:
         validate_5m_schema_capabilities(sessions)
@@ -203,12 +233,8 @@ def main(argv: list[str] | None = None) -> int:
         require_all_timeframes_ok=config.require_all_timeframes_ok,
         allow_stale_higher_timeframes=config.allow_stale_higher_timeframes,
     )
-    commission_manager = (
-        BinanceAccountCommissionManager.from_environment(config.symbols)
-        if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
-    )
     if commission_manager is not None:
-        commission_startup = commission_manager.ensure_fresh(force=True)
+        commission_startup = commission_manager.ensure_fresh()
         print(json.dumps({
             "event": "binance_account_commission_startup_refresh",
             "status": commission_startup.status,

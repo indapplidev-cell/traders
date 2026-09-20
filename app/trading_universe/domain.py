@@ -14,6 +14,7 @@ from app.engine_market_data.market_symbol import normalize_market_symbol
 
 
 TARGET_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
+SCALPING_REQUIRED_TIMEFRAMES = ("1m", "5m")
 
 
 class TradingUniverseActivationState(StrEnum):
@@ -31,8 +32,8 @@ class TradingUniverseVersion:
         normalized = tuple(normalize_market_symbol(value) for value in self.symbols)
         if not self.version_id or normalized != self.symbols:
             raise ValueError("trading universe must have a stable id and normalized symbols")
-        if not normalized or len(normalized) > 10 or len(set(normalized)) != len(normalized):
-            raise ValueError("trading universe must contain 1..10 unique symbols")
+        if not normalized or len(normalized) > 20 or len(set(normalized)) != len(normalized):
+            raise ValueError("trading universe must contain 1..20 unique symbols")
 
 
 ACTIVE_TRADING_UNIVERSE = TradingUniverseVersion(
@@ -41,7 +42,7 @@ ACTIVE_TRADING_UNIVERSE = TradingUniverseVersion(
     activation_state=TradingUniverseActivationState.ACTIVE,
 )
 
-PREPARED_NEXT_TRADING_UNIVERSE = TradingUniverseVersion(
+LEGACY_TRADING_UNIVERSE_V2 = TradingUniverseVersion(
     version_id="trading-universe-v2",
     symbols=(
         "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
@@ -50,10 +51,41 @@ PREPARED_NEXT_TRADING_UNIVERSE = TradingUniverseVersion(
     activation_state=TradingUniverseActivationState.PREPARED_NOT_ACTIVE,
 )
 
+SCALPING_TRADING_UNIVERSE = TradingUniverseVersion(
+    version_id="trading-universe-v3",
+    symbols=(
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+        "LINKUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT",
+        "ZECUSDT", "NEARUSDT", "UNIUSDT", "ENAUSDT", "XLMUSDT",
+        "TRXUSDT", "WLDUSDT", "LTCUSDT", "FETUSDT", "FILUSDT",
+    ),
+    activation_state=TradingUniverseActivationState.PREPARED_NOT_ACTIVE,
+)
+
+# Compatibility name used by existing read paths.  V2 remains immutable above;
+# all new preparation/runtime consumers resolve the current Scalping universe.
+PREPARED_NEXT_TRADING_UNIVERSE = SCALPING_TRADING_UNIVERSE
+
 _VERSIONS = {
     ACTIVE_TRADING_UNIVERSE.version_id: ACTIVE_TRADING_UNIVERSE,
-    PREPARED_NEXT_TRADING_UNIVERSE.version_id: PREPARED_NEXT_TRADING_UNIVERSE,
+    LEGACY_TRADING_UNIVERSE_V2.version_id: LEGACY_TRADING_UNIVERSE_V2,
+    SCALPING_TRADING_UNIVERSE.version_id: SCALPING_TRADING_UNIVERSE,
 }
+
+
+def expand_legacy_scalping_symbols(
+    symbols: tuple[str, ...] | list[str], *, trade_profile_id: str = "trade-5m-v2",
+) -> tuple[str, ...]:
+    """Bridge the deployed exact-v2 argv to v3 without changing policy YAML.
+
+    Only the exact immutable ten-symbol v2 sequence is expanded and only for
+    the Scalping v2 profile.  Arbitrary/test/operator scopes are preserved.
+    """
+
+    normalized = tuple(normalize_market_symbol(value) for value in symbols)
+    if trade_profile_id == "trade-5m-v2" and normalized == LEGACY_TRADING_UNIVERSE_V2.symbols:
+        return SCALPING_TRADING_UNIVERSE.symbols
+    return normalized
 
 
 def resolve_universe(version_id: str) -> TradingUniverseVersion:

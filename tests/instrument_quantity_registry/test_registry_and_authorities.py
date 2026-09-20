@@ -79,6 +79,7 @@ def source_payload() -> dict[str, object]:
         native = item.source_filters
         symbols.append({
             "symbol": symbol, "status": "TRADING", "baseAsset": item.base_asset,
+            "quoteAsset": "USDT",
             "isSpotTradingAllowed": True,
             "filters": [
                 {"filterType": "LOT_SIZE", "minQty": format(native.lot_min_qty, "f"), "maxQty": format(native.lot_max_qty, "f"), "stepSize": format(native.lot_step_size, "f")},
@@ -91,9 +92,9 @@ def source_payload() -> dict[str, object]:
 
 def test_registry_exact_immutable_provenance_and_decimal_contract():
     assert tuple(REGISTRY.symbols) == PREPARED_NEXT_TRADING_UNIVERSE.symbols
-    assert len(REGISTRY.symbols) == 10
+    assert len(REGISTRY.symbols) == 20
     assert REGISTRY.version == REGISTRY_VERSION
-    assert REGISTRY.universe_id == "trading-universe-v2"
+    assert REGISTRY.universe_id == "trading-universe-v3"
     assert REGISTRY.market_type == MARKET_TYPE
     assert SOURCE_OBSERVED_AT_UTC.endswith("Z")
     assert all(isinstance(item.quantity_step, Decimal) for item in REGISTRY.symbols.values())

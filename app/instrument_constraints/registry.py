@@ -1,4 +1,4 @@
-"""Immutable Binance Spot quantity constraints for trading-universe-v2.
+"""Immutable Binance Spot quantity constraints for trading-universe-v3.
 
 The committed v1 values are an offline projection of one bounded public
 ``GET /api/v3/exchangeInfo`` observation.  Runtime code never performs a
@@ -16,12 +16,12 @@ from typing import Final, Mapping
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
-REGISTRY_VERSION: Final = "trading-universe-v2-binance-spot-quantity-constraints-v1"
-UNIVERSE_ID: Final = "trading-universe-v2"
+REGISTRY_VERSION: Final = "trading-universe-v3-binance-spot-quantity-constraints-v1"
+UNIVERSE_ID: Final = "trading-universe-v3"
 MARKET_TYPE: Final = "BINANCE_SPOT"
 SOURCE_ENDPOINT_KIND: Final = "GET /api/v3/exchangeInfo?symbols=<exact-universe>"
-SOURCE_OBSERVED_AT_UTC: Final = "2026-08-14T21:32:26.053Z"
-SOURCE_SNAPSHOT_SHA256: Final = "9137b071376d8376970aea0e233eea06c3239644f5412bcc05cbfd6eab3207b4"
+SOURCE_OBSERVED_AT_UTC: Final = "2026-09-20T13:26:27.408574Z"
+SOURCE_SNAPSHOT_SHA256: Final = "be55ba138061ca1d765fa345f2b7238b29d7714a1b91daa8ffe7e22003e0fcd9"
 
 
 class InstrumentConstraintRegistryError(ValueError):
@@ -142,6 +142,16 @@ _SOURCE_ROWS: Final = (
     ("ADAUSDT", "ADA", "0.10000000", "900000.00000000", "0.10000000", "0.00000000", "1642041.96458333", "0.00000000", "5.00000000", "9000000.00000000"),
     ("AVAXUSDT", "AVAX", "0.01000000", "90000.00000000", "0.01000000", "0.00000000", "36525.77879166", "0.00000000", "5.00000000", "9000000.00000000"),
     ("SUIUSDT", "SUI", "0.10000000", "92141578.00000000", "0.10000000", "0.00000000", "276099.68041666", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("ZECUSDT", "ZEC", "0.00100000", "90000.00000000", "0.00100000", "0.00000000", "1198.44827083", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("NEARUSDT", "NEAR", "0.10000000", "900000.00000000", "0.10000000", "0.00000000", "155893.20916666", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("UNIUSDT", "UNI", "0.01000000", "90000.00000000", "0.01000000", "0.00000000", "38382.55125000", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("ENAUSDT", "ENA", "0.01000000", "92141578.00000000", "0.01000000", "0.00000000", "1691409.69266666", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("XLMUSDT", "XLM", "1.00000000", "9000000.00000000", "1.00000000", "0.00000000", "1266084.92083333", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("TRXUSDT", "TRX", "0.10000000", "9000000.00000000", "0.10000000", "0.00000000", "3787257.56708333", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("WLDUSDT", "WLD", "0.10000000", "92141578.00000000", "0.10000000", "0.00000000", "467657.70000000", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("LTCUSDT", "LTC", "0.00100000", "90000.00000000", "0.00100000", "0.00000000", "3890.41370000", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("FETUSDT", "FET", "0.10000000", "9000000.00000000", "0.10000000", "0.00000000", "801872.88083333", "0.00000000", "5.00000000", "9000000.00000000"),
+    ("FILUSDT", "FIL", "0.01000000", "9222449.00000000", "0.01000000", "0.00000000", "189005.30125000", "0.00000000", "5.00000000", "9000000.00000000"),
 )
 
 
@@ -205,6 +215,8 @@ def normalize_binance_spot_exchange_info(payload: object) -> InstrumentQuantityC
         seen.add(symbol)
         if symbol_data.get("status") != "TRADING" or symbol_data.get("isSpotTradingAllowed") is not True:
             raise InstrumentConstraintRegistryError(f"{symbol} is not tradable on Spot")
+        if symbol_data.get("quoteAsset") != "USDT":
+            raise InstrumentConstraintRegistryError(f"{symbol} is not a USDT-quoted market")
         filters = {item.get("filterType"): item for item in symbol_data["filters"] if isinstance(item, dict)}
         if not {"LOT_SIZE", "MARKET_LOT_SIZE", "NOTIONAL"}.issubset(filters):
             raise InstrumentConstraintRegistryError(f"{symbol} lacks required filters")

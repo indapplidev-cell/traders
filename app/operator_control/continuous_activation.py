@@ -63,8 +63,8 @@ def main(argv: list[str] | None = None) -> int:
     _, engine = _production_canary_store()
     sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     universe = SqlAlchemyTradingUniverseStore(sessions).active_universe()
-    if universe.version_id != "trading-universe-v2":
-        raise SystemExit("ACTIVE_TRADING_UNIVERSE_V2_REQUIRED")
+    if universe.version_id != "trading-universe-v3":
+        raise SystemExit("ACTIVE_TRADING_UNIVERSE_V3_REQUIRED")
     control = PaperProductionSafetyControl(resolve_production_control_root(), acl_checker=lambda _path: True)
     before = control.read_authoritative()
     if before.state is PersistentState.CONTINUOUS_ARMED:

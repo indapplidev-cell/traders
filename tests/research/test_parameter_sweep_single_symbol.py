@@ -92,8 +92,8 @@ def _search(tmp_path: Path) -> Path:
 
 def test_authoritative_universe_and_strict_selection(tmp_path):
     universe_id, symbols = resolve_parameter_sweep_universe()
-    assert universe_id == "trading-universe-v2"
-    assert len(symbols) == 10
+    assert universe_id == "trading-universe-v3"
+    assert len(symbols) == 20
     assert validate_parameter_sweep_symbol("linkusdt") == "LINKUSDT"
     with pytest.raises(ValueError, match="SYMBOL_REQUIRED"):
         validate_parameter_sweep_symbol(None)

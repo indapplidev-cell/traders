@@ -27,7 +27,7 @@ from app.db.paper_models import (
     PaperAccountBaselineRecord, PaperExitDecisionRecord, PaperExitEvaluationCursorRecord,
     PaperExecutionCommandRecord, PaperFillRecord, PaperJournalEntryRecord,
     PaperOrderRecord, PaperPositionRecord,
-    TradingUniverseRuntimeStateRecord,
+    TradingUniverseRuntimeStateRecord, TradingUniverseSymbolPreflightRecord,
 )
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
 from app.server_api.health_policy import evaluate_boundary_health
@@ -384,9 +384,17 @@ class SqlAlchemyReadAdapter:
             for symbol, timeframe, count in session.execute(count_statement):
                 counts[(str(symbol), str(timeframe))] = int(count)
             runs = tuple(session.scalars(latest_runs_statement))
+            preflight_rows = tuple(session.scalars(
+                select(TradingUniverseSymbolPreflightRecord).where(
+                    TradingUniverseSymbolPreflightRecord.environment == "PRODUCTION",
+                    TradingUniverseSymbolPreflightRecord.universe_version_id == PREPARED_NEXT_TRADING_UNIVERSE.version_id,
+                    TradingUniverseSymbolPreflightRecord.symbol.in_(symbols),
+                )
+            ))
 
         state_by_key = {(row.symbol, row.timeframe): row for row in states}
         latest_run: dict[str, OnlinePipelineRun] = {}
+        preflight_by_symbol = {row.symbol: row for row in preflight_rows}
         for run in runs:
             latest_run.setdefault(run.symbol, run)
 
@@ -407,6 +415,7 @@ class SqlAlchemyReadAdapter:
                 for timeframe in TARGET_TIMEFRAMES
             )
             run = latest_run.get(symbol)
+            preflight = preflight_by_symbol.get(symbol)
             analysis_ready = bool(
                 run is not None and run.status == "COMPLETED"
                 and run.analysis_status == "ANALYZED" and not run.error_code
@@ -431,6 +440,11 @@ class SqlAlchemyReadAdapter:
                 setup_ready=setup_ready,
                 strategy_compatible=strategy_compatible,
                 risk_compatible=risk_compatible,
+                preflight_status="NOT_AVAILABLE" if preflight is None else preflight.status,
+                disabled_reason=None if preflight is None else preflight.reason,
+                one_minute_fresh=None if preflight is None else preflight.one_minute_fresh,
+                five_minute_fresh=None if preflight is None else preflight.five_minute_fresh,
+                commission_authority=None if preflight is None else preflight.commission_authority,
             ))
         return tuple(result)
 

@@ -65,7 +65,7 @@ def _metadata() -> dict[str, object]:
 
 def _symbol_audit() -> dict[str, object]:
     return {
-        "symbol_authority_source": "app.trading_universe.domain:trading-universe-v2",
+        "symbol_authority_source": "app.trading_universe.domain:trading-universe-v3",
         "RUNTIME_SYMBOL_HARDCODES": 0, "RUNTIME_SYMBOL_DEFAULTS": 0,
         "RUNTIME_SYMBOL_BRANCHES": 0,
     }

@@ -417,7 +417,7 @@ class PaperOperatorControlService:
                 raise ControlApiError(400, "INVALID_REQUEST")
             symbols = tuple(sorted(set(request.allowed_symbols)))
             active_universe = self.active_universe()
-            if not symbols or len(symbols) != len(request.allowed_symbols) or len(symbols) > 10:
+            if not symbols or len(symbols) != len(request.allowed_symbols) or len(symbols) > 20:
                 raise ControlApiError(400, "INVALID_CANARY_SCOPE")
             if any(symbol not in active_universe.symbols for symbol in symbols):
                 raise ControlApiError(400, "INVALID_SYMBOL")

@@ -128,6 +128,11 @@ class TradingUniverseSymbolReadinessRecord:
     setup_ready: bool
     strategy_compatible: bool
     risk_compatible: bool
+    preflight_status: str = "NOT_AVAILABLE"
+    disabled_reason: str | None = None
+    one_minute_fresh: bool | None = None
+    five_minute_fresh: bool | None = None
+    commission_authority: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
