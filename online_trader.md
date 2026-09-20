@@ -3,13 +3,55 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d96329858673f4ec10cc38953292ffe3e5d803ee
+STATUS_AS_OF_COMMIT = c72d737bd129d8243c1d3ac9747e6bb5ecdcabe5
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T14:38:00Z
-RECONCILED_BY_TASK = TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01
-FILES_CHANGED = alembic/versions/0034_scalping_universe_v3.py; app/db/paper_models.py; app/engine_market_data/binance_public_rest.py; app/engine_market_data/continuous_sync_cli.py; app/engine_paper/first_canary_correlation.py; app/engine_paper/production_approval.py; app/instrument_constraints/registry.py; app/operator_control/continuous_activation.py; app/operator_control/production_executor.py; app/operator_control/service.py; app/server_api/repositories/records.py; app/server_api/repositories/sqlalchemy_read.py; app/server_api/schema_compatibility.py; app/server_api/schemas/models.py; app/server_api/schemas/paper.py; app/server_api/services/query_service.py; app/server_api/trading_funnel.py; app/trading_universe/__init__.py; app/trading_universe/activation.py; app/trading_universe/domain.py; app/trading_universe/symbol_preflight.py; scripts/engine_orchestrator_online_pipeline.py; scripts/scalping_prospective_collector.py; traders_ml/parameter_sweep/universe.py; focused tests; docs/audits/TRADERS_SCALPING_UNIVERSE_20_SYMBOL_ACTIVATION_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-20T19:23:25Z
+RECONCILED_BY_TASK = TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01
+FILES_CHANGED = app/server_api/repositories/sqlalchemy_read.py; app/server_api/schemas/models.py; app/server_api/trading_funnel.py; app/trading_universe/__init__.py; app/trading_universe/domain.py; tests/server_api/test_analysis_latest_available_repository.py; tests/server_api/test_api_v1.py; tests/server_api/test_trading_funnel.py; tests/trading_universe/test_domain_and_readonly.py; docs/audits/TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01_FINAL.md; online_trader.md.
+
+## Read-only twenty-symbol client recovery 01
+
+```text
+TASK = TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01
+FINAL_STATUS = PASS
+FINAL_VERDICT = ACTIVE_TWENTY_SYMBOL_PROFILE_AND_CLIENT_PROJECTION_RUNTIME_VERIFIED_AFTER_SCHEMA_READINESS_AND_CACHE_REMEDIATION
+PROJECT_STATE_COMMIT = c72d737bd129d8243c1d3ac9747e6bb5ecdcabe5
+IMPLEMENTATION_RUNTIME_COMMIT = ddb76c8c265f8dfcd5743329e727ff30fdaeb188
+ACTIVE_PROFILE = trade-5m-v2
+ACTIVE_UNIVERSE = trading-universe-v3; 20_ACTIVE; PREFLIGHT_PASS_20; READY_STREAMS_120
+MODE = PAPER
+PAPER_CONTROL = CONTINUOUS_ARMED; GENERATION_15
+LIVE_STATE = DISABLED; live_allowed=false
+REAL_BINANCE_ORDER_CALLS = 0
+ROOT_CAUSE = READONLY_EXACT10_RESPONSE_AND_ANALYSIS_BOUNDS; SIX_TIMEFRAME_READINESS_COUPLED_TO_FOUR_TIMEFRAME_SCALPING_MAP; SLOW_QUERY_CACHE_TIMESTAMPED_BEFORE_MATERIALIZATION
+STRATEGY_CHANGED = NO
+TRADING_THRESHOLDS_CHANGED = NO
+RISK_CHANGED = NO
+SELECTOR_CHANGED = NO
+YAML_CHANGED = NO
+TESTS = FOCUSED_70_PASS; COMPILE_PASS
+WIDER_TEST_DISCLOSURE = 206_PASS_7_SKIP_9_KNOWN_UNRELATED_STALE_ROUTE_I18N_AND_SERVICE_EXPECTATIONS
+DEPLOY = PASS; READONLY_ONLY
+RUNTIME_REVISION = ddb76c8c265f8dfcd5743329e727ff30fdaeb188
+READONLY_HEALTH = PASS; HEALTHY
+API = TRADING_UNIVERSE_200; ANALYSIS_200_20_ITEMS; FUNNEL_200_20_EXPECTED_20_SEEN_20_PROCESSED_CURRENT
+CONCURRENT_FUNNEL_READS = PASS_4_OF_4_HTTP_200; 10.942_TO_12.230_SECONDS_AFTER_WARM_MATERIALIZATION
+DESKTOP_ACCEPTANCE = PASS; PID_16348; HWND_67222; FOREGROUND_AND_CAPTURE_PASS; SCALPING_FUNNEL_VISIBLE_20_OF_20_CURRENT_AND_COMPLETED
+CURRENT_STAGE = NORMAL_CONTINUOUS_PAPER_OPERATION_WITH_TWENTY_SYMBOL_CLIENT_VISIBILITY_RECOVERED
+CURRENT_BLOCKER = NONE_FOR_READONLY_CLIENT_VISIBILITY; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = CONTINUE_NORMAL_PAPER_OPERATION_AND_KEEP_STRATEGY_RISK_SELECTOR_YAML_AND_LIVE_POLICY_UNCHANGED
+```
+
+The twenty-symbol profile had been activated correctly, but the client exposed
+three stale read-only assumptions left behind by the expansion. The response
+contracts and aggregate query now accept 20, the six-stream readiness view is
+independent of Scalping strategy windows, and slow materialization is cached
+from completion so concurrent client pages do not repeat the expensive SQL.
+The repaired Tk Funnel visibly reports 20/20 processed for both the current and
+last completed cycles. Full evidence is in
+`docs/audits/TRADERS_READONLY_TWENTY_SYMBOL_CLIENT_RECOVERY_01_FINAL.md`.
 
 ## Scalping twenty-symbol PAPER universe activation 01
 
