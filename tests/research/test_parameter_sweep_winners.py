@@ -196,3 +196,19 @@ def test_streaming_tracker_does_not_retain_evaluated_dataset():
     assert set(tracker.__slots__) == {
         "evaluated", "best_positive_net_pnl", "best_net_pnl_fallback", "best_win_count",
     }
+
+
+def test_winner_artifact_contains_canonical_full_effective_config_and_provenance():
+    tracker = WinnerTracker.from_rows([{
+        **row("c1", net=2, wins=2, parameters={"minimum_planned_rr": 2.0}),
+        "symbol": "SOLUSDT", "candidate_parameters": {"minimum_planned_rr": 2.0},
+    }])
+    winner = tracker.artifact(symbol="SOLUSDT", profile="trade-5m-v2", search_budget=1,
+                              search_status="COMPLETED")["best_positive_net_pnl"]
+    assert winner["search_parameters"] == {"minimum_planned_rr": 2.0}
+    assert winner["effective_configuration"]["replay_parameters"]
+    assert winner["effective_configuration"]["resolved_parameters"]
+    assert "risk.risk_per_trade_bps" in winner["parameter_sources"]
+    assert any(key.startswith("costs.") for key in winner["parameter_sources"])
+    assert any("stale" in key or "timeout" in key for key in winner["parameter_sources"])
+    assert winner["parameter_sources"]["geometry.minimum_planned_rr"]["search_overridden"] is True

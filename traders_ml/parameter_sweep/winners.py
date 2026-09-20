@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import inf
 from typing import Any, Iterable, Mapping
+from .effective_config import attach_effective_config
 
 
 WINNER_SCHEMA_VERSION = 1
@@ -56,6 +57,7 @@ def win_count_rank(row: Mapping[str, Any]) -> tuple[object, ...]:
 
 
 def _projection(row: Mapping[str, Any]) -> dict[str, Any]:
+    row = attach_effective_config(row)
     numeric_id = _config_id(row)
     behavior = str(
         row.get("behavioral_cluster_id") or row.get("behavioral_signature")
@@ -75,6 +77,11 @@ def _projection(row: Mapping[str, Any]) -> dict[str, Any]:
         "behavioral_cluster_id": behavior,
         "numeric_alias_count": 1,
         "parameters": parameters,
+        "search_parameters": dict(row.get("search_parameters") or parameters),
+        "effective_configuration": dict(row.get("effective_configuration") or {}),
+        "parameter_sources": dict(row.get("parameter_sources") or {}),
+        "config_generation": row.get("config_generation"),
+        "resolved_config_hash": row.get("resolved_config_hash"),
         "trade_count": int(row.get("trade_count") or 0),
         "wins": wins,
         "losses": losses,
@@ -159,7 +166,7 @@ class WinnerTracker:
 
     def update(self, row: Mapping[str, Any]) -> bool:
         """Consider one completed configuration and report presentation change."""
-        before = self.state()
+        before = self._identity_state()
         self.evaluated += 1
         self.best_net_pnl_fallback = _consider(
             self.best_net_pnl_fallback, row, net_pnl_fallback_rank,
@@ -169,16 +176,21 @@ class WinnerTracker:
             self.best_positive_net_pnl = _consider(
                 self.best_positive_net_pnl, row, positive_net_pnl_rank,
             )
-        return before != self.state()
+        return before != self._identity_state()
+
+    def _identity_state(self) -> tuple[Any, ...]:
+        return (self.evaluated, self.best_positive_net_pnl, self.best_net_pnl_fallback, self.best_win_count)
 
     def state(self) -> dict[str, Any]:
+        def enriched(value):
+            return attach_effective_config(value) if value else None
         return {
             "schema_version": WINNER_SCHEMA_VERSION,
             "search_evaluated": self.evaluated,
             "positive_net_pnl_found": self.best_positive_net_pnl is not None,
-            "best_positive_net_pnl": self.best_positive_net_pnl,
-            "best_net_pnl_fallback": self.best_net_pnl_fallback,
-            "best_win_count": self.best_win_count,
+            "best_positive_net_pnl": enriched(self.best_positive_net_pnl),
+            "best_net_pnl_fallback": enriched(self.best_net_pnl_fallback),
+            "best_win_count": enriched(self.best_win_count),
         }
 
     def artifact(

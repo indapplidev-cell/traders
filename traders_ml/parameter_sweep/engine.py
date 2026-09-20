@@ -46,6 +46,7 @@ from app.engine_paper.stale_position_shadow import (
     StalePositionInputs, evaluate_stale_position_shadow,
 )
 from .events import EventType, SweepEvent
+from .effective_config import attach_effective_config
 from .artifact_writer import (
     ArtifactWriteError, DEFAULT_ARTIFACT_WRITER, DurableResultWriter,
 )
@@ -2831,6 +2832,7 @@ def _run_impl(
             )
             item["overrides"] = changed_parameters
             item["candidate_parameters"] = candidate
+            item = attach_effective_config(item)
             item["run_id"] = identifier
             item["resolved_seed"] = resolved_seed
             for split_name in ("calibration", "validation"):

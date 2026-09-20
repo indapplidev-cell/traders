@@ -33,6 +33,7 @@ from .ranking import rank_results
 from .research_protocol import deduplicate_validation_behavior
 from .universe import validate_parameter_sweep_symbol
 from .winners import WinnerTracker
+from .effective_config import attach_effective_config
 
 
 HANDOFF_SCHEMA_VERSION = 2
@@ -728,6 +729,7 @@ def _run_primary_resume_safe(
             "evaluated_count": len(results),
         })
         result = evaluate_config(config, splits, index=index)
+        result = attach_effective_config({**result, "candidate_parameters": dict(config), "parameters": dict(config)})
         results.append(result)
         tracker.update(result)
         winner_artifact = tracker.artifact(

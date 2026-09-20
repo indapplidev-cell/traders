@@ -49,6 +49,20 @@ def _winner_details(value: dict | None) -> str:
         f"{'ДА' if value.get('promotion_eligible') else 'НЕТ'}"
     )
 
+def _winner_effective_details(value: dict | None) -> str:
+    if not value:
+        return "Полный snapshot отсутствует"
+    lines = ["Search parameters + effective values + sources"]
+    for name, item in sorted((value.get("parameter_sources") or {}).items()):
+        marker = "SEARCH_OVERRIDE" if item.get("search_overridden") else "INHERITED/BASE"
+        source = item.get("source_yaml_path") or item.get("source_policy") or "—"
+        lines.append(f"{name} = {_display(item.get('effective_value'))} · {marker} · {source}")
+    effective = value.get("effective_configuration") or {}
+    lines.append(f"\nConfig snapshot hash: {_display(value.get('resolved_config_hash'))}")
+    lines.append(f"Replay parameters: {len(effective.get('replay_parameters') or {})}")
+    lines.append(f"Resolved parameters: {len(effective.get('resolved_parameters') or {})}")
+    return "\n".join(lines)
+
 
 def format_positive_winner_card(state) -> str:
     if state.positive_net_pnl_found and state.best_positive_net_pnl_config:
@@ -142,6 +156,8 @@ class ParameterSweepWindow:
         profit_frame.pack(fill="x", pady=4)
         self.best_profit = ttk.Label(profit_frame, justify="left", wraplength=800)
         self.best_profit.pack(anchor="w", fill="x")
+        self.best_profit_details = ttk.Button(profit_frame, text="Показать полный набор параметров", command=lambda: self._show_winner_config("profit"))
+        self.best_profit_details.pack(anchor="w", pady=(6, 0))
         wins_frame = ttk.LabelFrame(
             self.body, text=SERVER_RU["parameter_sweep.winners.max_win_count"],
             padding=8,
@@ -149,6 +165,8 @@ class ParameterSweepWindow:
         wins_frame.pack(fill="x", pady=4)
         self.best_wins = ttk.Label(wins_frame, justify="left", wraplength=800)
         self.best_wins.pack(anchor="w", fill="x")
+        self.best_wins_details = ttk.Button(wins_frame, text="Показать полный набор параметров", command=lambda: self._show_winner_config("wins"))
+        self.best_wins_details.pack(anchor="w", pady=(6, 0))
         self.terminal_explanation = ttk.Label(self.body, justify="left", wraplength=820)
         self.terminal_explanation.pack(anchor="w", pady=4)
         self.counters = ttk.Label(self.body, justify="left")
@@ -220,6 +238,17 @@ class ParameterSweepWindow:
         self.show_all = not self.show_all
         self.toggle_button.configure(text=RU["show_changed"] if self.show_all else RU["show_all"])
         self._render()
+
+    def _show_winner_config(self, role: str) -> None:
+        state = self.controller.state
+        value = state.best_positive_net_pnl_config if role == "profit" else state.best_win_count_config
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Полный набор параметров winner")
+        dialog.geometry("900x700")
+        text = tk.Text(dialog, wrap="none", font=("Consolas", 9))
+        text.pack(fill="both", expand=True, padx=10, pady=10)
+        text.insert("1.0", _winner_effective_details(value))
+        text.configure(state="disabled")
 
     def _poll(self) -> None:
         self.controller.drain_events()
