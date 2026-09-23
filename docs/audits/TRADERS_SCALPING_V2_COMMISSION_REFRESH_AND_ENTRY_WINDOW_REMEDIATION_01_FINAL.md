@@ -106,4 +106,6 @@ be fixed without lookahead. Conclusion: `HISTORICAL_REASON_VALID=YES`,
 - Health/readiness/funnel/analysis/universe/positions endpoints remain the
   required readonly surface and were checked after deployment.
 
-Implementation commit: `f61245569bdce7ae742898101ab8515c34d07e23`.
+Implementation commits: `f61245569bdce7ae742898101ab8515c34d07e23`
+(refresh authority) and `54b2cb45297dc181451aed889e0e91d2411c8fa1`
+(schema-0035 runtime guard and final audit integration).
