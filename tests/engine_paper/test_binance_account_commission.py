@@ -164,6 +164,12 @@ def test_manager_refreshes_active_symbol_universe_atomically_and_cache_is_low_fr
     payload = json.loads(value.snapshot_path.read_text(encoding="utf-8"))
     assert set(payload["symbols"]) == {"BTCUSDT", "ETHUSDT"}
     assert payload["provider_version"] == PROVIDER_VERSION
+    status = json.loads(
+        (tmp_path / "binance-account-commission-status.json").read_text(encoding="utf-8")
+    )
+    assert status["status"] == "READY"
+    assert status["last_success_at"] == payload["fetched_at"]
+    assert status["refresh_failure_count"] == 0
 
 
 def test_orchestrator_cycle_runs_low_frequency_commission_maintenance(tmp_path):
@@ -215,6 +221,27 @@ def test_reconnect_and_symbol_universe_change_refresh(tmp_path):
     changed = manager(tmp_path, current, transport, ("BTCUSDT", "SUIUSDT"))
     assert changed.ensure_fresh().ready_symbols == 2
     assert set(json.loads(changed.snapshot_path.read_text())["symbols"]) == {"BTCUSDT", "SUIUSDT"}
+
+
+def test_all_scalping_symbols_refresh_and_restart_hydrates_status(tmp_path):
+    current = [datetime(2026, 9, 6, tzinfo=timezone.utc)]
+    transport = SignedTransport()
+    symbols = (
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "LINKUSDT",
+        "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT", "ZECUSDT", "NEARUSDT",
+        "UNIUSDT", "ENAUSDT", "XLMUSDT", "TRXUSDT", "WLDUSDT", "LTCUSDT",
+        "FETUSDT", "FILUSDT",
+    )
+    first = manager(tmp_path, current, transport, symbols)
+    assert first.ensure_fresh(force=True).status == "READY"
+    assert len(transport.calls) == 21
+    restarted = manager(tmp_path, current, transport, symbols)
+    hydrated = restarted.ensure_fresh()
+    assert hydrated.status == "READY"
+    assert hydrated.queried_symbols == 0
+    status = json.loads((tmp_path / "binance-account-commission-status.json").read_text())
+    assert status["status"] == "READY"
+    assert status["last_success_at"] is not None
 
 
 def test_cost_model_consumes_real_snapshot_and_exposes_nonsecret_provenance(tmp_path, monkeypatch):

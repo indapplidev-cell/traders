@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import hmac
@@ -50,6 +50,17 @@ class RefreshResult:
     real_account_data: bool
     stub_active: bool = False
     queried_symbols: int = 0
+    error_code: str | None = None
+    last_attempt_at: str | None = None
+    next_retry_at: str | None = None
+
+
+class CommissionRefreshError(RuntimeError):
+    """Sanitized refresh failure; never contains credentials or signed data."""
+
+    def __init__(self, code: str, message: str = "commission refresh failed") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def _credential_pair(payload: Mapping[str, object]) -> BinanceCredentials | None:
@@ -227,7 +238,7 @@ class BinanceAccountCommissionClient:
                 server_time = int(response.json()["serverTime"])
                 self._server_offset_ms = server_time - local
             except (httpx.HTTPError, OSError, ValueError, TypeError, KeyError) as exc:
-                raise RuntimeError("Binance server-time synchronization failed") from exc
+                raise CommissionRefreshError("CLOCK_SKEW", "Binance server-time synchronization failed") from exc
         return local + self._server_offset_ms
 
     def fetch(self, symbol: str) -> object:
@@ -249,11 +260,26 @@ class BinanceAccountCommissionClient:
                 params=params,
                 headers={"X-MBX-APIKEY": self._credentials.api_key},
             )
+            status_code = getattr(response, "status_code", 200)
+            if status_code in (418, 429):
+                raise CommissionRefreshError("RATE_LIMITED")
+            if status_code >= 500:
+                raise CommissionRefreshError("TRANSIENT_REFRESH_FAILURE")
+            if status_code >= 400:
+                payload = response.json() if hasattr(response, "json") else {}
+                code = payload.get("code") if isinstance(payload, Mapping) else None
+                raise CommissionRefreshError(
+                    "AUTHENTICATION_FAILURE" if code in {-1002, -2014, -2015} else "INVALID_RESPONSE"
+                )
             if hasattr(response, "raise_for_status"):
                 response.raise_for_status()
             return response.json()
-        except (httpx.HTTPError, OSError, ValueError, TypeError) as exc:
-            raise RuntimeError("Binance account commission refresh failed") from exc
+        except CommissionRefreshError:
+            raise
+        except (httpx.HTTPError, OSError) as exc:
+            raise CommissionRefreshError("NETWORK_ERROR") from exc
+        except (ValueError, TypeError) as exc:
+            raise CommissionRefreshError("INVALID_RESPONSE") from exc
 
 
 class BinanceAccountCommissionManager:
@@ -275,6 +301,60 @@ class BinanceAccountCommissionManager:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._last_attempt: datetime | None = None
         self._last_failed = False
+        self._last_success: datetime | None = None
+        self._failure_count = 0
+        self._last_error_code: str | None = None
+
+    @property
+    def status_path(self) -> Path:
+        configured = os.environ.get("TRADERS_BINANCE_COMMISSION_STATUS_PATH")
+        return Path(configured) if configured else self.snapshot_path.with_name(
+            "binance-account-commission-status.json"
+        )
+
+    def _write_status(
+        self, *, status: str, now: datetime, error_code: str | None = None,
+        next_retry: datetime | None = None, snapshot: Mapping[str, object] | None = None,
+    ) -> None:
+        payload = {
+            "source": SNAPSHOT_TYPE,
+            "source_identity": PROVIDER_VERSION,
+            "account_scope": "BINANCE_SPOT_AUTHENTICATED_ACCOUNT",
+            "symbol_scope": list(self.symbols),
+            "status": status,
+            "last_attempt_at": now.isoformat().replace("+00:00", "Z"),
+            "last_success_at": (
+                None if self._last_success is None else self._last_success.isoformat().replace("+00:00", "Z")
+            ),
+            "last_error_code": error_code,
+            "refresh_failure_count": self._failure_count,
+            "next_retry_at": (
+                None if next_retry is None else next_retry.isoformat().replace("+00:00", "Z")
+            ),
+            "snapshot_created_at": None if snapshot is None else snapshot.get("fetched_at"),
+        }
+        path = self.status_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".commission-status-", suffix=".json", delete=False) as handle:
+            json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+            handle.write("\n")
+            temporary = Path(handle.name)
+        try:
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def _hydrate_success(self, payload: Mapping[str, object] | None) -> None:
+        if payload is None:
+            return
+        try:
+            self._last_success = datetime.fromisoformat(
+                str(payload["fetched_at"]).replace("Z", "+00:00")
+            ).astimezone(timezone.utc)
+        except (KeyError, TypeError, ValueError):
+            return
 
     @classmethod
     def from_environment(cls, symbols: Iterable[str]) -> "BinanceAccountCommissionManager | None":
@@ -325,14 +405,23 @@ class BinanceAccountCommissionManager:
         now = self._clock().astimezone(timezone.utc)
         cached, age = self._cached()
         if not force and cached is not None and age is not None and age < policy.refresh_interval_seconds:
+            self._hydrate_success(cached)
+            self._write_status(status="READY", now=now, snapshot=cached)
             return self._result(cached, "READY")
         if (
             not force and self._last_failed and self._last_attempt is not None
             and (now - self._last_attempt).total_seconds() < policy.retry_interval_seconds
         ):
             if cached is not None and age is not None and age <= policy.max_snapshot_age_seconds:
+                self._hydrate_success(cached)
+                self._write_status(status="CACHED_READY", now=now, error_code=self._last_error_code,
+                                    next_retry=self._last_attempt + timedelta(seconds=policy.retry_interval_seconds),
+                                    snapshot=cached)
                 return self._result(cached, "CACHED_READY")
-            return RefreshResult("FEE_SOURCE_NOT_READY", len(self.symbols), 0, None, None, False)
+            self._write_status(status="FEE_SOURCE_NOT_READY", now=now, error_code=self._last_error_code,
+                               next_retry=self._last_attempt + timedelta(seconds=policy.retry_interval_seconds))
+            return RefreshResult("FEE_SOURCE_NOT_READY", len(self.symbols), 0, None, None, False,
+                                 error_code=self._last_error_code)
         self._last_attempt = now
         try:
             rows = {}
@@ -377,17 +466,29 @@ class BinanceAccountCommissionManager:
             finally:
                 temporary.unlink(missing_ok=True)
             self._last_failed = False
+            self._last_success = now
+            self._failure_count = 0
+            self._last_error_code = None
+            self._write_status(status="READY", now=now, snapshot=material)
             return self._result(material, "READY", queried_symbols=queried_symbols)
-        except Exception:
+        except Exception as exc:
             self._last_failed = True
+            self._failure_count += 1
+            self._last_error_code = getattr(exc, "code", "TRANSIENT_REFRESH_FAILURE")
             cached, age = self._cached()
             if cached is not None and age is not None and age <= policy.max_snapshot_age_seconds:
+                self._hydrate_success(cached)
+                self._write_status(status="CACHED_READY", now=now, error_code=self._last_error_code,
+                                    next_retry=now + timedelta(seconds=policy.retry_interval_seconds),
+                                    snapshot=cached)
                 return self._result(
                     cached, "CACHED_READY", queried_symbols=queried_symbols,
                 )
+            self._write_status(status="FEE_SOURCE_NOT_READY", now=now, error_code=self._last_error_code,
+                               next_retry=now + timedelta(seconds=policy.retry_interval_seconds))
             return RefreshResult(
                 "FEE_SOURCE_NOT_READY", len(self.symbols), 0, None, None, False,
-                queried_symbols=queried_symbols,
+                queried_symbols=queried_symbols, error_code=self._last_error_code,
             )
 
 
@@ -395,6 +496,16 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
     from app.config.trading_config_manager import get_trading_config_manager
     commission = get_trading_config_manager().get_active_snapshot().resolved.parameters.costs.commission
     selected = path or Path(os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", ""))
+    status_path = Path(os.environ.get("TRADERS_BINANCE_COMMISSION_STATUS_PATH", "")) if os.environ.get(
+        "TRADERS_BINANCE_COMMISSION_STATUS_PATH"
+    ) else selected.with_name("binance-account-commission-status.json")
+    metadata: dict[str, object] = {}
+    try:
+        raw_status = json.loads(status_path.read_text(encoding="utf-8"))
+        if isinstance(raw_status, Mapping):
+            metadata = dict(raw_status)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
     try:
         payload = json.loads(selected.read_text(encoding="utf-8"))
         fetched = datetime.fromisoformat(str(payload["fetched_at"]).replace("Z", "+00:00"))
@@ -417,6 +528,12 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "snapshot_age_seconds": age if ready else None,
             "provider_version": payload.get("provider_version") if ready else None,
             "effective_commission_provenance_visible": bool(ready and symbols),
+            "last_success_at": metadata.get("last_success_at", payload.get("fetched_at") if ready else None),
+            "last_attempt_at": metadata.get("last_attempt_at"),
+            "commission_ttl_seconds": commission.max_snapshot_age_seconds,
+            "commission_refresh_failure_count": metadata.get("refresh_failure_count", 0),
+            "last_error_code": metadata.get("last_error_code"),
+            "next_retry_at": metadata.get("next_retry_at"),
         }
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return {
@@ -430,11 +547,17 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "snapshot_age_seconds": None,
             "provider_version": PROVIDER_VERSION,
             "effective_commission_provenance_visible": False,
+            "last_success_at": metadata.get("last_success_at"),
+            "last_attempt_at": metadata.get("last_attempt_at"),
+            "commission_ttl_seconds": commission.max_snapshot_age_seconds,
+            "commission_refresh_failure_count": metadata.get("refresh_failure_count", 0),
+            "last_error_code": metadata.get("last_error_code", "NO_INITIAL_SNAPSHOT"),
+            "next_retry_at": metadata.get("next_retry_at"),
         }
 
 
 __all__ = (
     "BinanceAccountCommissionClient", "BinanceAccountCommissionManager",
     "BinanceCredentials", "PROVIDER_VERSION", "RefreshResult", "SNAPSHOT_TYPE",
-    "commission_runtime_status", "parse_commission_response", "read_credentials",
+    "CommissionRefreshError", "commission_runtime_status", "parse_commission_response", "read_credentials",
 )
