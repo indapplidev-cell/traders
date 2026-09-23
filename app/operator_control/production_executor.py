@@ -44,7 +44,7 @@ from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE
 def _continuous_universe_version(allowed_symbols: tuple[str, ...]) -> str:
     return (
         SCALPING_TRADING_UNIVERSE.version_id
-        if allowed_symbols == SCALPING_TRADING_UNIVERSE.symbols
+        if allowed_symbols == tuple(sorted(SCALPING_TRADING_UNIVERSE.symbols))
         else "trading-universe-v2"
     )
 from app.engine_paper.production_approval import (

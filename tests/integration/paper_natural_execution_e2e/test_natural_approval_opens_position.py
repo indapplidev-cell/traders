@@ -39,7 +39,11 @@ from app.engine_paper.controlled_worker import (
     PaperControlledLifecycleWorker,
     SqlAlchemyPaperLifecycleGraphLoader,
 )
-from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
+from app.engine_paper.command_ingestion_service import (
+    PaperCommandIngestionService,
+    simulation_policy_contract_fingerprint,
+    simulation_policy_version,
+)
 from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.engine_paper.eligible_approval_ranking import (
     MULTI_SYMBOL_SELECTION_POLICY_VERSION,
@@ -535,7 +539,7 @@ def _seed_simulation_policy(factory, candidate, *, policy_id=None) -> None:
     with factory.begin() as session:
         session.add(PaperSimulationPolicyRecord(
             policy_id=policy.simulation_policy_id,
-            policy_version=1,
+            policy_version=simulation_policy_version(policy.simulation_policy_id),
             status="ACTIVE",
             price_source=policy.price_source.value,
             timeframe=policy.timeframe,
@@ -546,7 +550,9 @@ def _seed_simulation_policy(factory, candidate, *, policy_id=None) -> None:
             future_data_allowed=policy.future_data_allowed,
             intrabar_conflict_policy=policy.intrabar_conflict_policy.value,
             configuration_fingerprint=(
-                candidate.paper_strategy_approval.configuration_fingerprint
+                simulation_policy_contract_fingerprint(policy)
+                if simulation_policy_version(policy.simulation_policy_id) == 2
+                else candidate.paper_strategy_approval.configuration_fingerprint
             ),
             created_at=candidate.paper_strategy_approval.approved_at,
             retired_at=None,
@@ -914,11 +920,12 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
         blocked = session.scalar(
             select(PaperPlanExecutionOutcomeRecord).where(
                 PaperPlanExecutionOutcomeRecord.command_id.is_(None),
-                PaperPlanExecutionOutcomeRecord.lifecycle_state == "BLOCKED_BY_POLICY",
+                PaperPlanExecutionOutcomeRecord.lifecycle_state == "EXECUTION_FAILED",
+                PaperPlanExecutionOutcomeRecord.terminal_reason == "MAX_OPEN_POSITIONS_REACHED",
             )
         )
         assert blocked is not None
-        assert blocked.selector_reason == "MAX_OPEN_POSITIONS_REACHED"
+        assert blocked.terminal_reason == "MAX_OPEN_POSITIONS_REACHED"
         assert blocked.attempt_count == 1
 
     repository = CandleRepository(factory)

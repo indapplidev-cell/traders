@@ -28,6 +28,8 @@ from app.config.settings import get_settings
 from app.engine_paper.command_ingestion_service import (
     PaperCommandIngestionOutcome,
     PaperCommandIngestionService,
+    simulation_policy_contract_fingerprint,
+    simulation_policy_version,
 )
 from app.engine_paper.order_execution_service import PaperEntryExecutionRequest
 from app.engine_paper.fill_simulator import PaperFillRole
@@ -113,11 +115,17 @@ def ingestion_factory(ingestion_engine):
     yield factory
 
 
-def seed_policy(factory, *, fingerprint="config:ingestion:v1", **changes):
-    policy = make_policy()
+def seed_policy(factory, *, policy=None, fingerprint=None, **changes):
+    policy = policy or make_policy()
+    version = simulation_policy_version(policy.simulation_policy_id)
+    if fingerprint is None:
+        fingerprint = (
+            simulation_policy_contract_fingerprint(policy)
+            if version == 2 else "config:ingestion:v1"
+        )
     values = {
         "policy_id": policy.simulation_policy_id,
-        "policy_version": 1,
+        "policy_version": version,
         "status": "ACTIVE",
         "price_source": policy.price_source.value,
         "timeframe": policy.timeframe,
@@ -221,6 +229,19 @@ def test_policy_not_found_has_zero_graph_mutation(ingestion_factory):
     outcome = service(ingestion_factory).ingest_and_create_entry_order(make_request())
     assert outcome.outcome is PaperCommandIngestionOutcome.POLICY_NOT_FOUND
     assert counts(ingestion_factory)["command"] == 0
+
+
+def test_scalping_v2_policy_contract_is_independent_of_approval_snapshot(
+    ingestion_factory,
+):
+    policy = make_policy(
+        simulation_policy_id="simulation:scalping-v2:foundation:v1"
+    )
+    seed_policy(ingestion_factory, policy=policy)
+    request = make_request(simulation_policy=policy)
+    outcome = service(ingestion_factory).ingest_and_create_entry_order(request)
+    assert outcome.outcome is PaperCommandIngestionOutcome.COMMAND_AND_ORDER_CREATED
+    assert counts(ingestion_factory)["command"] == 1
 
 
 class FaultingUow(PaperUnitOfWork):

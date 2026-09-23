@@ -64,11 +64,51 @@ from app.engine_safety.paper_domain import (
 )
 
 
-_POLICY_VERSION: Final = 1
+_LEGACY_POLICY_VERSION: Final = 1
+_SCALPING_V2_POLICY_VERSION: Final = 2
+_SCALPING_V2_POLICY_IDS: Final = frozenset({
+    "simulation:scalping-v2:foundation:v1",
+    "simulation:scalping-v2:1m-entry-refinement:v1",
+})
 _JOURNAL_COUNT: Final = 4
 _ORDER_EVENT_COUNT: Final = 3
 _COMMAND_GRAPH_LIMIT: Final = 100
 _INGESTION_IDENTITY_VERSION: Final = "v1"
+
+
+def simulation_policy_contract_fingerprint(
+    policy: PaperFillSimulationPolicy,
+) -> str:
+    """Fingerprint the immutable fill contract, independent of plan config."""
+
+    values = (
+        "paper-fill-simulation-contract-v2",
+        policy.simulation_policy_id,
+        policy.fee_policy_id,
+        policy.slippage_policy_id,
+        policy.latency_policy_id,
+        policy.price_source.value,
+        policy.timeframe,
+        str(policy.latency_candles),
+        format(policy.slippage_bps, "f"),
+        format(policy.fee_bps, "f"),
+        str(policy.partial_fill_enabled).lower(),
+        str(policy.future_data_allowed).lower(),
+        policy.intrabar_conflict_policy.value,
+        format(policy.price_quantum, "f"),
+        format(policy.fee_quantum, "f"),
+        policy.contract_version,
+    )
+    canonical = "|".join(f"{len(value)}:{value}" for value in values)
+    return f"paper:simulation-contract:v2:{sha256(canonical.encode('ascii')).hexdigest()}"
+
+
+def simulation_policy_version(policy_id: str) -> int:
+    return (
+        _SCALPING_V2_POLICY_VERSION
+        if policy_id in _SCALPING_V2_POLICY_IDS
+        else _LEGACY_POLICY_VERSION
+    )
 
 
 class PaperCommandIngestionOutcome(StrEnum):
@@ -328,7 +368,9 @@ class PaperCommandIngestionService:
                     request,
                     repositories.policies.get_policy(
                         request.simulation_policy.simulation_policy_id,
-                        policy_version=_POLICY_VERSION,
+                        policy_version=simulation_policy_version(
+                            request.simulation_policy.simulation_policy_id
+                        ),
                     ),
                 )
                 if policy_failure is not None:
@@ -752,9 +794,15 @@ class PaperCommandIngestionService:
                 PaperCommandIngestionReasonCode.POLICY_NOT_FOUND,
             )
         policy = request.simulation_policy
+        policy_version = simulation_policy_version(policy.simulation_policy_id)
+        configuration_fingerprint = (
+            simulation_policy_contract_fingerprint(policy)
+            if policy_version == _SCALPING_V2_POLICY_VERSION
+            else request.paper_strategy_approval.configuration_fingerprint
+        )
         expected = (
             policy.simulation_policy_id,
-            _POLICY_VERSION,
+            policy_version,
             "ACTIVE",
             policy.price_source.value,
             policy.timeframe,
@@ -764,7 +812,7 @@ class PaperCommandIngestionService:
             policy.partial_fill_enabled,
             policy.future_data_allowed,
             policy.intrabar_conflict_policy.value,
-            request.paper_strategy_approval.configuration_fingerprint,
+            configuration_fingerprint,
             None,
         )
         actual = (

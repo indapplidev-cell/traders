@@ -44,8 +44,9 @@ READONLY_SCHEMA_0031: Final = "0031_scalping_parameter_sets"
 READONLY_SCHEMA_0032: Final = "0032_scalping_hold_lifecycle"
 READONLY_SCHEMA_0033: Final = "0033_net_pnl_protection"
 READONLY_SCHEMA_0034: Final = "0034_scalping_universe_v3"
+READONLY_SCHEMA_0035: Final = "0035_scalping_v2_ingestion_policy_contract"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0034
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0035
 REFINEMENT_COLUMNS: Final = frozenset({
     "refinement_identity", "refinement_mode", "refinement_state",
     "refinement_reason", "refinement_started_at", "refinement_finished_at",
@@ -128,6 +129,10 @@ class ReadonlySchemaCapabilityBridge:
 
 def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     """Retain the legacy PAPER contract; runtime startup uses stricter capabilities."""
+    revisions = tuple(
+        READONLY_SCHEMA_0034 if value == READONLY_SCHEMA_0035 else value
+        for value in revisions
+    )
     return len(revisions) == 1 and revisions[0] in {
         PAPER_SCHEMA_MINIMUM, READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
         READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
@@ -184,7 +189,12 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         ).scalars())
         if len(revisions) != 1:
             return ReadonlySchemaCapabilityResult(False, None, issues=("AMBIGUOUS_ALEMBIC_STATE",))
-        revision = revisions[0]
+        reported_revision = revisions[0]
+        revision = (
+            READONLY_SCHEMA_0034
+            if reported_revision == READONLY_SCHEMA_0035
+            else reported_revision
+        )
         if revision not in {
             READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
             READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
@@ -192,7 +202,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
             READONLY_SCHEMA_0025, READONLY_SCHEMA_0026, READONLY_SCHEMA_0027,
             READONLY_SCHEMA_0028, READONLY_SCHEMA_0029, READONLY_SCHEMA_0030, READONLY_SCHEMA_0031, READONLY_SCHEMA_0032, READONLY_SCHEMA_0033, READONLY_SCHEMA_0034,
         }:
-            return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
+            return ReadonlySchemaCapabilityResult(False, reported_revision, issues=(f"UNSUPPORTED_REVISION:{reported_revision}",))
         for model in BASE_REQUIRED_MODELS:
             _validate_model(inspector, tables, model, issues,
                             excluded=frozenset(PROFILE_COLUMNS.get(model.__table__.name, ())))
@@ -297,7 +307,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         capabilities = capabilities | {
             ReadonlySchemaCapability.PAPER_PLAN_EXECUTION_OUTCOMES
         }
-    return ReadonlySchemaCapabilityResult(not issues, revision,
+    return ReadonlySchemaCapabilityResult(not issues, reported_revision,
         frozenset(capabilities) if not issues else frozenset(), tuple(issues))
 
 
@@ -319,7 +329,7 @@ __all__ = [
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
     "READONLY_SCHEMA_0025", "READONLY_SCHEMA_0026", "READONLY_SCHEMA_0027",
     "READONLY_SCHEMA_0028", "READONLY_SCHEMA_0029", "READONLY_SCHEMA_0030",
-    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034",
+    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

@@ -167,6 +167,20 @@ def test_expired_before_execution_reason_is_operator_readable_and_bilingual():
     assert en["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Plan expired before execution handoff"
 
 
+def test_execution_bridge_terminal_reasons_never_fall_back_to_unknown():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    for code in (
+        "PAPER_INGESTION_POLICY_MISMATCH",
+        "EXPIRED_BEFORE_EXECUTION",
+        "LOWER_SELECTOR_RANK",
+        "MAX_OPEN_POSITIONS_REACHED",
+        "MAX_NEW_COMMANDS_PER_CYCLE_REACHED",
+    ):
+        assert ru[f"funnel.reason.{code}"] != ru["common.unknown_state"]
+        assert en[f"funnel.reason.{code}"] != en["common.unknown_state"]
+
+
 def test_known_scalping_rejection_reasons_are_operator_readable_and_bilingual():
     ru = catalog_payload("ru")["translations"]
     en = catalog_payload("en")["translations"]

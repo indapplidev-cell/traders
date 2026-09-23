@@ -1349,6 +1349,7 @@ class TradingFunnelReadRepository:
                         ("0031_scalping_parameter_sets",),
                         ("0033_net_pnl_protection",),
                         ("0034_scalping_universe_v3",),
+                        ("0035_scalping_v2_ingestion_policy_contract",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(

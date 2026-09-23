@@ -18,7 +18,9 @@ from .eligible_approval_ranking import (
 )
 
 
-TERMINAL_STATES = frozenset({"EXECUTION_FAILED", "EXPIRED_BEFORE_EXECUTION"})
+TERMINAL_STATES = frozenset({
+    "NOT_SELECTED", "EXECUTION_FAILED", "EXPIRED_BEFORE_EXECUTION",
+})
 TERMINAL_REFINEMENT_STATES = frozenset({
     "READY_TO_ENTER", "REJECTED_1M", "EXPIRED_1M", "BYPASSED", "FAILED",
 })
@@ -90,7 +92,7 @@ class PaperPlanExecutionOutcomeStore:
                         selector_rank=ranks[candidate.candidate_id],
                         selected_winner=selected,
                         lifecycle_state=state,
-                        terminal_reason=None,
+                        terminal_reason=None if selected else reason,
                         command_id=None,
                         control_generation=control_generation,
                         runtime_enabled=True,
@@ -101,7 +103,7 @@ class PaperPlanExecutionOutcomeStore:
                         attempt_count=0,
                         first_observed_at=now,
                         updated_at=now,
-                        terminal_at=None,
+                        terminal_at=None if selected else now,
                     )
                     session.add(row)
                 elif row.lifecycle_state not in TERMINAL_STATES and row.command_id is None:
@@ -110,6 +112,8 @@ class PaperPlanExecutionOutcomeStore:
                     row.selector_rank = ranks[candidate.candidate_id]
                     row.selected_winner = selected
                     row.lifecycle_state = state
+                    row.terminal_reason = None if selected else reason
+                    row.terminal_at = None if selected else now
                     row.updated_at = now
 
     def unconsumed_candidates(self, candidates: Sequence[Any]) -> tuple[Any, ...]:
@@ -121,7 +125,10 @@ class PaperPlanExecutionOutcomeStore:
             consumed = frozenset(session.scalars(
                 select(PaperPlanExecutionOutcomeRecord.pipeline_run_id).where(
                     PaperPlanExecutionOutcomeRecord.pipeline_run_id.in_(run_ids),
-                    PaperPlanExecutionOutcomeRecord.command_id.is_not(None),
+                    (
+                        PaperPlanExecutionOutcomeRecord.command_id.is_not(None)
+                        | (PaperPlanExecutionOutcomeRecord.lifecycle_state == "NOT_SELECTED")
+                    ),
                 )
             ))
         return tuple(
@@ -214,6 +221,11 @@ class PaperPlanExecutionOutcomeStore:
 
     def record_refinement(self, run_id: str, result: Any) -> tuple[str, str, str]:
         """Persist at most one terminal decision for the exact plan identity."""
+        state = {
+            "CONFIRMED": "READY_TO_ENTER",
+            "REJECTED": "REJECTED_1M",
+            "EXPIRED": "EXPIRED_1M",
+        }.get(result.state, result.state)
         with self._session_factory() as session, session.begin():
             row = session.get(PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True)
             if row is None:
@@ -224,15 +236,18 @@ class PaperPlanExecutionOutcomeStore:
                 return str(row.refinement_state), str(row.refinement_reason), str(row.refinement_mode)
             row.refinement_identity = result.refinement_identity
             row.refinement_mode = result.mode
-            row.refinement_state = result.state
+            row.refinement_state = state
             row.refinement_reason = result.reason
             row.refinement_started_at = result.refinement_started_at
             row.refinement_finished_at = result.refinement_finished_at
             row.refinement_valid_from_ms = result.refinement_valid_from_ms
             row.refinement_valid_until_ms = result.refinement_valid_until_ms
-            row.refinement_details = result.details()
+            details = result.details()
+            details["state"] = state
+            details["refinement_decision"] = state
+            row.refinement_details = details
             row.updated_at = self._utc()
-            return result.state, result.reason, result.mode
+            return state, result.reason, result.mode
 
     def record_attempt(
         self,
@@ -245,7 +260,9 @@ class PaperPlanExecutionOutcomeStore:
     ) -> None:
         now = self._utc(observed_at)
         with self._session_factory() as session, session.begin():
-            row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+            row = session.get(
+                PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True
+            )
             if row is None:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
             if row.lifecycle_state in TERMINAL_STATES and row.command_id is None:
@@ -268,8 +285,19 @@ class PaperPlanExecutionOutcomeStore:
                 row.terminal_reason = failure_code
                 row.terminal_at = now
             elif blocker_codes:
-                row.lifecycle_state = "BLOCKED_BY_POLICY"
-                row.selector_reason = ",".join(dict.fromkeys(blocker_codes))
+                reason = ",".join(dict.fromkeys(blocker_codes))
+                if any(code in {
+                    "MAX_NEW_COMMANDS_PER_CYCLE_REACHED",
+                    "MAX_OPEN_POSITIONS_REACHED",
+                    "NEW_COMMAND_BUDGET_EXHAUSTED",
+                    "OPEN_POSITION_BUDGET_EXHAUSTED",
+                } for code in blocker_codes):
+                    row.lifecycle_state = "EXECUTION_FAILED"
+                    row.terminal_reason = reason
+                    row.terminal_at = now
+                else:
+                    row.lifecycle_state = "BLOCKED_BY_POLICY"
+                    row.selector_reason = reason
 
     def expire_due(self, as_of_ms: int, *, observed_at: datetime | None = None) -> int:
         now = self._utc(observed_at)
@@ -279,9 +307,9 @@ class PaperPlanExecutionOutcomeStore:
                     PaperPlanExecutionOutcomeRecord.command_id.is_(None),
                     PaperPlanExecutionOutcomeRecord.approval_valid_until_ms < as_of_ms,
                     PaperPlanExecutionOutcomeRecord.lifecycle_state.in_((
-                        "PLAN_OBSERVED", "NOT_SELECTED", "BLOCKED_BY_POLICY",
+                        "PLAN_OBSERVED", "BLOCKED_BY_POLICY",
                     )),
-                )
+                ).with_for_update(skip_locked=True)
             ).scalars())
             for row in rows:
                 row.lifecycle_state = "EXPIRED_BEFORE_EXECUTION"

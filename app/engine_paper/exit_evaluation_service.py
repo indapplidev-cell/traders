@@ -37,6 +37,7 @@ from app.engine_exit.paper_exit import (
 )
 from app.engine_journal.paper_events import PaperDomainEvent
 from app.engine_paper.commit_recovery import recover_uncertain_commit
+from app.engine_paper.command_ingestion_service import simulation_policy_version
 from app.engine_paper.exit_evaluation_cursor import (
     PaperExitCursorAdvance,
     PaperExitCursorOutcome,
@@ -88,7 +89,6 @@ from app.engine_safety.paper_domain import (
 )
 
 
-_POLICY_VERSION = 1
 _TRIGGER_ORDER_EVENTS = 3
 _TRIGGER_JOURNAL_ROWS = 4
 
@@ -561,7 +561,8 @@ class PaperExitEvaluationService:
             )
         entry_fill = orm_values_to_paper_fill(fill_row)
         policy = repositories.policies.get_policy(
-            command.simulation_policy_id, policy_version=_POLICY_VERSION
+            command.simulation_policy_id,
+            policy_version=simulation_policy_version(command.simulation_policy_id),
         )
         if policy is None:
             return self._failure(request, PaperExitServiceOutcome.POLICY_MISMATCH)

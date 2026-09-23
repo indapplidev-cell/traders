@@ -73,7 +73,7 @@ def test_selection_policy_block_and_expiry_are_durable_and_idempotent():
         "run:one", blocker_codes=("WAL_NOT_READY", "PITR_NOT_READY"),
         observed_at=NOW,
     )
-    assert store.expire_due(VALID_UNTIL + 1, observed_at=NOW) == 2
+    assert store.expire_due(VALID_UNTIL + 1, observed_at=NOW) == 1
     assert store.expire_due(VALID_UNTIL + 1, observed_at=NOW) == 0
     with factory() as session:
         first = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
@@ -85,7 +85,9 @@ def test_selection_policy_block_and_expiry_are_durable_and_idempotent():
         assert first.terminal_reason == "EXPIRED_BEFORE_EXECUTION"
         assert second.selector_state == "NOT_SELECTED" and second.selector_rank == 2
         assert second.selector_reason == "LOWER_SELECTOR_RANK"
-        assert second.lifecycle_state == "EXPIRED_BEFORE_EXECUTION"
+        assert second.lifecycle_state == "NOT_SELECTED"
+        assert second.terminal_reason == "LOWER_SELECTOR_RANK"
+        assert second.terminal_at.replace(tzinfo=timezone.utc) == NOW
     engine.dispose()
 
 
@@ -158,6 +160,36 @@ def test_refinement_is_exact_identity_restart_safe_and_terminal_once():
         assert row.refinement_identity == "entry-refinement:exact"
         assert row.refinement_state == "READY_TO_ENTER"
         assert row.refinement_valid_until_ms <= row.approval_valid_until_ms
+    engine.dispose()
+
+
+def test_refinement_domain_rejection_is_persisted_with_canonical_db_state():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=12, observed_at=NOW,
+    )
+    rejected = SimpleNamespace(
+        refinement_identity="entry-refinement:rejected",
+        mode="SHADOW", state="REJECTED",
+        reason="ENTRY_REFINEMENT_MOMENTUM_INVALIDATED",
+        refinement_started_at=NOW, refinement_finished_at=NOW,
+        refinement_valid_from_ms=BOUNDARY + 30_000,
+        refinement_valid_until_ms=VALID_UNTIL,
+        details=lambda: {"state": "REJECTED", "refinement_decision": "REJECTED"},
+    )
+    assert store.record_refinement("run:one", rejected) == (
+        "REJECTED_1M", "ENTRY_REFINEMENT_MOMENTUM_INVALIDATED", "SHADOW"
+    )
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.refinement_state == "REJECTED_1M"
+        assert row.refinement_details["state"] == "REJECTED_1M"
     engine.dispose()
 
 

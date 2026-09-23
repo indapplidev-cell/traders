@@ -13,9 +13,17 @@ from app.engine_safety.paper_production_control import (
 )
 from app.operator_control.auth import ProtectedFileOperatorCredentialBinding
 from app.operator_control.runtime import create_runtime_app, main
+from app.operator_control.production_executor import _continuous_universe_version
+from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE
 
 
 TOKEN = b"isolated-control-token-material-0123456789abcdef"
+
+
+def test_sorted_arming_scope_preserves_scalping_universe_v3_identity():
+    assert _continuous_universe_version(
+        tuple(sorted(SCALPING_TRADING_UNIVERSE.symbols))
+    ) == "trading-universe-v3"
 
 
 def generation_three_control(root: Path) -> PaperProductionSafetyControl:
