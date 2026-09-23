@@ -108,4 +108,5 @@ be fixed without lookahead. Conclusion: `HISTORICAL_REASON_VALID=YES`,
 
 Implementation commits: `f61245569bdce7ae742898101ab8515c34d07e23`
 (refresh authority) and `54b2cb45297dc181451aed889e0e91d2411c8fa1`
-(schema-0035 runtime guard and final audit integration).
+(schema-0035 runtime guard), with telemetry correction in
+`3a5b5b6a0a7787a48eb6eea09b0c67eeb39c393c`.
