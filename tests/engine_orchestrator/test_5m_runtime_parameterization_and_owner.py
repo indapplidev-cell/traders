@@ -221,7 +221,8 @@ def test_5m_startup_order_validates_then_acquires_before_daemon_loop():
     assert '"0032_scalping_hold_lifecycle"' in source
     assert '"0033_net_pnl_protection"' in source
     assert '"0034_scalping_universe_v3"' in source
-    assert "requires schema 0020 through 0034" in source
+    assert '"0035_scalping_v2_ingestion_policy_contract"' in source
+    assert "requires schema 0020 through 0035" in source
     assert source.index("runtime_parameters = config.runtime_parameters") < source.index(
         "validate_5m_schema_capabilities(sessions)"
     ) < source.index("owner.acquire()") < source.index("daemon.run(")
