@@ -316,13 +316,25 @@ class BinanceAccountCommissionManager:
         self, *, status: str, now: datetime, error_code: str | None = None,
         next_retry: datetime | None = None, snapshot: Mapping[str, object] | None = None,
     ) -> None:
+        previous_attempt: object = None
+        try:
+            previous = json.loads(self.status_path.read_text(encoding="utf-8"))
+            if isinstance(previous, Mapping):
+                previous_attempt = previous.get("last_attempt_at")
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+        attempt_at = (
+            self._last_attempt.isoformat().replace("+00:00", "Z")
+            if self._last_attempt is not None
+            else previous_attempt or now.isoformat().replace("+00:00", "Z")
+        )
         payload = {
             "source": SNAPSHOT_TYPE,
             "source_identity": PROVIDER_VERSION,
             "account_scope": "BINANCE_SPOT_AUTHENTICATED_ACCOUNT",
             "symbol_scope": list(self.symbols),
             "status": status,
-            "last_attempt_at": now.isoformat().replace("+00:00", "Z"),
+            "last_attempt_at": attempt_at,
             "last_success_at": (
                 None if self._last_success is None else self._last_success.isoformat().replace("+00:00", "Z")
             ),
