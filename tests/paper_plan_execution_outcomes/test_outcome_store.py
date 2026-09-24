@@ -163,6 +163,33 @@ def test_refinement_is_exact_identity_restart_safe_and_terminal_once():
     engine.dispose()
 
 
+def test_continuation_claim_is_durable_and_protects_selected_plan_from_expiry():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=17, observed_at=NOW,
+    )
+    assert store.pending_selected_run_id(17) == "run:one"
+    assert store.claim_continuation("run:one", worker_generation=17, claimed_at=NOW)
+    assert store.pending_selected_run_id(17) == "run:one"
+    assert store.expire_due(VALID_UNTIL + 1, observed_at=NOW) == 0
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.lifecycle_state == "PLAN_OBSERVED"
+        assert row.refinement_details["continuation_status"] == "CLAIMED"
+        assert row.refinement_details["continuation_attempt"] == 1
+    assert store.claim_continuation("run:one", worker_generation=17, claimed_at=NOW)
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.refinement_details["continuation_attempt"] == 2
+    engine.dispose()
+
+
 def test_refinement_domain_rejection_is_persisted_with_canonical_db_state():
     engine, factory = sessions()
     store = PaperPlanExecutionOutcomeStore(factory)

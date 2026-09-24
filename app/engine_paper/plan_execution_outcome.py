@@ -143,6 +143,57 @@ class PaperPlanExecutionOutcomeStore:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
             return self._utc(row.first_observed_at)
 
+    def pending_selected_run_id(self, control_generation: int) -> str | None:
+        """Return the oldest durable winner awaiting continuation.
+
+        Continuous PAPER has one in-flight plan per control generation.  The
+        lookup is therefore the restart-safe source of truth when the latest
+        approval read no longer reproduces the candidate identity.
+        """
+        with self._session_factory() as session:
+            return session.execute(
+                select(PaperPlanExecutionOutcomeRecord.pipeline_run_id)
+                .where(
+                    PaperPlanExecutionOutcomeRecord.control_generation == control_generation,
+                    PaperPlanExecutionOutcomeRecord.selected_winner.is_(True),
+                    PaperPlanExecutionOutcomeRecord.command_id.is_(None),
+                    PaperPlanExecutionOutcomeRecord.lifecycle_state.in_((
+                        "PLAN_OBSERVED", "BLOCKED_BY_POLICY",
+                    )),
+                )
+                .order_by(
+                    PaperPlanExecutionOutcomeRecord.first_observed_at.asc(),
+                    PaperPlanExecutionOutcomeRecord.pipeline_run_id.asc(),
+                )
+                .limit(1)
+            ).scalar_one_or_none()
+
+    def claim_continuation(
+        self, run_id: str, *, worker_generation: int, claimed_at: datetime | None = None
+    ) -> bool:
+        """Persist an idempotent continuation claim before refinement/ingestion."""
+        now = self._utc(claimed_at)
+        with self._session_factory() as session, session.begin():
+            row = session.get(PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True)
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            if row.command_id is not None or row.lifecycle_state in TERMINAL_STATES:
+                return False
+            details = dict(row.refinement_details or {})
+            attempt = int(details.get("continuation_attempt", 0)) + 1
+            details.update({
+                "continuation_status": "CLAIMED",
+                "continuation_claimed_at": now.isoformat().replace("+00:00", "Z"),
+                "continuation_attempt": attempt,
+                "continuation_worker_generation": worker_generation,
+                "selected_to_claim_latency_ms": max(
+                    0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
+                ),
+            })
+            row.refinement_details = details
+            row.updated_at = now
+            return True
+
     def refinement_context(self, run_id: str) -> tuple[str, dict[str, object] | None]:
         """Return the durable plan id and causal previous-close context."""
         with self._session_factory() as session:
@@ -279,6 +330,8 @@ class PaperPlanExecutionOutcomeStore:
                 details["selected_to_command_latency_ms"] = max(
                     0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
                 )
+                details["continuation_status"] = "COMMAND_CREATED"
+                details["command_created_at"] = now.isoformat().replace("+00:00", "Z")
                 row.refinement_details = details
             elif failure_code is not None:
                 row.lifecycle_state = "EXECUTION_FAILED"
@@ -311,12 +364,16 @@ class PaperPlanExecutionOutcomeStore:
                     )),
                 ).with_for_update(skip_locked=True)
             ).scalars())
+            expired = 0
             for row in rows:
+                if (row.refinement_details or {}).get("continuation_status") == "CLAIMED":
+                    continue
                 row.lifecycle_state = "EXPIRED_BEFORE_EXECUTION"
                 row.terminal_reason = "EXPIRED_BEFORE_EXECUTION"
                 row.terminal_at = now
                 row.updated_at = now
-            return len(rows)
+                expired += 1
+            return expired
 
 
 __all__ = (

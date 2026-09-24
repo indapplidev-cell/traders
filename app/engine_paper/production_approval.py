@@ -426,6 +426,9 @@ class PaperProductionApprovalReader(Protocol):
         limit: int,
         start_ms: int | None,
     ) -> Sequence[_PersistedDecision]: ...
+    def read_run(
+        self, executor: _ReadOnlyExecutor, run_id: str
+    ) -> tuple[OnlinePipelineRun, OnlinePipelineResultRow | None] | None: ...
 
 
 class SqlAlchemyPaperProductionApprovalReader:
@@ -465,6 +468,21 @@ class SqlAlchemyPaperProductionApprovalReader:
         if start_ms is not None:
             statement = statement.where(OnlinePipelineRun.closed_until_ms >= start_ms)
         return tuple(self._map(run, result) for run, result in executor.execute(statement))
+
+    def read_run(
+        self, executor: _ReadOnlyExecutor, run_id: str
+    ) -> tuple[OnlinePipelineRun, OnlinePipelineResultRow | None] | None:
+        statement = (
+            select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .outerjoin(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+            )
+            .where(OnlinePipelineRun.run_id == run_id)
+            .order_by(OnlinePipelineRun.id.desc(), OnlinePipelineResultRow.id.desc())
+            .limit(1)
+        )
+        return executor.execute(statement).first()
 
     @staticmethod
     def _map(run: OnlinePipelineRun, result: OnlinePipelineResultRow | None) -> _PersistedDecision:
@@ -1067,6 +1085,26 @@ class PaperProductionApprovalSourceAdapter:
         """Classify an already loaded atomic run/result pair without another DB read."""
         row = SqlAlchemyPaperProductionApprovalReader._map(run, result)
         return self._classify_observed(row, as_of_ms)
+
+    def read_by_run_id(
+        self, run_id: str, *, as_of_ms: int | None = None
+    ) -> PaperProductionApprovalCandidate | None:
+        """Reconstruct the exact durable winner selected by its source run id."""
+        if not run_id or not isinstance(run_id, str):
+            raise ValueError("SOURCE_RUN_ID_REQUIRED")
+        with self._session_factory() as session:
+            executor = _ReadOnlyExecutor(session)
+            with session.begin():
+                executor.execute(text(_TRANSACTION_CONTROL))
+                effective_as_of = as_of_ms if as_of_ms is not None else self._reader.read_clock_ms(executor)
+                loaded = self._reader.read_run(executor, run_id)
+                if loaded is None:
+                    return None
+                run, result = loaded
+                if result is None or str(run.status) not in _COMPLETE_STATUSES:
+                    return None
+                classified = self.classify_loaded_decision(run, result, int(effective_as_of))
+                return classified.candidate
 
     def read(
         self,

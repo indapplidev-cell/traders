@@ -444,6 +444,22 @@ class ProductionPaperFirstCanaryExecutor:
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
         active_cycle = self._canary_store.current()
         errors = self._approval_source_error(results)
+        durable_candidate = None
+        if (
+            active_cycle is not None
+            and active_cycle.authority_mode == "CONTINUOUS"
+            and active_cycle.command_id is None
+            and self._outcome_store is not None
+        ):
+            pending_run_id = self._outcome_store.pending_selected_run_id(state.generation)
+            read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
+            if pending_run_id is not None and callable(read_by_run_id):
+                as_of_ms = next((value.as_of_ms for value in results if value.as_of_ms), None)
+                durable_candidate = read_by_run_id(pending_run_id, as_of_ms=as_of_ms)
+        if durable_candidate is not None:
+            # The selector decision is already durable.  Never re-rank a
+            # restarted continuation against a newer source snapshot.
+            errors = ()
         if errors:
             if (
                 errors == ("NO_ELIGIBLE_APPROVAL",)
@@ -460,31 +476,36 @@ class ProductionPaperFirstCanaryExecutor:
             and active_cycle.authority_mode == "CONTINUOUS"
             and active_cycle.command_id is None
         ):
-            candidates = tuple(
-                value.candidate for result in results for value in result.symbol_results
-                if value.candidate is not None
-                and continuous_cycle_id(state.generation, value.candidate.candidate_id)
-                == active_cycle.canary_id
-            )
-            if len(candidates) != 1:
+            if durable_candidate is not None:
+                candidate = durable_candidate
+                self.last_selection_diagnostics = None
+            else:
+                candidates = tuple(
+                    value.candidate for result in results for value in result.symbol_results
+                    if value.candidate is not None
+                    and continuous_cycle_id(state.generation, value.candidate.candidate_id)
+                    == active_cycle.canary_id
+                )
+            if durable_candidate is None and len(candidates) != 1:
                 self._canary_store.fail_safe(
                     active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT"
                 )
                 return ("CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
-            selection = self._selector.select(
-                candidates, policy_version=authority.selection_policy_version
-            )
-            self.last_selection_diagnostics = selection.diagnostics
-            if selection.failure_code is not None or selection.winner is None:
-                return (selection.failure_code or "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
-            if self._outcome_store is not None:
-                self._outcome_store.observe_selection(
-                    candidates,
-                    selection,
-                    universe_id=authority.universe_version_id,
-                    control_generation=authority.current_control_generation,
+            if durable_candidate is None:
+                selection = self._selector.select(
+                    candidates, policy_version=authority.selection_policy_version
                 )
-            candidate = selection.winner
+                self.last_selection_diagnostics = selection.diagnostics
+                if selection.failure_code is not None or selection.winner is None:
+                    return (selection.failure_code or "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
+                if self._outcome_store is not None:
+                    self._outcome_store.observe_selection(
+                        candidates,
+                        selection,
+                        universe_id=authority.universe_version_id,
+                        control_generation=authority.current_control_generation,
+                    )
+                candidate = selection.winner
         else:
             selection = self._select_candidate(authority, results, exclude_executed=True)
             if selection.failure_code is not None or selection.winner is None:
@@ -492,6 +513,12 @@ class ProductionPaperFirstCanaryExecutor:
             candidate = selection.winner
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
+        if self._outcome_store is not None:
+            if not self._outcome_store.claim_continuation(
+                candidate.lineage.source_run_id,
+                worker_generation=state.generation,
+            ):
+                return ("CONTINUATION_ALREADY_CLAIMED_OR_TERMINAL",)
         authoritative_refinement_ready = False
         if self._entry_refinement is not None:
             if self._outcome_store is None:
