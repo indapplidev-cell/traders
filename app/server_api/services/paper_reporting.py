@@ -75,6 +75,16 @@ class PaperRuntimeObservation:
     operator_runner_running: bool | None = None
     market_data_adapter_ready: bool | None = None
     approval_source_adapter_ready: bool | None = None
+    commission_status: str | None = None
+    commission_snapshot_age_seconds: float | None = None
+    commission_last_attempt_at: str | None = None
+    commission_last_success_at: str | None = None
+    commission_next_retry_at: str | None = None
+    commission_failure_count: int | None = None
+    commission_last_error_code: str | None = None
+    commission_symbols_ready: int | None = None
+    commission_symbols_expected: int | None = None
+    cost_model_ready: bool | None = None
     recovery_domains: dict[str, object] | None = None
     database_runtime_ready: bool = False
     database_durability_ready: bool = False

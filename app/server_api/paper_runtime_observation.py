@@ -53,6 +53,7 @@ from app.engine_safety.production_control_root import resolve_production_control
 from app.operator_control.runtime_health import read_paper_runtime_health
 from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_safety.readiness_domains import observe_database
+from app.engine_paper.binance_account_commission import commission_runtime_status
 
 
 PRODUCTION_RUNTIME_ROOT: Final = Path("/run/traders-paper-runtime")
@@ -368,6 +369,7 @@ class ProductionPaperRuntimeObservationSource:
     def __call__(self) -> PaperRuntimeObservation:
         now = self._clock()
         market_ready = _market_data_readiness(self._market_health_root, now)
+        commission = commission_runtime_status()
         approval_ready = False
         approval_availability = "NOT_AVAILABLE"
         try:
@@ -460,6 +462,16 @@ class ProductionPaperRuntimeObservationSource:
             current_execution=self._current_execution(),
             market_data_adapter_ready=market_ready,
             approval_source_adapter_ready=approval_ready,
+            commission_status=str(commission.get("status")),
+            commission_snapshot_age_seconds=commission.get("snapshot_age_seconds"),
+            commission_last_attempt_at=commission.get("last_attempt_at"),
+            commission_last_success_at=commission.get("last_success_at"),
+            commission_next_retry_at=commission.get("next_retry_at"),
+            commission_failure_count=int(commission.get("commission_refresh_failure_count", 0) or 0),
+            commission_last_error_code=commission.get("last_error_code"),
+            commission_symbols_ready=int(commission.get("active_symbols_ready", 0) or 0),
+            commission_symbols_expected=int(commission.get("active_symbols", 0) or 0),
+            cost_model_ready=commission.get("status") == "READY",
             database_runtime_ready=database.runtime_ready,
             database_durability_ready=(
                 automatic_ready

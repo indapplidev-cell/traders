@@ -525,10 +525,13 @@ class BinanceAccountCommissionManager:
 def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
     from app.config.trading_config_manager import get_trading_config_manager
     commission = get_trading_config_manager().get_active_snapshot().resolved.parameters.costs.commission
-    selected = path or Path(os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", ""))
-    status_path = Path(os.environ.get("TRADERS_BINANCE_COMMISSION_STATUS_PATH", "")) if os.environ.get(
-        "TRADERS_BINANCE_COMMISSION_STATUS_PATH"
-    ) else selected.with_name("binance-account-commission-status.json")
+    configured_snapshot = os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH")
+    selected = path or (Path(configured_snapshot) if configured_snapshot else
+                        Path("production_control/commission/binance-account-commission.json"))
+    configured_status = os.environ.get("TRADERS_BINANCE_COMMISSION_STATUS_PATH")
+    status_path = Path(configured_status) if configured_status else selected.with_name(
+        "binance-account-commission-status.json"
+    )
     metadata: dict[str, object] = {}
     try:
         raw_status = json.loads(status_path.read_text(encoding="utf-8"))
