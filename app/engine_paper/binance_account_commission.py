@@ -300,10 +300,12 @@ class BinanceAccountCommissionManager:
             raise ValueError("at least one active symbol is required")
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._last_attempt: datetime | None = None
+        self._last_check: datetime | None = None
         self._last_failed = False
         self._last_success: datetime | None = None
         self._failure_count = 0
         self._last_error_code: str | None = None
+        self._hydrate_status()
 
     @property
     def status_path(self) -> Path:
@@ -316,24 +318,14 @@ class BinanceAccountCommissionManager:
         self, *, status: str, now: datetime, error_code: str | None = None,
         next_retry: datetime | None = None, snapshot: Mapping[str, object] | None = None,
     ) -> None:
-        previous_attempt: object = None
-        try:
-            previous = json.loads(self.status_path.read_text(encoding="utf-8"))
-            if isinstance(previous, Mapping):
-                previous_attempt = previous.get("last_attempt_at")
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            pass
-        attempt_at = (
-            self._last_attempt.isoformat().replace("+00:00", "Z")
-            if self._last_attempt is not None
-            else previous_attempt or now.isoformat().replace("+00:00", "Z")
-        )
+        attempt_at = self._last_attempt.isoformat().replace("+00:00", "Z") if self._last_attempt else None
         payload = {
             "source": SNAPSHOT_TYPE,
             "source_identity": PROVIDER_VERSION,
             "account_scope": "BINANCE_SPOT_AUTHENTICATED_ACCOUNT",
             "symbol_scope": list(self.symbols),
             "status": status,
+            "last_check_at": now.isoformat().replace("+00:00", "Z"),
             "last_attempt_at": attempt_at,
             "last_success_at": (
                 None if self._last_success is None else self._last_success.isoformat().replace("+00:00", "Z")
@@ -357,6 +349,31 @@ class BinanceAccountCommissionManager:
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)
+
+    @staticmethod
+    def _parse_time(value: object) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+        except (TypeError, ValueError):
+            return None
+
+    def _hydrate_status(self) -> None:
+        """Restore retry state without treating a cache read as an attempt."""
+        try:
+            raw = json.loads(self.status_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return
+        if not isinstance(raw, Mapping):
+            return
+        self._last_attempt = self._parse_time(raw.get("last_attempt_at"))
+        self._last_check = self._parse_time(raw.get("last_check_at"))
+        self._last_success = self._parse_time(raw.get("last_success_at"))
+        self._failure_count = max(0, int(raw.get("refresh_failure_count", 0) or 0))
+        self._last_error_code = str(raw["last_error_code"]) if raw.get("last_error_code") else None
+        retry_at = self._parse_time(raw.get("next_retry_at"))
+        self._last_failed = bool(self._failure_count and retry_at and self._last_attempt)
 
     def _hydrate_success(self, payload: Mapping[str, object] | None) -> None:
         if payload is None:
@@ -415,6 +432,7 @@ class BinanceAccountCommissionManager:
         from app.config.trading_config_manager import get_trading_config_manager
         policy = get_trading_config_manager().get_active_snapshot().resolved.parameters.costs.commission
         now = self._clock().astimezone(timezone.utc)
+        self._last_check = now
         cached, age = self._cached()
         if not force and cached is not None and age is not None and age < policy.refresh_interval_seconds:
             self._hydrate_success(cached)
@@ -540,6 +558,7 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "snapshot_age_seconds": age if ready else None,
             "provider_version": payload.get("provider_version") if ready else None,
             "effective_commission_provenance_visible": bool(ready and symbols),
+            "last_check_at": metadata.get("last_check_at"),
             "last_success_at": metadata.get("last_success_at", payload.get("fetched_at") if ready else None),
             "last_attempt_at": metadata.get("last_attempt_at"),
             "commission_ttl_seconds": commission.max_snapshot_age_seconds,
@@ -559,6 +578,7 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "snapshot_age_seconds": None,
             "provider_version": PROVIDER_VERSION,
             "effective_commission_provenance_visible": False,
+            "last_check_at": metadata.get("last_check_at"),
             "last_success_at": metadata.get("last_success_at"),
             "last_attempt_at": metadata.get("last_attempt_at"),
             "commission_ttl_seconds": commission.max_snapshot_age_seconds,

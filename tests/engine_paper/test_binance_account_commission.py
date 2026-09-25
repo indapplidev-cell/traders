@@ -244,6 +244,39 @@ def test_all_scalping_symbols_refresh_and_restart_hydrates_status(tmp_path):
     assert status["last_success_at"] is not None
 
 
+def test_cache_hit_does_not_fabricate_authenticated_attempt(tmp_path):
+    current = [datetime(2026, 9, 6, tzinfo=timezone.utc)]
+    transport = SignedTransport()
+    first = manager(tmp_path, current, transport)
+    assert first.ensure_fresh(force=True).status == "READY"
+    attempted = json.loads(first.status_path.read_text())
+    current[0] += timedelta(minutes=5)
+    assert first.ensure_fresh().status == "READY"
+    cached = json.loads(first.status_path.read_text())
+    assert cached["last_attempt_at"] == attempted["last_attempt_at"]
+    assert cached["last_check_at"] != attempted.get("last_check_at")
+    assert len(transport.calls) == 3
+
+
+def test_restart_hydrates_retry_state_and_recovers_after_due_retry(tmp_path):
+    current = [datetime(2026, 9, 6, tzinfo=timezone.utc)]
+    transport = SignedTransport()
+    first = manager(tmp_path, current, transport)
+    assert first.ensure_fresh(force=True).status == "READY"
+    transport.failed = True
+    current[0] += timedelta(hours=2)
+    assert first.ensure_fresh().status == "CACHED_READY"
+    failed = json.loads(first.status_path.read_text())
+    assert failed["last_attempt_at"] is not None
+    restarted = manager(tmp_path, current, transport)
+    current[0] += timedelta(minutes=5)
+    transport.failed = False
+    assert restarted.ensure_fresh().status == "READY"
+    recovered = json.loads(restarted.status_path.read_text())
+    assert recovered["refresh_failure_count"] == 0
+    assert recovered["last_error_code"] is None
+
+
 def test_cost_model_consumes_real_snapshot_and_exposes_nonsecret_provenance(tmp_path, monkeypatch):
     current = [datetime.now(timezone.utc)]
     transport = SignedTransport()
