@@ -187,6 +187,7 @@ def test_continuation_claim_is_durable_and_protects_selected_plan_from_expiry():
     with factory() as session:
         row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
         assert row.refinement_details["continuation_attempt"] == 2
+        assert row.refinement_details["remaining_causal_window_at_claim_ms"] == 30_000
     engine.dispose()
 
 
@@ -211,6 +212,40 @@ def test_continuation_claim_reopens_only_a_capacity_terminal():
         assert row.terminal_reason is None and row.terminal_at is None
     store.record_attempt("run:one", failure_code="ENTRY_FILL_WINDOW_MISSED", observed_at=NOW)
     assert not store.claim_continuation("run:one", worker_generation=17, claimed_at=NOW)
+    engine.dispose()
+
+
+def test_refinement_preserves_claim_observability_and_typed_terminal_reject():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=17, observed_at=NOW,
+    )
+    assert store.claim_continuation("run:one", worker_generation=17, claimed_at=NOW)
+    ready = SimpleNamespace(
+        refinement_identity="entry-refinement:claimed",
+        mode="SHADOW", state="READY_TO_ENTER",
+        reason="ENTRY_REFINEMENT_CONFIRMED",
+        refinement_started_at=NOW, refinement_finished_at=NOW,
+        refinement_valid_from_ms=BOUNDARY + 30_000,
+        refinement_valid_until_ms=VALID_UNTIL,
+        details=lambda: {"refinement_decision": "READY_TO_ENTER"},
+    )
+    store.record_refinement("run:one", ready)
+    store.record_attempt(
+        "run:one", failure_code="SELECTED_PLAN_NOT_CLAIMABLE", observed_at=NOW
+    )
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.refinement_details["continuation_status"] == "TERMINAL_REJECT"
+        assert row.refinement_details["continuation_attempt"] == 1
+        assert row.refinement_details["claim_to_refinement_latency_ms"] == 0.0
+        assert row.terminal_reason == "SELECTED_PLAN_NOT_CLAIMABLE"
     engine.dispose()
 
 

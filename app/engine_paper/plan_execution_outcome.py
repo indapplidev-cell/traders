@@ -81,6 +81,19 @@ class PaperPlanExecutionOutcomeStore:
                 reason = (
                     None if selected else "LOWER_SELECTOR_RANK"
                 )
+                selection_details = {
+                    "selector_selected_at": now.isoformat().replace("+00:00", "Z"),
+                    "boundary_to_plan_ms": max(
+                        0, created - int(candidate.watermark.closed_until_ms)
+                    ),
+                    "remaining_causal_window_at_plan_ms": (
+                        int(candidate.watermark.closed_until_ms) + 60_000 - created
+                    ),
+                    "remaining_causal_window_at_selection_ms": (
+                        int(candidate.watermark.closed_until_ms) + 60_000
+                        - int(now.timestamp() * 1000)
+                    ),
+                }
                 if row is None:
                     row = PaperPlanExecutionOutcomeRecord(
                         pipeline_run_id=run_id,
@@ -107,6 +120,7 @@ class PaperPlanExecutionOutcomeStore:
                         mutation_enabled=True,
                         live_enabled=False,
                         attempt_count=0,
+                        refinement_details=selection_details,
                         first_observed_at=now,
                         updated_at=now,
                         terminal_at=None if selected else now,
@@ -120,6 +134,9 @@ class PaperPlanExecutionOutcomeStore:
                     row.lifecycle_state = state
                     row.terminal_reason = None if selected else reason
                     row.terminal_at = None if selected else now
+                    details = dict(row.refinement_details or {})
+                    details.update(selection_details)
+                    row.refinement_details = details
                     row.updated_at = now
 
     def unconsumed_candidates(self, candidates: Sequence[Any]) -> tuple[Any, ...]:
@@ -204,6 +221,10 @@ class PaperPlanExecutionOutcomeStore:
                 "continuation_worker_generation": worker_generation,
                 "selected_to_claim_latency_ms": max(
                     0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
+                ),
+                "remaining_causal_window_at_claim_ms": (
+                    int(row.boundary_closed_at_ms) + 60_000
+                    - int(now.timestamp() * 1000)
                 ),
             })
             row.refinement_details = details
@@ -309,9 +330,19 @@ class PaperPlanExecutionOutcomeStore:
             row.refinement_finished_at = result.refinement_finished_at
             row.refinement_valid_from_ms = result.refinement_valid_from_ms
             row.refinement_valid_until_ms = result.refinement_valid_until_ms
-            details = result.details()
+            details = dict(row.refinement_details or {})
+            details.update(result.details())
             details["state"] = state
             details["refinement_decision"] = state
+            claimed_at = details.get("continuation_claimed_at")
+            if isinstance(claimed_at, str) and result.refinement_started_at is not None:
+                claim_time = datetime.fromisoformat(claimed_at.replace("Z", "+00:00"))
+                details["claim_to_refinement_latency_ms"] = max(
+                    0.0,
+                    (
+                        self._utc(result.refinement_started_at) - self._utc(claim_time)
+                    ).total_seconds() * 1000,
+                )
             row.refinement_details = details
             row.updated_at = self._utc()
             return state, result.reason, result.mode
@@ -353,6 +384,14 @@ class PaperPlanExecutionOutcomeStore:
                 row.lifecycle_state = "EXECUTION_FAILED"
                 row.terminal_reason = failure_code
                 row.terminal_at = now
+                details = dict(row.refinement_details or {})
+                if details.get("continuation_status") == "CLAIMED":
+                    details["continuation_status"] = "TERMINAL_REJECT"
+                    details["continuation_terminal_reason"] = failure_code
+                    details["continuation_terminal_at"] = now.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                    row.refinement_details = details
             elif blocker_codes:
                 reason = ",".join(dict.fromkeys(blocker_codes))
                 if any(code in {

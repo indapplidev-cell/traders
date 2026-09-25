@@ -1066,6 +1066,30 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert final_authority.control_state == "CONTINUOUS_ARMED"
 
 
+def test_selected_candidate_can_be_rehydrated_by_exact_run_id_postgres(
+    natural_e2e_sessions,
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    result = _pipeline(
+        factory, symbol="BTCUSDT", statistics_source=_EmptyCompatibleStatisticsSource()
+    )
+    _persist_natural_approval(factory, result)
+    source = _approval_source(factory)
+    observed = source.read(PaperProductionApprovalRequest(
+        PaperProductionApprovalScope(("BTCUSDT",), "5m", max_candidates=1),
+        request_id="exact-run-rehydration", as_of_ms=EVALUATION_MS,
+    ))
+    candidate = next(item.candidate for item in observed.symbol_results if item.candidate)
+    recovered = source.read_by_run_id(
+        candidate.lineage.source_run_id, as_of_ms=EVALUATION_MS
+    )
+    assert recovered is not None
+    assert recovered.candidate_id == candidate.candidate_id
+    assert recovered.lineage == candidate.lineage
+    assert recovered.watermark == candidate.watermark
+
+
 def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
     natural_e2e_sessions,
 ):

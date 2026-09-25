@@ -445,6 +445,7 @@ class ProductionPaperFirstCanaryExecutor:
         active_cycle = self._canary_store.current()
         errors = self._approval_source_error(results)
         durable_candidate = None
+        pending_run_id = None
         if (
             active_cycle is not None
             and active_cycle.authority_mode == "CONTINUOUS"
@@ -467,6 +468,11 @@ class ProductionPaperFirstCanaryExecutor:
                 and active_cycle.authority_mode == "CONTINUOUS"
                 and active_cycle.command_id is None
             ):
+                if self._outcome_store is not None and pending_run_id is not None:
+                    self._outcome_store.record_attempt(
+                        pending_run_id,
+                        failure_code="SELECTED_PLAN_NOT_CLAIMABLE",
+                    )
                 self._canary_store.fail_safe(
                     active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_EXPIRED"
                 )
@@ -487,6 +493,11 @@ class ProductionPaperFirstCanaryExecutor:
                     == active_cycle.canary_id
                 )
             if durable_candidate is None and len(candidates) != 1:
+                if self._outcome_store is not None and pending_run_id is not None:
+                    self._outcome_store.record_attempt(
+                        pending_run_id,
+                        failure_code="SELECTED_PLAN_NOT_CLAIMABLE",
+                    )
                 self._canary_store.fail_safe(
                     active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT"
                 )
