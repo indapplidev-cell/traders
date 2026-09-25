@@ -53,7 +53,7 @@ from app.engine_safety.production_control_root import resolve_production_control
 from app.operator_control.runtime_health import read_paper_runtime_health
 from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_safety.readiness_domains import observe_database
-from app.engine_paper.binance_account_commission import commission_runtime_status
+from app.server_api.trading_funnel import commission_runtime_status
 
 
 PRODUCTION_RUNTIME_ROOT: Final = Path("/run/traders-paper-runtime")

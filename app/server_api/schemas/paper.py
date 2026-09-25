@@ -50,6 +50,16 @@ class PaperReadiness(BaseModel):
     paper_reconciliation_status: str
     market_data_adapter_ready: bool | None
     approval_source_adapter_ready: bool | None
+    commission_status: str | None = None
+    commission_snapshot_age_seconds: float | None = Field(default=None, ge=0)
+    commission_last_attempt_at: UtcTimestamp | None = None
+    commission_last_success_at: UtcTimestamp | None = None
+    commission_next_retry_at: UtcTimestamp | None = None
+    commission_failure_count: int | None = Field(default=None, ge=0)
+    commission_last_error_code: str | None = None
+    commission_symbols_ready: int | None = Field(default=None, ge=0)
+    commission_symbols_expected: int | None = Field(default=None, ge=0)
+    cost_model_ready: bool | None = None
     readiness_domains: dict[str, Any] = Field(default_factory=dict)
     recovery_domains: dict[str, Any] = Field(default_factory=dict)
     database_runtime_ready: bool = False
