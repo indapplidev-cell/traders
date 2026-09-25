@@ -24,6 +24,12 @@ TERMINAL_STATES = frozenset({
 TERMINAL_REFINEMENT_STATES = frozenset({
     "READY_TO_ENTER", "REJECTED_1M", "EXPIRED_1M", "BYPASSED", "FAILED",
 })
+RECLAIMABLE_CAPACITY_REASONS = frozenset({
+    "MAX_NEW_COMMANDS_PER_CYCLE_REACHED",
+    "MAX_OPEN_POSITIONS_REACHED",
+    "NEW_COMMAND_BUDGET_EXHAUSTED",
+    "OPEN_POSITION_BUDGET_EXHAUSTED",
+})
 
 
 class PaperPlanExecutionOutcomeStore:
@@ -177,8 +183,18 @@ class PaperPlanExecutionOutcomeStore:
             row = session.get(PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True)
             if row is None:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
-            if row.command_id is not None or row.lifecycle_state in TERMINAL_STATES:
+            if row.command_id is not None:
                 return False
+            reclaimable_capacity = (
+                row.lifecycle_state == "EXECUTION_FAILED"
+                and row.terminal_reason in RECLAIMABLE_CAPACITY_REASONS
+            )
+            if row.lifecycle_state in TERMINAL_STATES and not reclaimable_capacity:
+                return False
+            if reclaimable_capacity:
+                row.lifecycle_state = "PLAN_OBSERVED"
+                row.terminal_reason = None
+                row.terminal_at = None
             details = dict(row.refinement_details or {})
             attempt = int(details.get("continuation_attempt", 0)) + 1
             details.update({
@@ -377,6 +393,6 @@ class PaperPlanExecutionOutcomeStore:
 
 
 __all__ = (
-    "PaperPlanExecutionOutcomeStore", "TERMINAL_REFINEMENT_STATES",
-    "TERMINAL_STATES",
+    "PaperPlanExecutionOutcomeStore", "RECLAIMABLE_CAPACITY_REASONS",
+    "TERMINAL_REFINEMENT_STATES", "TERMINAL_STATES",
 )
