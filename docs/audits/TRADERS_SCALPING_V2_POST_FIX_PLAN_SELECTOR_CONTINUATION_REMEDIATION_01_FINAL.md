@@ -28,23 +28,26 @@ Canonical PostgreSQL was queried for `2026-09-23T16:44:00Z <= first_observed_at 
 
 The prompt's approximate `35` plans and `5` NULL losers were not reproduced. The fixed database window contains exactly three groups: 24 selected/expired winners, five terminalized rank losers, and one selected late winner with `ENTRY_FILL_WINDOW_MISSED`.
 
-All 144 `trade-5m-v2` boundaries in this window contain exactly 20 distinct symbols and 20 completed pipeline runs. There are zero incomplete cycles. Each of the 25 cycles containing plans has exactly one selected winner; the five multi-plan cycles each have one `LOWER_SELECTOR_RANK` loser. This disproves the proposed partial-cycle/late-loser race for the audited window. No new cycle barrier or selector policy was introduced.
+All 144 `trade-5m-v2` boundaries in this window eventually contain exactly 20 distinct symbols and 20 completed pipeline runs. Timestamp reconstruction nevertheless found that 6 of 25 winners were persisted before the last symbol run for that boundary completed, by 358.8 to 12,877.0 ms. Only 19 winners were selected after cycle completion. The partial-cycle hypothesis is therefore confirmed even though the final canonical rows contain no NULL selector state. A completion barrier was required so a late eligible plan cannot be omitted or ranked in a later snapshot.
 
 The 24 valid-timing winners map to forensic category `D. WINNER_PERSISTED_BUT_CONTINUATION_NOT_CLAIMED`. Their outcome rows had `selector_state=SELECTED`, `selected_winner=true`, rank 1, no command, and later expiry. The paired continuous canaries had no approval/command/position and terminated as `CONTINUOUS_RESERVED_APPROVAL_EXPIRED`. The one true late winner maps to category `I. LEGITIMATE_ENTRY_FILL_WINDOW_MISSED` and remains unchanged.
 
 ## Root causes
 
-`ROOT_CAUSE_1 = app.operator_control.production_executor.ProductionPaperFirstCanaryExecutor.execute_continuous_once` re-read the latest per-symbol approval snapshot for an already reserved continuous cycle and attempted to rediscover its candidate through `continuous_cycle_id`. The canary stored only the non-invertible derived cycle id, so a newer/latest source row could make the original selected candidate undiscoverable.
+`ROOT_CAUSE_1 = app.operator_control.production_executor.ProductionPaperFirstCanaryExecutor._select_candidate` accepted the latest completed row independently per symbol without proving that all 20 rows belonged to the same 5m boundary. Six audited winners were selected before `max(online_pipeline_runs.finished_at)` for their boundary.
 
-`ROOT_CAUSE_2 = app.engine_paper.production_approval.PaperProductionApprovalSourceAdapter.read` intentionally returns the latest completed run per symbol. That behavior is correct for new selection but was incorrectly reused for continuation of a previously selected run.
+`ROOT_CAUSE_2 = app.operator_control.production_executor.ProductionPaperFirstCanaryExecutor.execute_continuous_once` re-read the latest per-symbol approval snapshot for an already reserved continuous cycle and attempted to rediscover its candidate through `continuous_cycle_id`. The canary stored only the non-invertible derived cycle id, so a newer/latest source row could make the original selected candidate undiscoverable.
 
-`ROOT_CAUSE_3 = app.engine_paper.plan_execution_outcome.PaperPlanExecutionOutcomeStore` already held the canonical selected `pipeline_run_id`, but exposed no lookup/claim operation for restart-safe continuation. The expiry sweep therefore had no durable marker that execution was in flight.
+`ROOT_CAUSE_3 = app.engine_paper.production_approval.PaperProductionApprovalSourceAdapter.read` intentionally returns the latest completed run per symbol. It exposed neither a same-boundary completeness field to the selector nor exact-run recovery for continuation.
+
+`ROOT_CAUSE_4 = app.engine_paper.plan_execution_outcome.PaperPlanExecutionOutcomeStore` already held the canonical selected `pipeline_run_id`, but exposed no lookup/claim operation for restart-safe continuation. The expiry sweep therefore had no durable marker that execution was in flight.
 
 `ROOT_CAUSE_NULL_LOSERS = NOT_REPRODUCED_IN_CANONICAL_DB`. Every participating plan in the audited completed cycles has a durable selector state and terminal semantics. The missing export file prevents reconciling the prompt's five alleged NULL rows against a separate projection revision.
 
 ## Fix
 
 - `PaperPlanExecutionOutcomeStore.pending_selected_run_id()` resolves the oldest unconsumed selected winner for the current control generation.
+- `PaperProductionApprovalSymbolResult.closed_until_ms` exposes the authoritative source boundary. `_cycle_candidate_set_error()` now requires exactly one terminal result for every allowed symbol and exactly one shared boundary before any new selection; otherwise it returns `CYCLE_CANDIDATE_SET_INCOMPLETE` without selecting a partial winner.
 - `SqlAlchemyPaperProductionApprovalReader.read_run()` and `PaperProductionApprovalSourceAdapter.read_by_run_id()` reconstruct the exact persisted run under the existing repeatable-read/read-only transaction contract. Continuation no longer re-ranks a durable winner against a newer snapshot.
 - `claim_continuation()` persists claim timestamp, attempt, generation, selection-to-claim latency, and remaining causal window under a row lock. Existing cluster-wide PostgreSQL advisory locking still serializes workers by control generation.
 - A capacity-blocked candidate can be atomically reclaimed only for the four existing typed capacity reasons. Other terminal outcomes remain terminal.
@@ -55,7 +58,7 @@ The 24 valid-timing winners map to forensic category `D. WINNER_PERSISTED_BUT_CO
 ## Validation
 
 - `tests/paper_plan_execution_outcomes/test_outcome_store.py`: 8 passed. Covers durable claim/reclaim, claim observability, terminal reject, restart-safe refinement, replay, and claim-versus-expiry behavior.
-- Continuation worker concurrency and restart cases: 2 passed (`test_two_concurrent_workers_obtain_one_database_claim`, `test_restart_and_crash_before_command_rediscover_same_waiting_row`).
+- Completion-barrier, continuation concurrency, restart, and outcome-store focused matrix: 11 passed.
 - Focused continuation/ranking run: 21 passed; one pre-existing stale assertion still expects Alembic predecessor `0019_first_class_15m_domain` while the current contract is `0026_scalping_1m_entry_refinement`.
 - The broader legacy continuation file also retains three pre-existing profile-v1/15m fixture failures because runtime authority now exposes only `EXECUTION_TIMEFRAMES=('5m',)`. These failures are outside this change and were not hidden.
 - Isolated PostgreSQL 16 E2E on `paper_test_v2`: the two-position continuous scenario passed. It proves two natural fixture plans without re-arm, one winner at a time, durable loser/capacity semantics, command/fill/open-position persistence, restart/replay safety, and zero duplicates.
@@ -64,9 +67,9 @@ The 24 valid-timing winners map to forensic category `D. WINNER_PERSISTED_BUT_CO
 
 ## Production deployment
 
-Implementation revision: `8e2771b83793c097e1dc9453e2f10a474ebb9068`.
+Implementation revision: `b364fc24f805e9f6667ebdfed521d6bd1d46ab55`.
 
-- Operator Control rebuilt/recreated at `8e2771b83793c097e1dc9453e2f10a474ebb9068`.
+- Operator Control rebuilt/recreated at `b364fc24f805e9f6667ebdfed521d6bd1d46ab55`.
 - Readonly API rebuilt/recreated at the same revision for projection parity.
 - Orchestrator was not affected and remains at `3a5b5b6a0a7787a48eb6eea09b0c67eeb39c393c`.
 - Production Alembic remains `0035_scalping_v2_ingestion_policy_contract`; no migration was needed.
@@ -79,14 +82,14 @@ No production lifecycle row was modified or backfilled. No command or position w
 
 ## Natural post-deploy observation
 
-The bounded window `2026-09-25T04:56:50Z` through `2026-09-25T05:11:43Z` contained zero new PAPER plans, zero winners, and zero commands. Result: `NATURAL_PLAN_NOT_AVAILABLE_IN_BOUNDED_WINDOW`. Per the task contract this is not a blocker because deterministic PostgreSQL E2E and production health passed, and it is not reported as a natural production PASS.
+The final-deployment bounded window `2026-09-25T05:20:00Z` through `2026-09-25T05:22:05Z` contained zero new PAPER plans, zero winners, and zero commands. Result: `NATURAL_PLAN_NOT_AVAILABLE_IN_BOUNDED_WINDOW`. Per the task contract this is not a blocker because deterministic PostgreSQL E2E and production health passed, and it is not reported as a natural production PASS.
 
 ## Final invariants
 
 ```text
 FINAL_STATUS = PASS
 FINAL_VERDICT = DURABLE_SELECTED_PLAN_CONTINUATION_REPAIRED_AND_DEPLOYED
-CYCLE_COMPLETENESS_CONTRACT = EXISTING_20_OF_20_CONTRACT_PROVED; NO_CHANGE_REQUIRED
+CYCLE_COMPLETENESS_CONTRACT = IMPLEMENTED; EXACT_SYMBOL_SET_PLUS_SINGLE_SHARED_5M_BOUNDARY
 SELECTOR_DURABLE_STATE = EXISTING_AND_COMPLETE; NULL_SELECTOR_STATE=0
 CONTINUATION_DURABLE_CLAIM = IMPLEMENTED
 ENTRY_WINDOW_CONTRACT_CHANGED = NO
