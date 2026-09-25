@@ -21,7 +21,10 @@ from app.engine_paper.production_approval import (
     SYMBOL_ALLOWLIST,
 )
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
-from app.operator_control.production_executor import _candidate_entry_fill_window_missed
+from app.operator_control.production_executor import (
+    ProductionPaperFirstCanaryExecutor,
+    _candidate_entry_fill_window_missed,
+)
 from app.engine_paper.production_preparation import (
     EXPECTED_PREVIOUS_ALEMBIC,
     PaperPreparationPhase,
@@ -89,6 +92,39 @@ def test_continuous_candidate_rejects_only_a_missed_entry_fill_window():
 
     assert _candidate_entry_fill_window_missed(timely) is False
     assert _candidate_entry_fill_window_missed(late) is True
+
+
+def test_cycle_candidate_set_waits_for_all_symbols_at_the_same_boundary():
+    symbols = SYMBOL_ALLOWLIST[:3]
+    authority = SimpleNamespace(allowed_symbols=symbols)
+
+    def decision(symbol, boundary, ordinal):
+        return SimpleNamespace(
+            symbol=symbol, closed_until_ms=boundary,
+            source_run_id=f"run:{ordinal}", candidate=None,
+        )
+
+    complete = SimpleNamespace(symbol_results=tuple(
+        decision(symbol, 1_900_000_000_000, index)
+        for index, symbol in enumerate(symbols)
+    ))
+    assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
+        authority, (complete,)
+    ) == ()
+
+    late_arrival = SimpleNamespace(symbol_results=(
+        decision(symbols[0], 1_900_000_300_000, 10),
+        decision(symbols[1], 1_900_000_300_000, 11),
+        decision(symbols[2], 1_900_000_000_000, 12),
+    ))
+    assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
+        authority, (late_arrival,)
+    ) == ("CYCLE_CANDIDATE_SET_INCOMPLETE",)
+
+    missing = SimpleNamespace(symbol_results=complete.symbol_results[:-1])
+    assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
+        authority, (missing,)
+    ) == ("CYCLE_CANDIDATE_SET_INCOMPLETE",)
 
 
 @pytest.mark.parametrize("count", (2, 3, 10))

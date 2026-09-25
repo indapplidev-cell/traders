@@ -293,6 +293,7 @@ class PaperProductionApprovalSymbolResult:
     source_market_data_snapshot_id: str | None = None
     valid_until_ms: int | None = None
     classified_at_ms: int | None = None
+    closed_until_ms: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,6 +341,7 @@ class PaperProductionApprovalResult:
                     "setup_id": value.setup_id,
                     "source_market_data_snapshot_id": value.source_market_data_snapshot_id,
                     "valid_until_ms": value.valid_until_ms,
+                    "closed_until_ms": value.closed_until_ms,
                     "classified_at_ms": value.classified_at_ms,
                 }
                 for value in self.symbol_results
@@ -762,6 +764,7 @@ class PaperProductionApprovalSourceAdapter:
             str(row.setup.get("setup_id") or generation.get("candidate_id") or "") or None,
             str(row.analysis.get("source_market_data_snapshot_id") or "") or None,
             valid_until_ms,
+            closed_until_ms=row.closed_until_ms if row.run_id else None,
         )
 
     def _observe_classification(

@@ -277,7 +277,7 @@ class ProductionPaperFirstCanaryExecutor:
             str(state.generation), "continuous-capacity-observation", continuous=True
         )
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
-        if self._approval_source_error(results):
+        if self._cycle_candidate_set_error(authority, results) or self._approval_source_error(results):
             return
         selection = self._select_candidate(authority, results, exclude_executed=True)
         if selection.failure_code is not None or selection.winner is None:
@@ -305,12 +305,32 @@ class ProductionPaperFirstCanaryExecutor:
             return ("NO_ELIGIBLE_APPROVAL",)
         return ()
 
+    @staticmethod
+    def _cycle_candidate_set_error(canary, results) -> tuple[str, ...]:
+        """Require one terminal source decision per symbol at one 5m boundary."""
+        values = tuple(value for result in results for value in result.symbol_results)
+        expected = tuple(canary.allowed_symbols)
+        observed_symbols = tuple(value.symbol for value in values)
+        boundaries = {
+            value.closed_until_ms for value in values
+            if value.closed_until_ms is not None
+        }
+        if (
+            len(values) != len(expected)
+            or len(set(observed_symbols)) != len(expected)
+            or set(observed_symbols) != set(expected)
+            or len(boundaries) != 1
+            or any(value.source_run_id is None for value in values)
+        ):
+            return ("CYCLE_CANDIDATE_SET_INCOMPLETE",)
+        return ()
+
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
         canary = self._validate_boundary(transition_id, generation)
         if canary is None:
             return ("CANARY_NOT_ARMED",)
         results = self._read_approvals(canary, _id(canary.canary_id, "approval-preflight"))
-        errors = self._approval_source_error(results)
+        errors = self._cycle_candidate_set_error(canary, results) or self._approval_source_error(results)
         if errors:
             return errors
         selection = self._select_candidate(canary, results)
@@ -330,7 +350,7 @@ class ProductionPaperFirstCanaryExecutor:
             candidate = self._prepared[3]
         if candidate is None:
             results = self._read_approvals(canary, _id(request_id, "approval-start"))
-            errors = self._approval_source_error(results)
+            errors = self._cycle_candidate_set_error(canary, results) or self._approval_source_error(results)
             if errors:
                 return errors
             selection = self._select_candidate(canary, results)
@@ -362,7 +382,7 @@ class ProductionPaperFirstCanaryExecutor:
         results = self._read_approvals(
             validated, _id(canary.start_request_id, "approval-continuation")
         )
-        errors = self._approval_source_error(results)
+        errors = self._cycle_candidate_set_error(validated, results) or self._approval_source_error(results)
         if errors:
             return errors
         selection = self._select_candidate(validated, results)
@@ -443,7 +463,7 @@ class ProductionPaperFirstCanaryExecutor:
         )
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
         active_cycle = self._canary_store.current()
-        errors = self._approval_source_error(results)
+        errors = self._cycle_candidate_set_error(authority, results) or self._approval_source_error(results)
         durable_candidate = None
         pending_run_id = None
         if (
