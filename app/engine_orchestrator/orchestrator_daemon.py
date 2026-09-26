@@ -48,6 +48,12 @@ class OrchestratorDaemon:
         self.owner_guard = owner_guard
         self.health_reporter = health_reporter or OrchestratorHealthReporter(config.health_report_path)
         self.cycle_maintenance = cycle_maintenance
+        # A partial Scalping boundary is retried on the existing
+        # freshness cadence before another potentially blocking maintenance
+        # call.  This is bounded by the detector/freshness deadline and keeps
+        # the second half of a 20-symbol boundary from waiting for the normal
+        # poll plus external maintenance I/O.
+        self._deferred_boundary_retry = False
         self.clock = clock
         self.state = OrchestratorState()
         self._stop = Event()
@@ -186,6 +192,8 @@ class OrchestratorDaemon:
         }
         payload = freshness.payload()
         if freshness.classification == FreshnessClassification.WAITING_RETRYABLE.value:
+            if claim.trade_profile_id == "trade-5m-v2":
+                self._deferred_boundary_retry = True
             next_retry = min(
                 now + timedelta(seconds=self.config.freshness_retry_interval_seconds),
                 claim.freshness_deadline_at,
@@ -244,7 +252,9 @@ class OrchestratorDaemon:
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
         if self.owner_guard is not None:
             self.owner_guard.assert_active()
-        if self.cycle_maintenance is not None:
+        retrying_deferred_boundary = self._deferred_boundary_retry
+        self._deferred_boundary_retry = False
+        if self.cycle_maintenance is not None and not retrying_deferred_boundary:
             self.cycle_maintenance()
         observations: list[dict[str, Any]] = []
         if not dry_run:
@@ -298,6 +308,7 @@ class OrchestratorDaemon:
                         preflight.classification
                         == FreshnessClassification.WAITING_RETRYABLE.value
                     ):
+                        self._deferred_boundary_retry = True
                         observations.append({
                             "symbol": symbol,
                             "timeframe": window.timeframe,
@@ -364,7 +375,12 @@ class OrchestratorDaemon:
                 backoff = min(self.config.max_backoff_seconds, backoff * 2)
             if not continuous or (stop_after_cycles is not None and self.state.cycles >= stop_after_cycles):
                 break
-            self._stop.wait(self.config.poll_interval_seconds)
+            wait_seconds = (
+                self.config.freshness_retry_interval_seconds
+                if self._deferred_boundary_retry
+                else self.config.poll_interval_seconds
+            )
+            self._stop.wait(wait_seconds)
         final_status = OrchestratorHealthStatus.STOPPED.value if self._stop.is_set() else None
         self._write_health(force=True, status=final_status)
         return all_observations

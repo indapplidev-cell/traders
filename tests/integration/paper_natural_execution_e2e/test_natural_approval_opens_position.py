@@ -115,7 +115,7 @@ from app.operator_control.service import (
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.services.paper_reporting import PaperReadonlyReportingService
 from app.server_api.trading_funnel import build_projection
-from app.trading_universe.domain import runtime_universe
+from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE, runtime_universe
 from tests.final_approval_generation_integration.test_natural_materialization import (
     natural_result,
     risk,
@@ -1088,6 +1088,79 @@ def test_selected_candidate_can_be_rehydrated_by_exact_run_id_postgres(
     assert recovered.candidate_id == candidate.candidate_id
     assert recovered.lineage == candidate.lineage
     assert recovered.watermark == candidate.watermark
+
+
+def test_exact_20_symbol_selected_winner_creates_one_command_postgres_e2e(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
+):
+    factory = natural_e2e_sessions
+    symbols = tuple(sorted(SCALPING_TRADING_UNIVERSE.symbols))
+    assert len(symbols) == 20
+    _seed_foundation(factory)
+    for symbol in symbols:
+        if symbol != SYMBOL:
+            _seed_additional_symbol(factory, symbol)
+    for symbol in symbols:
+        result = _pipeline(
+            factory, symbol=symbol,
+            statistics_source=_EmptyCompatibleStatisticsSource(),
+        )
+        _persist_natural_approval(factory, result)
+
+    source = _approval_source(factory)
+    observed = source.read(PaperProductionApprovalRequest(
+        PaperProductionApprovalScope(symbols, "5m", max_candidates=20),
+        request_id="exact-20-symbol-postgres-e2e", as_of_ms=EVALUATION_MS,
+    ))
+    assert len(observed.symbol_results) == 20
+    candidates = tuple(
+        item.candidate for item in observed.symbol_results if item.candidate is not None
+    )
+    assert len(candidates) >= 2
+    winner = ProductionEligibleApprovalSelector().select(
+        candidates, policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
+    ).winner
+    assert winner is not None
+    _seed_simulation_policy(
+        factory, winner, policy_id=SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID
+    )
+
+    control = PaperProductionSafetyControl(tmp_path / "exact-20-control")
+    disabled = control.initialize_disabled(acknowledge=True)
+    armed = control.transition(
+        PersistentState.CONTINUOUS_ARMED,
+        expected_generation=disabled.generation,
+        reason=ReasonCode.CONTINUOUS_PAPER_ACTIVATION,
+        acknowledge=True, acknowledge_paper_arming=True,
+        preflight=PaperOperatorArmReadiness.isolated_ready().authority_preflight(),
+        arming_scope=PaperProductionArmingScope(1, 1, symbols),
+    )
+    PaperContinuousAuthorityStore(factory).activate(
+        generation=armed.generation, source="isolated-postgres-e2e",
+        reason="TEST_EXACT_20_CAUSAL_EXECUTION",
+    )
+    store, executor, continuation, _lifecycle, _service = _runtime(
+        factory, natural_e2e_engine, control, source,
+        entry_refinement=_StaticEntryRefinement(),
+    )
+
+    assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    assert executor.last_refinement.state == "READY_TO_ENTER"
+    assert store.current() is not None and store.current().command_id is not None
+    with factory() as session:
+        outcomes = tuple(session.scalars(select(
+            PaperPlanExecutionOutcomeRecord
+        )))
+        commands = tuple(session.scalars(select(PaperExecutionCommandRecord)))
+    assert len(outcomes) == len(candidates)
+    winners = tuple(row for row in outcomes if row.selected_winner)
+    losers = tuple(row for row in outcomes if not row.selected_winner)
+    assert len(winners) == 1 and len(losers) == len(candidates) - 1
+    assert all(row.terminal_reason == "LOWER_SELECTOR_RANK" for row in losers)
+    assert winners[0].command_id == commands[0].command_id
+    assert len(commands) == 1
+    assert winners[0].refinement_details["claim_result"] == "CLAIMED"
+    assert winners[0].refinement_details["continuation_status"] == "COMMAND_CREATED"
 
 
 def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(

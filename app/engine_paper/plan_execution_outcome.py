@@ -10,7 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.paper_models import PaperPlanExecutionOutcomeRecord, PaperPositionRecord
-from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow
+from app.engine_orchestrator.orchestrator_models import (
+    OnlinePipelineResultRow,
+    OnlinePipelineRun,
+)
 
 from .eligible_approval_ranking import (
     EligibleApprovalSelectionResult,
@@ -44,19 +47,26 @@ class PaperPlanExecutionOutcomeStore:
         return current.replace(tzinfo=timezone.utc) if current.tzinfo is None else current.astimezone(timezone.utc)
 
     @staticmethod
-    def _paper_identity(session: Session, run_id: str) -> tuple[str, int]:
-        payload = session.execute(
-            select(OnlinePipelineResultRow.paper_payload_json)
+    def _paper_identity(session: Session, run_id: str) -> tuple[str, int, datetime | None]:
+        payload, finished_at = session.execute(
+            select(
+                OnlinePipelineResultRow.paper_payload_json,
+                OnlinePipelineRun.finished_at,
+            )
+            .outerjoin(
+                OnlinePipelineRun,
+                OnlinePipelineRun.run_id == OnlinePipelineResultRow.run_id,
+            )
             .where(OnlinePipelineResultRow.run_id == run_id)
             .order_by(OnlinePipelineResultRow.id.desc())
             .limit(1)
-        ).scalar_one()
+        ).one()
         paper = payload if isinstance(payload, Mapping) else {}
         plan_id = str(paper.get("paper_plan_id") or "")
         created = int(paper.get("created_at_ms", -1))
         if not plan_id or created < 0:
             raise ValueError("PAPER_PLAN_IDENTITY_MISSING")
-        return plan_id, created
+        return plan_id, created, finished_at
 
     def observe_selection(
         self,
@@ -66,22 +76,41 @@ class PaperPlanExecutionOutcomeStore:
         universe_id: str,
         control_generation: int,
         observed_at: datetime | None = None,
+        selector_started_at: datetime | None = None,
     ) -> None:
         now = self._utc(observed_at)
         ordered = rank_eligible_candidates(candidates)
         ranks = {value.candidate_id: index + 1 for index, value in enumerate(ordered)}
         winner_id = selection.winner.candidate_id if selection.winner is not None else None
         with self._session_factory() as session, session.begin():
+            identities = {
+                candidate.lineage.source_run_id: self._paper_identity(
+                    session, candidate.lineage.source_run_id
+                )
+                for candidate in ordered
+            }
+            completed = tuple(
+                self._utc(value[2]) for value in identities.values()
+                if value[2] is not None
+            )
+            cycle_complete_at = max(completed) if completed else None
             for candidate in ordered:
                 run_id = candidate.lineage.source_run_id
                 row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
-                plan_id, created = self._paper_identity(session, run_id)
+                plan_id, created, _finished_at = identities[run_id]
                 selected = candidate.candidate_id == winner_id
                 state = "PLAN_OBSERVED" if selected else "NOT_SELECTED"
                 reason = (
                     None if selected else "LOWER_SELECTOR_RANK"
                 )
                 selection_details = {
+                    "cycle_complete_at": (
+                        None if cycle_complete_at is None
+                        else cycle_complete_at.isoformat().replace("+00:00", "Z")
+                    ),
+                    "selector_started_at": self._utc(
+                        selector_started_at or now
+                    ).isoformat().replace("+00:00", "Z"),
                     "selector_selected_at": now.isoformat().replace("+00:00", "Z"),
                     "boundary_to_plan_ms": max(
                         0, created - int(candidate.watermark.closed_until_ms)
@@ -173,8 +202,9 @@ class PaperPlanExecutionOutcomeStore:
         lookup is therefore the restart-safe source of truth when the latest
         approval read no longer reproduces the candidate identity.
         """
-        with self._session_factory() as session:
-            return session.execute(
+        now = self._utc()
+        with self._session_factory() as session, session.begin():
+            run_id = session.execute(
                 select(PaperPlanExecutionOutcomeRecord.pipeline_run_id)
                 .where(
                     PaperPlanExecutionOutcomeRecord.control_generation == control_generation,
@@ -190,6 +220,38 @@ class PaperPlanExecutionOutcomeStore:
                 )
                 .limit(1)
             ).scalar_one_or_none()
+            if run_id is not None:
+                row = session.get(
+                    PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True
+                )
+                details = dict(row.refinement_details or {})
+                details.setdefault(
+                    "pending_selected_seen_at",
+                    now.isoformat().replace("+00:00", "Z"),
+                )
+                row.refinement_details = details
+                row.updated_at = now
+            return run_id
+
+    def record_candidate_rehydration(
+        self, run_id: str, *, found: bool, observed_at: datetime | None = None
+    ) -> None:
+        """Record exact-run lookup without changing selection or claim authority."""
+
+        now = self._utc(observed_at)
+        with self._session_factory() as session, session.begin():
+            row = session.get(
+                PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True
+            )
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            details = dict(row.refinement_details or {})
+            details["read_by_run_id_at"] = now.isoformat().replace("+00:00", "Z")
+            details["read_by_run_id_result"] = "FOUND" if found else "NOT_FOUND"
+            if found:
+                details["candidate_rehydrated_at"] = details["read_by_run_id_at"]
+            row.refinement_details = details
+            row.updated_at = now
 
     def claim_continuation(
         self, run_id: str, *, worker_generation: int, claimed_at: datetime | None = None
@@ -200,33 +262,53 @@ class PaperPlanExecutionOutcomeStore:
             row = session.get(PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True)
             if row is None:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            details = dict(row.refinement_details or {})
+            details["claim_attempted_at"] = now.isoformat().replace("+00:00", "Z")
+            failure_reason = None
             if row.command_id is not None:
-                return False
+                failure_reason = "COMMAND_ALREADY_CREATED"
+            elif row.control_generation != worker_generation:
+                failure_reason = "CONTROL_GENERATION_MISMATCH"
             reclaimable_capacity = (
                 row.lifecycle_state == "EXECUTION_FAILED"
                 and row.terminal_reason in RECLAIMABLE_CAPACITY_REASONS
             )
-            if row.lifecycle_state in TERMINAL_STATES and not reclaimable_capacity:
+            if (
+                failure_reason is None
+                and row.lifecycle_state in TERMINAL_STATES
+                and not reclaimable_capacity
+            ):
+                failure_reason = "TERMINAL_OUTCOME"
+            if failure_reason is not None:
+                details["claim_result"] = "REJECTED"
+                details["claim_failure_reason"] = failure_reason
+                row.refinement_details = details
+                row.updated_at = now
                 return False
             if reclaimable_capacity:
                 row.lifecycle_state = "PLAN_OBSERVED"
                 row.terminal_reason = None
                 row.terminal_at = None
-            details = dict(row.refinement_details or {})
+            first_claim = details.get("continuation_status") != "CLAIMED"
             attempt = int(details.get("continuation_attempt", 0)) + 1
             details.update({
                 "continuation_status": "CLAIMED",
-                "continuation_claimed_at": now.isoformat().replace("+00:00", "Z"),
                 "continuation_attempt": attempt,
                 "continuation_worker_generation": worker_generation,
-                "selected_to_claim_latency_ms": max(
-                    0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
-                ),
-                "remaining_causal_window_at_claim_ms": (
-                    int(row.boundary_closed_at_ms) + 60_000
-                    - int(now.timestamp() * 1000)
-                ),
+                "claim_result": "CLAIMED" if first_claim else "CLAIM_REPLAY",
+                "claim_failure_reason": None,
             })
+            if first_claim:
+                details.update({
+                    "continuation_claimed_at": now.isoformat().replace("+00:00", "Z"),
+                    "selected_to_claim_latency_ms": max(
+                        0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
+                    ),
+                    "remaining_causal_window_at_claim_ms": (
+                        int(row.boundary_closed_at_ms) + 60_000
+                        - int(now.timestamp() * 1000)
+                    ),
+                })
             row.refinement_details = details
             row.updated_at = now
             return True

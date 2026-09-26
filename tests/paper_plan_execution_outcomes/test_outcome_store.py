@@ -188,6 +188,34 @@ def test_continuation_claim_is_durable_and_protects_selected_plan_from_expiry():
         row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
         assert row.refinement_details["continuation_attempt"] == 2
         assert row.refinement_details["remaining_causal_window_at_claim_ms"] == 30_000
+        assert row.refinement_details["claim_result"] == "CLAIM_REPLAY"
+        assert row.refinement_details["continuation_claimed_at"] == NOW.isoformat().replace(
+            "+00:00", "Z"
+        )
+    engine.dispose()
+
+
+def test_generation_change_rejects_claim_with_exact_predicate():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=17, observed_at=NOW,
+    )
+    assert not store.claim_continuation(
+        "run:one", worker_generation=18, claimed_at=NOW
+    )
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.lifecycle_state == "PLAN_OBSERVED"
+        assert row.refinement_details["claim_result"] == "REJECTED"
+        assert row.refinement_details["claim_failure_reason"] == (
+            "CONTROL_GENERATION_MISMATCH"
+        )
     engine.dispose()
 
 

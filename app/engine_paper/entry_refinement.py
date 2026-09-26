@@ -64,6 +64,8 @@ MOMENTUM = "ENTRY_REFINEMENT_MOMENTUM_INVALIDATED"
 SPREAD = "ENTRY_REFINEMENT_SPREAD_TOO_WIDE"
 EXPIRED = "ENTRY_REFINEMENT_WINDOW_EXPIRED"
 STALE = "ENTRY_REFINEMENT_MARKET_DATA_STALE"
+REQUIRED_BAR_SOURCE_STALE = "ENTRY_REFINEMENT_REQUIRED_1M_BAR_SOURCE_STALE"
+REQUIRED_BAR_UNAVAILABLE = "ENTRY_REFINEMENT_REQUIRED_1M_BAR_UNAVAILABLE"
 NOT_APPLICABLE = "ENTRY_REFINEMENT_NOT_APPLICABLE"
 COSTS_UNAVAILABLE = "ENTRY_REFINEMENT_COST_DATA_UNAVAILABLE"
 ECONOMICS = "ENTRY_REFINEMENT_ECONOMICS_INVALIDATED"
@@ -101,6 +103,11 @@ class EntryRefinementResult:
     refinement_finished_at: datetime | None
     refinement_valid_from_ms: int
     refinement_valid_until_ms: int
+    required_one_min_open_ms: int | None = None
+    required_one_min_close_ms: int | None = None
+    one_min_snapshot_timestamp_ms: int | None = None
+    one_min_freshness_age_ms: int | None = None
+    one_min_freshness_reason: str | None = None
     one_min_candle_open_ms: int | None = None
     one_min_candle_close_ms: int | None = None
     one_min_snapshot_id: str | None = None
@@ -217,6 +224,11 @@ class ScalpingEntryRefinementService:
         started = time.perf_counter()
         now = self.clock().astimezone(timezone.utc)
         valid_from, valid_until = refinement_window(candidate, selected_at)
+        required_open_ms = max(
+            int(candidate.watermark.closed_until_ms),
+            ((valid_from - 1) // 60_000) * 60_000,
+        )
+        required_close_ms = required_open_ms + 60_000
         common = dict(
             refinement_identity=refinement_identity(candidate, plan_id=plan_id), module_name=MODULE_NAME,
             mode=self.mode.value, profile_id=str(candidate.trade_profile_id),
@@ -225,8 +237,13 @@ class ScalpingEntryRefinementService:
             candidate_id=str(candidate.candidate_id),
             approval_id=str(candidate.lineage.final_approval_id),
             plan_id=str(plan_id or candidate.lineage.source_run_id),
-            refinement_started_at=selected_at.astimezone(timezone.utc),
+            refinement_started_at=now,
             refinement_valid_from_ms=valid_from, refinement_valid_until_ms=valid_until,
+            required_one_min_open_ms=required_open_ms,
+            required_one_min_close_ms=required_close_ms,
+            one_min_freshness_age_ms=max(
+                0, int(now.timestamp() * 1000) - required_close_ms
+            ),
             planned_entry=Decimal(candidate.entry_reference_price),
             time_since_previous_close_seconds=(
                 float(previous_close["time_since_previous_close_seconds"])
@@ -274,8 +291,23 @@ class ScalpingEntryRefinementService:
         ))
         fetch_ms = (time.perf_counter() - fetch_started) * 1000
         if market.readiness is not PaperProductionMarketDataReadiness.READY or market.data is None:
+            market_outcome = str(getattr(getattr(market, "outcome", None), "value", ""))
+            findings = tuple(
+                str(getattr(getattr(item, "code", None), "value", ""))
+                for item in getattr(market, "findings", ())
+            )
+            exact_reason = (
+                REQUIRED_BAR_SOURCE_STALE
+                if market_outcome == "STALE" or "MARKET_DATA_STALE" in findings
+                else REQUIRED_BAR_UNAVAILABLE
+            )
             return EntryRefinementResult(
-                **common, state=EntryRefinementState.FAILED.value, reason=STALE,
+                **{**common,
+                   "one_min_snapshot_timestamp_ms": getattr(market, "as_of_ms", now_ms),
+                   "one_min_freshness_reason": ":".join(
+                       value for value in (market_outcome, *findings) if value
+                   ) or exact_reason},
+                state=EntryRefinementState.FAILED.value, reason=exact_reason,
                 refinement_finished_at=now, data_fetch_latency_ms=fetch_ms,
                 refinement_decision_latency_ms=(time.perf_counter() - started) * 1000,
             )
@@ -288,8 +320,14 @@ class ScalpingEntryRefinementService:
             and value.close_time_ms + 1 <= now_ms
         )
         if not eligible:
+            actual = candles[-1] if candles else None
             return EntryRefinementResult(
-                **common, state=EntryRefinementState.WAITING_FOR_1M.value, reason=WAITING,
+                **{**common,
+                   "one_min_snapshot_timestamp_ms": getattr(market, "as_of_ms", now_ms),
+                   "one_min_freshness_reason": REQUIRED_BAR_UNAVAILABLE,
+                   "one_min_candle_open_ms": None if actual is None else actual.open_time_ms,
+                   "one_min_candle_close_ms": None if actual is None else actual.close_time_ms + 1},
+                state=EntryRefinementState.WAITING_FOR_1M.value, reason=WAITING,
                 refinement_finished_at=None, one_min_snapshot_id=snapshot.snapshot_id,
                 one_min_watermark=snapshot.watermark.watermark_id,
                 data_fetch_latency_ms=fetch_ms,
@@ -313,6 +351,8 @@ class ScalpingEntryRefinementService:
             one_min_candle_direction=candle_direction,
             one_min_body_bps=body_bps, one_min_range_bps=range_bps,
             data_fetch_latency_ms=fetch_ms,
+            one_min_snapshot_timestamp_ms=getattr(market, "as_of_ms", now_ms),
+            one_min_freshness_reason="EXACT_REQUIRED_1M_BAR_AVAILABLE",
         )
         if candle_direction not in {expected, "FLAT"}:
             return EntryRefinementResult(

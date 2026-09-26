@@ -82,6 +82,13 @@ def _candidate_entry_fill_window_missed(candidate) -> bool:
     return approved_at_ms > fill_close_ms
 
 
+def _selected_entry_window_missed(candidate, observed_at: datetime) -> bool:
+    """Return true once the first causal post-boundary 1m close is lost."""
+
+    deadline_ms = int(candidate.ranking.closed_until_ms) + 60_000
+    return int(observed_at.astimezone(timezone.utc).timestamp() * 1000) > deadline_ms
+
+
 FOUNDATION_SIMULATION_POLICY_ID = "simulation:foundation:v1"
 SCALPING_V2_SIMULATION_POLICY_ID = "simulation:scalping-v2:foundation:v1"
 SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID = (
@@ -155,6 +162,7 @@ class ProductionPaperFirstCanaryExecutor:
         continuous_store: PaperContinuousAuthorityStore | None = None,
         entry_refinement: ScalpingEntryRefinementService | None = None,
         opportunity_registry: object | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
@@ -167,6 +175,7 @@ class ProductionPaperFirstCanaryExecutor:
         self._continuous_store = continuous_store
         self._entry_refinement = entry_refinement
         self._opportunity_registry = opportunity_registry
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._prepared = None
         self.last_selection_diagnostics = None
         self.last_refinement = None
@@ -230,6 +239,7 @@ class ProductionPaperFirstCanaryExecutor:
         )
         if exclude_executed and self._outcome_store is not None:
             candidates = self._outcome_store.unconsumed_candidates(candidates)
+        selector_started_at = self._clock().astimezone(timezone.utc)
         selection = self._selector.select(
             candidates, policy_version=canary.selection_policy_version
         )
@@ -240,6 +250,7 @@ class ProductionPaperFirstCanaryExecutor:
                 selection,
                 universe_id=canary.universe_version_id,
                 control_generation=canary.current_control_generation,
+                selector_started_at=selector_started_at,
             )
         return selection
 
@@ -462,6 +473,9 @@ class ProductionPaperFirstCanaryExecutor:
             str(state.generation), "continuous-approval-poll", continuous=True
         )
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
+        execution_as_of_ms = next(
+            (value.as_of_ms for value in results if value.as_of_ms), None
+        )
         active_cycle = self._canary_store.current()
         errors = self._cycle_candidate_set_error(authority, results) or self._approval_source_error(results)
         durable_candidate = None
@@ -475,8 +489,12 @@ class ProductionPaperFirstCanaryExecutor:
             pending_run_id = self._outcome_store.pending_selected_run_id(state.generation)
             read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
             if pending_run_id is not None and callable(read_by_run_id):
-                as_of_ms = next((value.as_of_ms for value in results if value.as_of_ms), None)
-                durable_candidate = read_by_run_id(pending_run_id, as_of_ms=as_of_ms)
+                durable_candidate = read_by_run_id(
+                    pending_run_id, as_of_ms=execution_as_of_ms
+                )
+                self._outcome_store.record_candidate_rehydration(
+                    pending_run_id, found=durable_candidate is not None
+                )
         if durable_candidate is not None:
             # The selector decision is already durable.  Never re-rank a
             # restarted continuation against a newer source snapshot.
@@ -523,6 +541,7 @@ class ProductionPaperFirstCanaryExecutor:
                 )
                 return ("CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
             if durable_candidate is None:
+                selector_started_at = self._clock().astimezone(timezone.utc)
                 selection = self._selector.select(
                     candidates, policy_version=authority.selection_policy_version
                 )
@@ -535,6 +554,7 @@ class ProductionPaperFirstCanaryExecutor:
                         selection,
                         universe_id=authority.universe_version_id,
                         control_generation=authority.current_control_generation,
+                        selector_started_at=selector_started_at,
                     )
                 candidate = selection.winner
         else:
@@ -545,11 +565,36 @@ class ProductionPaperFirstCanaryExecutor:
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
         if self._outcome_store is not None:
+            claim_attempted_at = (
+                datetime.fromtimestamp(execution_as_of_ms / 1000, tz=timezone.utc)
+                if execution_as_of_ms is not None
+                else self._clock().astimezone(timezone.utc)
+            )
             if not self._outcome_store.claim_continuation(
                 candidate.lineage.source_run_id,
                 worker_generation=state.generation,
+                claimed_at=claim_attempted_at,
             ):
                 return ("CONTINUATION_ALREADY_CLAIMED_OR_TERMINAL",)
+            if (
+                _candidate_entry_fill_window_missed(candidate)
+                or _selected_entry_window_missed(candidate, claim_attempted_at)
+            ):
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    failure_code="ENTRY_FILL_WINDOW_MISSED",
+                    observed_at=claim_attempted_at,
+                )
+                if (
+                    active_cycle is not None
+                    and active_cycle.authority_mode == "CONTINUOUS"
+                    and active_cycle.command_id is None
+                ):
+                    self._canary_store.fail_safe(
+                        active_cycle.canary_id,
+                        "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED",
+                    )
+                return ("ENTRY_FILL_WINDOW_MISSED",)
         authoritative_refinement_ready = False
         if self._entry_refinement is not None:
             if self._outcome_store is None:

@@ -44,14 +44,17 @@ def candle(*, direction="BULLISH", open_ms=BOUNDARY):
 
 
 class Market:
-    def __init__(self, rows=(), *, ready=True):
+    def __init__(self, rows=(), *, ready=True, outcome=None):
         self.rows = tuple(rows)
         self.ready = ready
+        self.outcome = outcome
 
     def read(self, request):
         if not self.ready:
             return SimpleNamespace(
-                readiness=PaperProductionMarketDataReadiness.NOT_READY, data=None
+                readiness=PaperProductionMarketDataReadiness.NOT_READY, data=None,
+                outcome=(None if self.outcome is None else SimpleNamespace(value=self.outcome)),
+                findings=(), as_of_ms=BOUNDARY + 65_000,
             )
         watermark = SimpleNamespace(watermark_id="watermark:1")
         snapshot = SimpleNamespace(
@@ -83,9 +86,9 @@ class Costs:
 
 
 def service(*, rows=(), costs=None, now_ms=BOUNDARY + 65_000,
-            mode=EntryRefinementMode.SHADOW, ready=True):
+            mode=EntryRefinementMode.SHADOW, ready=True, market_outcome=None):
     return ScalpingEntryRefinementService(
-        market_data=Market(rows, ready=ready), cost_source=costs or Costs(),
+        market_data=Market(rows, ready=ready, outcome=market_outcome), cost_source=costs or Costs(),
         policy=EntryRefinementPolicy(10, 10, 1, 1.5, 1), mode=mode,
         clock=lambda: datetime.fromtimestamp(now_ms / 1000, tz=timezone.utc),
     )
@@ -144,6 +147,20 @@ def test_later_closed_minute_can_confirm_after_an_earlier_contradiction():
     assert result.one_min_candle_open_ms == BOUNDARY + 60_000
 
 
+def test_only_previous_1m_bar_is_reported_but_never_reused_as_required_bar():
+    previous = candle(open_ms=BOUNDARY - 60_000)
+    result = service(rows=(previous,), now_ms=BOUNDARY + 55_000).evaluate(
+        candidate(), selected_at=selected_at()
+    )
+    assert result.state == "WAITING_FOR_1M"
+    assert result.reason == "ENTRY_REFINEMENT_WAITING_1M_CLOSE"
+    assert result.required_one_min_open_ms == BOUNDARY
+    assert result.one_min_candle_open_ms == BOUNDARY - 60_000
+    assert result.one_min_freshness_reason == (
+        "ENTRY_REFINEMENT_REQUIRED_1M_BAR_UNAVAILABLE"
+    )
+
+
 def test_price_drift_and_spread_reject_without_moving_stop_or_target():
     source = candidate()
     drift = service(rows=(candle(),), costs=Costs(bid=100.19, ask=100.21)).evaluate(
@@ -165,7 +182,15 @@ def test_missing_authoritative_cost_or_stale_market_data_fails_exactly():
     assert missing_fee.state == "FAILED"
     assert missing_fee.reason == "ENTRY_REFINEMENT_COST_DATA_UNAVAILABLE"
     stale = service(rows=(), ready=False).evaluate(candidate(), selected_at=selected_at())
-    assert stale.reason == "ENTRY_REFINEMENT_MARKET_DATA_STALE"
+    assert stale.reason == "ENTRY_REFINEMENT_REQUIRED_1M_BAR_UNAVAILABLE"
+    assert stale.one_min_freshness_reason == (
+        "ENTRY_REFINEMENT_REQUIRED_1M_BAR_UNAVAILABLE"
+    )
+    source_stale = service(
+        rows=(), ready=False, market_outcome="STALE"
+    ).evaluate(candidate(), selected_at=selected_at())
+    assert source_stale.reason == "ENTRY_REFINEMENT_REQUIRED_1M_BAR_SOURCE_STALE"
+    assert source_stale.one_min_freshness_reason == "STALE"
 
 
 def test_identity_is_boundary_scoped_and_shadow_never_grants_new_authority():

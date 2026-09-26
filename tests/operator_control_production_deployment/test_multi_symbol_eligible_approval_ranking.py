@@ -24,6 +24,7 @@ from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 from app.operator_control.production_executor import (
     ProductionPaperFirstCanaryExecutor,
     _candidate_entry_fill_window_missed,
+    _selected_entry_window_missed,
 )
 from app.engine_paper.production_preparation import (
     EXPECTED_PREVIOUS_ALEMBIC,
@@ -125,6 +126,34 @@ def test_cycle_candidate_set_waits_for_all_symbols_at_the_same_boundary():
     assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
         authority, (missing,)
     ) == ("CYCLE_CANDIDATE_SET_INCOMPLETE",)
+
+
+def test_exact_20_cycle_barrier_and_causal_deadline_contract():
+    symbols = SYMBOL_ALLOWLIST
+    assert len(symbols) == 20
+    boundary_ms = 1_900_000_000_000
+    decisions = tuple(SimpleNamespace(
+        symbol=symbol, closed_until_ms=boundary_ms,
+        source_run_id=f"run:{index:02d}", candidate=None,
+    ) for index, symbol in enumerate(symbols))
+    authority = SimpleNamespace(allowed_symbols=symbols)
+    complete = SimpleNamespace(symbol_results=decisions)
+    incomplete = SimpleNamespace(symbol_results=decisions[:-1])
+    assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
+        authority, (complete,)
+    ) == ()
+    assert ProductionPaperFirstCanaryExecutor._cycle_candidate_set_error(
+        authority, (incomplete,)
+    ) == ("CYCLE_CANDIDATE_SET_INCOMPLETE",)
+
+    value = candidate(symbols[0], 1, closed_until_ms=boundary_ms)
+    timely = SimpleNamespace(ranking=value.ranking)
+    assert _selected_entry_window_missed(
+        timely, datetime.fromtimestamp((boundary_ms + 55_000) / 1000, timezone.utc)
+    ) is False
+    assert _selected_entry_window_missed(
+        timely, datetime.fromtimestamp((boundary_ms + 70_000) / 1000, timezone.utc)
+    ) is True
 
 
 @pytest.mark.parametrize("count", (2, 3, 10))
