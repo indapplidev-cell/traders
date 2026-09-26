@@ -3,13 +3,61 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 4600b72002db5d30fc02cae00d75e0222a810824
+STATUS_AS_OF_COMMIT = b7637ce0ef584b2c604dc34ab26317593e2e1719
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-20T22:26:33Z
-RECONCILED_BY_TASK = TRADERS_DESKTOP_TWENTY_SYMBOL_TRADING_PAIRS_CONTRACT_RECOVERY_01
-FILES_CHANGED = online_trader.md; ../traders-client/src/traders_client/api_contract/models.py; ../traders-client/tests/test_trading_universe_visibility.py; ../traders-client/client_status.md.
+RECONCILED_AT_UTC = 2026-09-26T23:11:23Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_V2_SELECTED_WINNER_CAUSAL_EXECUTION_REMEDIATION_02
+FILES_CHANGED = app/engine_orchestrator/orchestrator_daemon.py; app/engine_paper/entry_refinement.py; app/engine_paper/plan_execution_outcome.py; app/i18n/catalog.py; app/operator_control/production_executor.py; tests/engine_orchestrator/test_20_symbol_causal_retry.py; tests/engine_paper/test_entry_refinement.py; tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py; tests/operator_control_production_deployment/test_multi_symbol_eligible_approval_ranking.py; tests/paper_plan_execution_outcomes/test_outcome_store.py; docs/audits/TRADERS_SCALPING_V2_SELECTED_WINNER_CAUSAL_EXECUTION_REMEDIATION_02_FINAL.md; online_trader.md.
+
+## Scalping V2 selected-winner causal execution remediation 02
+
+```text
+TASK = TRADERS_SCALPING_V2_SELECTED_WINNER_CAUSAL_EXECUTION_REMEDIATION_02
+FINAL_STATUS = PASS
+FINAL_VERDICT = SELECTED_WINNER_CAUSAL_EXECUTION_TIMING_DEFECT_PROVEN_FIXED_TESTED_DEPLOYED_AND_SMOKE_VERIFIED
+PROJECT_STATE_COMMIT = b7637ce0ef584b2c604dc34ab26317593e2e1719
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = b7637ce0ef584b2c604dc34ab26317593e2e1719
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+MODE = PAPER
+ACTIVE_PROFILE = trade-5m-v2
+ACTIVE_UNIVERSE = trading-universe-v3; 20_ACTIVE; 120_READY_STREAMS
+ROOT_CAUSE_OLD_19 = READONLY_RUNTIME_NOT_READY_FOLLOWED_BY_CAUSAL_FIRST_1M_ENTRY_DEADLINE_LOSS
+FAILED_STAGE_OLD_19 = OTHER_PROVEN
+ENA_ROOT_CAUSE = SAME_UPSTREAM_TWENTY_SYMBOL_SERIAL_RETRY_TIMING_DEFECT_WITH_LATE_1M_STALE_MASK
+FIX = FIVE_SECOND_DURABLE_BOUNDARY_RETRY_WITHOUT_BLOCKING_MAINTENANCE; PRE_REFINEMENT_CAUSAL_DEADLINE_GATE; RESTART_SAFE_FIRST_CLAIM; TYPED_1M_OBSERVABILITY
+TESTS = COMPILE_PASS; TARGETED_41_PASS_1_DESELECTED; BROADER_2850_PASS_1_DESELECTED_WITH_7_DISCLOSED_PREEXISTING_STALE_FIXTURE_FAILURES; POSTGRES_E2E_4_PASS
+DEPLOY = PASS; ONLINE_ORCHESTRATOR_5M_OPERATOR_CONTROL_READONLY_ONLY
+RUNTIME_REVISION = b7637ce0ef584b2c604dc34ab26317593e2e1719
+READONLY_HEALTH = PASS; HEALTHY
+OPERATOR_CONTROL_HEALTH = PASS; HEALTHY; CONTINUOUS_ARMED_GENERATION_15
+PAPER_READINESS = READY
+ALEMBIC = 0035_scalping_v2_ingestion_policy_contract; UNCHANGED
+COMMISSION = READY; REAL_ACCOUNT_DATA_TRUE; 20_OF_20; FAILURE_COUNT_0
+LIVE_STATE = DISABLED; live_allowed=false
+REAL_BINANCE_ORDER_CALLS = 0
+STRATEGY_CHANGED = NO
+RANKING_CHANGED = NO
+COMMISSION_POLICY_CHANGED = NO
+RR_TARGET_STOP_TTL_WINDOW_CHANGED = NO
+UNIVERSE_LIMITS_15M_CHANGED = NO
+NEW_4H_OR_12H_FUNNEL_COLLECTED = NO
+CURRENT_STAGE = POST_REMEDIATION_NATURAL_PAPER_FUNNEL_OBSERVATION
+CURRENT_BLOCKER = NONE_FOR_IMPLEMENTATION_TEST_DEPLOYMENT_OR_SMOKE; LIVE_REMAINS_DISABLED_BY_POLICY
+NEXT_ACTION = VALIDATE_THE_NEXT_NATURAL_FUNNEL_COHORT_WITHOUT_FORCING_A_SIGNAL_OR_COLLECTING_A_NEW_4H_OR_12H_WINDOW
+```
+
+The missing named export was replaced by an exact production PostgreSQL cohort
+reconstruction: 29 plans across 20 boundaries, with 19 selected winners, nine
+lower ranks, one entry-window miss, and zero commands or positions. Initial
+continuation pickup was sub-200 ms; retries under read-only unready state lost
+the causal first-1m window and then overwrote first-claim evidence. The repaired
+runtime prioritizes durable boundary completion, rejects already-late winners
+before refinement, preserves first claim identity, and projects exact 1m
+freshness evidence. The full forensic timeline, latency distributions, A-J
+matrix, PostgreSQL evidence and deployment smoke are in
+`docs/audits/TRADERS_SCALPING_V2_SELECTED_WINNER_CAUSAL_EXECUTION_REMEDIATION_02_FINAL.md`.
 
 ## Desktop twenty-symbol Trading Pairs contract recovery 01
 
