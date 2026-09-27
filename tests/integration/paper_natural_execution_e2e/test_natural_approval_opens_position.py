@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from time import perf_counter
 
 import pytest
 from sqlalchemy import func, select, text
@@ -1088,6 +1089,65 @@ def test_selected_candidate_can_be_rehydrated_by_exact_run_id_postgres(
     assert recovered.candidate_id == candidate.candidate_id
     assert recovered.lineage == candidate.lineage
     assert recovered.watermark == candidate.watermark
+    diagnostic = source.exact_run_diagnostic(candidate.lineage.source_run_id)
+    assert diagnostic["minimal_execution_projection"] is True
+    assert diagnostic["query_count"] == 2
+    assert diagnostic["total_exact_run_rehydration_ms"] < 1_000
+
+
+def test_exact_run_projection_stays_bounded_with_large_toasted_history_postgres(
+    natural_e2e_sessions,
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    result = _pipeline(
+        factory, symbol="BTCUSDT", statistics_source=_EmptyCompatibleStatisticsSource()
+    )
+    _persist_natural_approval(factory, result)
+    source = _approval_source(factory)
+    observed = source.read(PaperProductionApprovalRequest(
+        PaperProductionApprovalScope(("BTCUSDT",), "5m", max_candidates=1),
+        request_id="large-history-source", as_of_ms=EVALUATION_MS,
+    ))
+    candidate = next(item.candidate for item in observed.symbol_results if item.candidate)
+    with factory.begin() as session:
+        session.execute(text("""
+            INSERT INTO online_pipeline_runs (
+                run_id, trade_profile_id, profile_mode, symbol, primary_timeframe,
+                closed_until_ms, closed_until_utc, status, trigger_source,
+                daemon_instance_id, future_bars_used, is_trade_signal,
+                is_executable, order_approved, execution_approved,
+                position_opened, position_size_approved
+            )
+            SELECT 'history:' || value, 'trade-5m-v2', 'PRODUCTION_SEARCH',
+                   'ETHUSDT', '5m', :boundary - value * 300000,
+                   to_timestamp((:boundary - value * 300000) / 1000.0),
+                   'COMPLETED', 'TEST_FIXTURE', 'large-history', false,
+                   false, false, false, false, false, false
+            FROM generate_series(1, 500) value
+        """), {"boundary": BOUNDARY})
+        session.execute(text("""
+            INSERT INTO online_pipeline_results (
+                run_id, trade_profile_id, profile_mode, symbol, primary_timeframe,
+                closed_until_ms, market_data_payload_json, analysis_payload_json,
+                setup_payload_json, strategy_payload_json, risk_payload_json,
+                paper_payload_json, module_reasons_json, module_warnings_json,
+                safety_counters_json
+            )
+            SELECT run_id, trade_profile_id, profile_mode, symbol, primary_timeframe,
+                   closed_until_ms,
+                   json_build_object('padding', repeat('x', 32768)), '{}', '{}',
+                   '{}', '{}', '{}', '{}', '{}', '{}'
+            FROM online_pipeline_runs WHERE daemon_instance_id = 'large-history'
+        """))
+    recovered = source.read_by_run_id(
+        candidate.lineage.source_run_id, as_of_ms=EVALUATION_MS
+    )
+    assert recovered is not None and recovered.candidate_id == candidate.candidate_id
+    diagnostic = source.exact_run_diagnostic(candidate.lineage.source_run_id)
+    assert diagnostic["minimal_execution_projection"] is True
+    assert diagnostic["query_count"] == 2
+    assert diagnostic["total_exact_run_rehydration_ms"] < 1_000
 
 
 def test_exact_20_symbol_selected_winner_creates_one_command_postgres_e2e(
@@ -1144,7 +1204,30 @@ def test_exact_20_symbol_selected_winner_creates_one_command_postgres_e2e(
         entry_refinement=_StaticEntryRefinement(),
     )
 
+    # Model the restart boundary under test: selector state and the active
+    # cycle already exist durably, while command ingestion has not happened.
+    selection = ProductionEligibleApprovalSelector().select(
+        candidates, policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
+    )
+    PaperPlanExecutionOutcomeStore(factory).observe_selection(
+        candidates,
+        selection,
+        universe_id="trading-universe-v3",
+        control_generation=armed.generation,
+        observed_at=datetime.now(timezone.utc),
+    )
+    store.reserve_continuous_cycle(
+        candidate_identity=winner.candidate_id,
+        generation=armed.generation,
+        control_transition_id=armed.transition_id,
+        allowed_symbols=symbols,
+        universe_version_id="trading-universe-v3",
+        now=datetime.now(timezone.utc),
+    )
+    execution_started = perf_counter()
     assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    selected_to_command_seconds = perf_counter() - execution_started
+    assert selected_to_command_seconds < 2.0
     assert executor.last_refinement.state == "READY_TO_ENTER"
     assert store.current() is not None and store.current().command_id is not None
     with factory() as session:

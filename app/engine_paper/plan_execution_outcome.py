@@ -179,7 +179,9 @@ class PaperPlanExecutionOutcomeStore:
                     PaperPlanExecutionOutcomeRecord.pipeline_run_id.in_(run_ids),
                     (
                         PaperPlanExecutionOutcomeRecord.command_id.is_not(None)
-                        | (PaperPlanExecutionOutcomeRecord.lifecycle_state == "NOT_SELECTED")
+                        | PaperPlanExecutionOutcomeRecord.lifecycle_state.in_(
+                            tuple(TERMINAL_STATES)
+                        )
                     ),
                 )
             ))
@@ -234,7 +236,12 @@ class PaperPlanExecutionOutcomeStore:
             return run_id
 
     def record_candidate_rehydration(
-        self, run_id: str, *, found: bool, observed_at: datetime | None = None
+        self,
+        run_id: str,
+        *,
+        found: bool,
+        observed_at: datetime | None = None,
+        diagnostics: Mapping[str, object] | None = None,
     ) -> None:
         """Record exact-run lookup without changing selection or claim authority."""
 
@@ -246,10 +253,22 @@ class PaperPlanExecutionOutcomeStore:
             if row is None:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
             details = dict(row.refinement_details or {})
-            details["read_by_run_id_at"] = now.isoformat().replace("+00:00", "Z")
+            completed_at = now.isoformat().replace("+00:00", "Z")
+            details.setdefault("first_read_by_run_id_at", completed_at)
+            details["read_by_run_id_at"] = completed_at
             details["read_by_run_id_result"] = "FOUND" if found else "NOT_FOUND"
+            if diagnostics:
+                safe_diagnostics = {
+                    str(key): value for key, value in diagnostics.items()
+                    if isinstance(value, (str, int, float, bool)) or value is None
+                }
+                details.setdefault(
+                    "first_exact_run_rehydration", safe_diagnostics
+                )
+                details["latest_exact_run_rehydration"] = safe_diagnostics
             if found:
-                details["candidate_rehydrated_at"] = details["read_by_run_id_at"]
+                details.setdefault("first_candidate_rehydrated_at", completed_at)
+                details["candidate_rehydrated_at"] = completed_at
             row.refinement_details = details
             row.updated_at = now
 
@@ -487,7 +506,67 @@ class PaperPlanExecutionOutcomeStore:
                     row.terminal_at = now
                 else:
                     row.lifecycle_state = "BLOCKED_BY_POLICY"
-                    row.selector_reason = reason
+                    details = dict(row.refinement_details or {})
+                    details["execution_gate_reason"] = reason
+                    details["execution_gate_observed_at"] = now.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                    readiness_codes = tuple(
+                        code for code in blocker_codes
+                        if code.startswith("READINESS_")
+                        or code.startswith("READONLY_")
+                        or code in {
+                            "DATABASE_UNAVAILABLE", "DATABASE_DURABILITY_BLOCKED",
+                            "MARKET_DATA_NOT_READY", "APPROVAL_SOURCE_NOT_READY",
+                            "PAPER_RUNTIME_DISABLED", "PAPER_MUTATION_NOT_READY",
+                        }
+                    )
+                    if readiness_codes:
+                        details["readiness_reason"] = ",".join(readiness_codes)
+                    row.refinement_details = details
+
+    def terminalize_missed_entry_windows(
+        self,
+        control_generation: int,
+        *,
+        observed_at: datetime | None = None,
+    ) -> tuple[str, ...]:
+        """Terminalize selected winners at the causal boundary, not plan TTL."""
+        now = self._utc(observed_at)
+        now_ms = int(now.timestamp() * 1000)
+        with self._session_factory() as session, session.begin():
+            rows = tuple(session.execute(
+                select(PaperPlanExecutionOutcomeRecord)
+                .where(
+                    PaperPlanExecutionOutcomeRecord.control_generation == control_generation,
+                    PaperPlanExecutionOutcomeRecord.selected_winner.is_(True),
+                    PaperPlanExecutionOutcomeRecord.command_id.is_(None),
+                    PaperPlanExecutionOutcomeRecord.lifecycle_state.in_((
+                        "PLAN_OBSERVED", "BLOCKED_BY_POLICY",
+                    )),
+                    PaperPlanExecutionOutcomeRecord.boundary_closed_at_ms + 60_000
+                    < now_ms,
+                )
+                .with_for_update(skip_locked=True)
+            ).scalars())
+            run_ids = []
+            for row in rows:
+                row.lifecycle_state = "EXECUTION_FAILED"
+                row.terminal_reason = "ENTRY_FILL_WINDOW_MISSED"
+                row.terminal_at = now
+                row.updated_at = now
+                details = dict(row.refinement_details or {})
+                details.update({
+                    "continuation_status": "TERMINAL_REJECT",
+                    "continuation_terminal_reason": "ENTRY_FILL_WINDOW_MISSED",
+                    "continuation_terminal_at": now.isoformat().replace("+00:00", "Z"),
+                    "terminalization_trigger": "CAUSAL_ENTRY_DEADLINE",
+                    "causal_entry_deadline_ms": int(row.boundary_closed_at_ms) + 60_000,
+                    "plan_valid_until_ms": int(row.approval_valid_until_ms),
+                })
+                row.refinement_details = details
+                run_ids.append(row.pipeline_run_id)
+            return tuple(run_ids)
 
     def expire_due(self, as_of_ms: int, *, observed_at: datetime | None = None) -> int:
         now = self._utc(observed_at)

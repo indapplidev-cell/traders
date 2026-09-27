@@ -434,6 +434,22 @@ class ProductionPaperFirstCanaryExecutor:
         # twenty-symbol approval scan and unrelated shadow-refinement work on
         # every retry while the causal 1m candle is closing.
         active_cycle = self._canary_store.current()
+        if self._outcome_store is not None:
+            expired_run_ids = self._outcome_store.terminalize_missed_entry_windows(
+                state.generation,
+                observed_at=self._clock().astimezone(timezone.utc),
+            )
+            if expired_run_ids:
+                if (
+                    active_cycle is not None
+                    and active_cycle.authority_mode == "CONTINUOUS"
+                    and active_cycle.command_id is None
+                ):
+                    self._canary_store.fail_safe(
+                        active_cycle.canary_id,
+                        "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED",
+                    )
+                return ("ENTRY_FILL_WINDOW_MISSED",)
         pending_run_id = None
         durable_candidate = None
         if (
@@ -446,8 +462,16 @@ class ProductionPaperFirstCanaryExecutor:
             read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
             if pending_run_id is not None and callable(read_by_run_id):
                 durable_candidate = read_by_run_id(pending_run_id)
+                exact_diagnostic = getattr(
+                    self._approval_source, "exact_run_diagnostic", None
+                )
                 self._outcome_store.record_candidate_rehydration(
-                    pending_run_id, found=durable_candidate is not None
+                    pending_run_id,
+                    found=durable_candidate is not None,
+                    diagnostics=(
+                        exact_diagnostic(pending_run_id)
+                        if callable(exact_diagnostic) else None
+                    ),
                 )
         if (
             durable_candidate is None

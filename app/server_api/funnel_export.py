@@ -630,6 +630,8 @@ def build_export_record(
             ),
             "plan_terminal_state": outcome.get("plan_terminal_state"),
             "plan_terminal_reason": outcome.get("plan_terminal_reason"),
+            "execution_gate_reason": outcome.get("execution_gate_reason"),
+            "readiness_reason": outcome.get("readiness_reason"),
             "command_id": outcome.get("command_id"),
             "command_status": outcome.get("command_status"),
             "command_terminal_reason": outcome.get("command_terminal_reason"),

@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
+import urllib.error
 import urllib.request
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
@@ -136,34 +138,54 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             denials = payload.get("current_mutation_denial_reasons") if isinstance(payload, dict) else None
-            envelope_ready = (
+            snapshot_authoritative = (
                 response.status == 200
                 and isinstance(payload, dict)
-                and payload.get("status") == "READY"
-                and payload.get("paper_schema_ready") is True
-                and payload.get("account_baseline_exists") is True
-                and payload.get("account_baseline_valid") is True
-                and payload.get("accounting_reconciliation_status") == "HEALTHY"
-                and payload.get("paper_reconciliation_status") == "HEALTHY"
-                and payload.get("paper_runtime_enabled") is True
-                and payload.get("paper_control_state") in {"ARMED", "CONTINUOUS_ARMED"}
-                and payload.get("paper_control_effective_state") in {"ARMED", "CONTINUOUS_ARMED"}
-                and payload.get("paper_control_health") == "HEALTHY"
                 and isinstance(payload.get("paper_control_generation"), int)
                 and isinstance(denials, list)
             )
-            if not envelope_ready:
+            if not snapshot_authoritative:
                 return ExistingCanaryRuntimeReadiness(
-                    policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+                    policy_blockers=("READINESS_RESPONSE_INVALID",),
                     snapshot_authoritative=False,
+                    reason_source="READONLY_PAPER_READINESS_INVALID_RESPONSE",
                 )
-            mapped_denials = {
-                "MARKET_DATA_NOT_READY", "APPROVAL_SOURCE_NOT_READY",
-                "WAL_NOT_READY", "PITR_NOT_READY", "LIVE_NOT_DENIED",
-            }
-            policy_blockers = tuple(
-                dict.fromkeys(str(code) for code in denials if str(code) not in mapped_denials)
+            policy_blockers = tuple(dict.fromkeys(str(code) for code in denials))
+            semantic_checks = (
+                ("PAPER_SCHEMA_NOT_DEPLOYED", payload.get("paper_schema_ready") is True),
+                ("ACCOUNT_BASELINE_MISSING", payload.get("account_baseline_exists") is True),
+                ("ACCOUNT_BASELINE_INVALID", payload.get("account_baseline_valid") is True),
+                (
+                    "ACCOUNTING_RECONCILIATION_NOT_HEALTHY",
+                    payload.get("accounting_reconciliation_status") == "HEALTHY",
+                ),
+                (
+                    "PAPER_RECONCILIATION_NOT_HEALTHY",
+                    payload.get("paper_reconciliation_status") == "HEALTHY",
+                ),
+                ("PAPER_RUNTIME_DISABLED", payload.get("paper_runtime_enabled") is True),
+                (
+                    f"CONTROL_STATE_{str(payload.get('paper_control_state') or 'UNKNOWN')}",
+                    payload.get("paper_control_state") in {"ARMED", "CONTINUOUS_ARMED"},
+                ),
+                (
+                    "READINESS_CONTROL_STATE_MISMATCH",
+                    payload.get("paper_control_effective_state")
+                    == payload.get("paper_control_state"),
+                ),
+                (
+                    "READINESS_CONTROL_UNHEALTHY",
+                    payload.get("paper_control_health") == "HEALTHY",
+                ),
             )
+            policy_blockers += tuple(
+                code for code, passed in semantic_checks
+                if not passed and code not in policy_blockers
+            )
+            if payload.get("status") != "READY":
+                policy_blockers += (
+                    f"READINESS_STATUS_{str(payload.get('status') or 'UNKNOWN')}",
+                )
             if payload.get("current_mutation_ready") is not True and not denials:
                 policy_blockers += ("READONLY_MUTATION_NOT_READY",)
             return ExistingCanaryRuntimeReadiness(
@@ -177,10 +199,25 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 policy_blockers=policy_blockers,
                 control_generation=payload["paper_control_generation"],
             )
+        except (TimeoutError, socket.timeout):
+            return ExistingCanaryRuntimeReadiness(
+                policy_blockers=("READINESS_REQUEST_TIMEOUT",),
+                snapshot_authoritative=False,
+                reason_source="READONLY_PAPER_READINESS_REQUEST_TIMEOUT",
+            )
+        except urllib.error.URLError as error:
+            is_timeout = isinstance(error.reason, (TimeoutError, socket.timeout))
+            code = "READINESS_REQUEST_TIMEOUT" if is_timeout else "READINESS_REQUEST_FAILED"
+            return ExistingCanaryRuntimeReadiness(
+                policy_blockers=(code,),
+                snapshot_authoritative=False,
+                reason_source=f"READONLY_PAPER_{code}",
+            )
         except Exception:
             return ExistingCanaryRuntimeReadiness(
-                policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+                policy_blockers=("READINESS_REQUEST_FAILED",),
                 snapshot_authoritative=False,
+                reason_source="READONLY_PAPER_READINESS_REQUEST_FAILED",
             )
 
 

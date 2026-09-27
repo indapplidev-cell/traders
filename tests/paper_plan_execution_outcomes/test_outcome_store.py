@@ -79,7 +79,10 @@ def test_selection_policy_block_and_expiry_are_durable_and_idempotent():
         first = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
         second = session.get(PaperPlanExecutionOutcomeRecord, "run:two")
         assert first.selector_state == "SELECTED" and first.selector_rank == 1
-        assert first.selector_reason == "WAL_NOT_READY,PITR_NOT_READY"
+        assert first.selector_reason is None
+        assert first.refinement_details["execution_gate_reason"] == (
+            "WAL_NOT_READY,PITR_NOT_READY"
+        )
         assert first.attempt_count == 1
         assert first.lifecycle_state == "EXPIRED_BEFORE_EXECUTION"
         assert first.terminal_reason == "EXPIRED_BEFORE_EXECUTION"
@@ -160,6 +163,67 @@ def test_refinement_is_exact_identity_restart_safe_and_terminal_once():
         assert row.refinement_identity == "entry-refinement:exact"
         assert row.refinement_state == "READY_TO_ENTER"
         assert row.refinement_valid_until_ms <= row.approval_valid_until_ms
+    engine.dispose()
+
+
+def test_causal_deadline_terminalizes_selected_winner_before_plan_ttl():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=17, observed_at=NOW,
+    )
+    before_deadline = datetime.fromtimestamp((BOUNDARY + 59_999) / 1000, timezone.utc)
+    after_deadline = datetime.fromtimestamp((BOUNDARY + 60_001) / 1000, timezone.utc)
+    assert store.terminalize_missed_entry_windows(
+        17, observed_at=before_deadline
+    ) == ()
+    assert store.terminalize_missed_entry_windows(
+        17, observed_at=after_deadline
+    ) == ("run:one",)
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.lifecycle_state == "EXECUTION_FAILED"
+        assert row.terminal_reason == "ENTRY_FILL_WINDOW_MISSED"
+        assert row.approval_valid_until_ms > BOUNDARY + 60_001
+        assert row.refinement_details["terminalization_trigger"] == (
+            "CAUSAL_ENTRY_DEADLINE"
+        )
+    assert store.unconsumed_candidates((value,)) == ()
+    engine.dispose()
+
+
+def test_exact_rehydration_telemetry_preserves_first_attempt():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v3",
+        control_generation=17, observed_at=NOW,
+    )
+    first = {"total_exact_run_rehydration_ms": 12.5, "query_count": 2}
+    second = {"total_exact_run_rehydration_ms": 8.0, "query_count": 2}
+    store.record_candidate_rehydration(
+        "run:one", found=True, observed_at=NOW, diagnostics=first
+    )
+    later = datetime.fromtimestamp((BOUNDARY + 31_000) / 1000, timezone.utc)
+    store.record_candidate_rehydration(
+        "run:one", found=True, observed_at=later, diagnostics=second
+    )
+    with factory() as session:
+        details = session.get(
+            PaperPlanExecutionOutcomeRecord, "run:one"
+        ).refinement_details
+        assert details["first_exact_run_rehydration"] == first
+        assert details["latest_exact_run_rehydration"] == second
+        assert details["first_read_by_run_id_at"] != details["read_by_run_id_at"]
     engine.dispose()
 
 

@@ -21,7 +21,7 @@ import logging
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
-from sqlalchemy import Select, select, text
+from sqlalchemy import JSON, Select, cast, func, literal, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import TextClause
 
@@ -487,6 +487,89 @@ class SqlAlchemyPaperProductionApprovalReader:
         return executor.execute(statement).first()
 
     @staticmethod
+    def _json_projection(column: Any, keys: tuple[str, ...]) -> Any:
+        """Build a small authoritative JSON object without transferring UI detail."""
+        arguments: list[Any] = []
+        for key in keys:
+            arguments.extend((literal(key), column[key]))
+        return cast(func.json_build_object(*arguments), JSON)
+
+    def read_execution_run(
+        self, executor: _ReadOnlyExecutor, run_id: str
+    ) -> _PersistedDecision | None:
+        """Read one exact winner through the two unique run-id indexes.
+
+        PostgreSQL evaluates the required JSON keys at the source.  Large
+        market/UI/module payloads are never transferred to or decoded by the
+        execution process.
+        """
+        analysis = self._json_projection(OnlinePipelineResultRow.analysis_payload_json, (
+            "trade_profile_id", "profile_id", "symbol", "timeframe",
+            "closed_until_ms", "created_at_ms", "future_bars_used", "snapshot_id",
+            "source_market_data_snapshot_id",
+        )).label("execution_analysis")
+        setup = self._json_projection(OnlinePipelineResultRow.setup_payload_json, (
+            "trade_profile_id", "profile_id", "symbol", "timeframe",
+            "closed_until_ms", "created_at_ms", "setup_id",
+            "source_analysis_snapshot_id", "status",
+        )).label("execution_setup")
+        strategy = self._json_projection(OnlinePipelineResultRow.strategy_payload_json, (
+            "trade_profile_id", "profile_id", "symbol", "timeframe",
+            "closed_until_ms", "created_at_ms", "decision_id", "source_setup_id",
+            "source_analysis_snapshot_id", "decision_status", "direction_hint",
+            "strategy_score",
+        )).label("execution_strategy")
+        risk = self._json_projection(OnlinePipelineResultRow.risk_payload_json, (
+            "trade_profile_id", "profile_id", "symbol", "timeframe",
+            "closed_until_ms", "created_at_ms", "risk_decision_id",
+            "source_strategy_decision_id", "source_setup_id",
+            "source_analysis_snapshot_id", "risk_status", "direction_hint",
+            "risk_score",
+        )).label("execution_risk")
+        paper = self._json_projection(OnlinePipelineResultRow.paper_payload_json, (
+            "trade_profile_id", "profile_id", "symbol", "timeframe",
+            "closed_until_ms", "created_at_ms", "paper_plan_id",
+            "source_risk_decision_id", "source_strategy_decision_id",
+            "source_setup_id", "source_analysis_snapshot_id", "paper_direction",
+            "persisted_final_approvals", "final_approval_generation", "paper_context",
+        )).label("execution_paper")
+        statement = (
+            select(
+                OnlinePipelineRun,
+                OnlinePipelineResultRow.id.label("result_pk"),
+                OnlinePipelineResultRow.trade_profile_id.label("result_trade_profile_id"),
+                OnlinePipelineResultRow.primary_timeframe.label("result_primary_timeframe"),
+                analysis, setup, strategy, risk, paper,
+            )
+            .outerjoin(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+            )
+            .where(OnlinePipelineRun.run_id == run_id)
+        )
+        value = executor.execute(statement).one_or_none()
+        if value is None:
+            return None
+        run = value[0]
+        mapping = lambda item: item if isinstance(item, Mapping) else {}
+        return _PersistedDecision(
+            int(run.id), int(value.result_pk) if value.result_pk is not None else None,
+            str(run.run_id), str(run.symbol), str(run.primary_timeframe),
+            int(run.closed_until_ms), str(run.status), run.finished_at,
+            run.freshness_deadline_at, bool(run.future_bars_used),
+            bool(run.is_trade_signal), bool(run.is_executable),
+            bool(run.order_approved), bool(run.execution_approved),
+            bool(run.position_opened), bool(run.position_size_approved),
+            run.analysis_status, run.setup_status, run.strategy_status,
+            run.risk_status, run.paper_status,
+            mapping(value.execution_analysis), mapping(value.execution_setup),
+            mapping(value.execution_strategy), mapping(value.execution_risk),
+            mapping(value.execution_paper), str(run.trade_profile_id),
+            str(value.result_trade_profile_id) if value.result_trade_profile_id is not None else None,
+            str(value.result_primary_timeframe) if value.result_primary_timeframe is not None else None,
+        )
+
+    @staticmethod
     def _map(run: OnlinePipelineRun, result: OnlinePipelineResultRow | None) -> _PersistedDecision:
         mapping = lambda value: value if isinstance(value, Mapping) else {}
         return _PersistedDecision(
@@ -637,6 +720,12 @@ class PaperProductionApprovalSourceAdapter:
         self._monotonic = monotonic
         self._diagnostic_lock = Lock()
         self._last_diagnostic_by_scope: dict[tuple[str, str], tuple[object, ...]] = {}
+        self._exact_run_diagnostic_by_run: dict[str, dict[str, object]] = {}
+
+    def exact_run_diagnostic(self, run_id: str) -> dict[str, object]:
+        """Return the latest bounded exact-read timings without exposing payload data."""
+        with self._diagnostic_lock:
+            return dict(self._exact_run_diagnostic_by_run.get(run_id, {}))
 
     @staticmethod
     def _validate_scope(request: PaperProductionApprovalRequest) -> tuple[str, ...] | PaperProductionApprovalOutcome:
@@ -1095,19 +1184,68 @@ class PaperProductionApprovalSourceAdapter:
         """Reconstruct the exact durable winner selected by its source run id."""
         if not run_id or not isinstance(run_id, str):
             raise ValueError("SOURCE_RUN_ID_REQUIRED")
+        request_started_at = datetime.now(timezone.utc)
+        request_started = self._monotonic()
+        diagnostic: dict[str, object] = {
+            "rehydration_request_start_at": request_started_at.isoformat().replace("+00:00", "Z"),
+            "minimal_execution_projection": False,
+        }
         with self._session_factory() as session:
-            executor = _ReadOnlyExecutor(session)
             with session.begin():
+                pool_started = self._monotonic()
+                session.connection()
+                pool_acquired = self._monotonic()
+                diagnostic["db_pool_wait_ms"] = (pool_acquired - pool_started) * 1000
+                diagnostic["db_pool_acquired_at"] = datetime.now(timezone.utc).isoformat().replace(
+                    "+00:00", "Z"
+                )
+                executor = _ReadOnlyExecutor(session)
                 executor.execute(text(_TRANSACTION_CONTROL))
                 effective_as_of = as_of_ms if as_of_ms is not None else self._reader.read_clock_ms(executor)
-                loaded = self._reader.read_run(executor, run_id)
-                if loaded is None:
-                    return None
-                run, result = loaded
-                if result is None or str(run.status) not in _COMPLETE_STATUSES:
-                    return None
-                classified = self.classify_loaded_decision(run, result, int(effective_as_of))
-                return classified.candidate
+                sql_started = self._monotonic()
+                diagnostic["sql_start_at"] = datetime.now(timezone.utc).isoformat().replace(
+                    "+00:00", "Z"
+                )
+                exact_reader = getattr(self._reader, "read_execution_run", None)
+                if callable(exact_reader):
+                    persisted = exact_reader(executor, run_id)
+                    diagnostic["minimal_execution_projection"] = True
+                else:
+                    loaded = self._reader.read_run(executor, run_id)
+                    persisted = (
+                        None if loaded is None else
+                        SqlAlchemyPaperProductionApprovalReader._map(*loaded)
+                    )
+                sql_finished = self._monotonic()
+                diagnostic.update({
+                    "sql_end_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "sql_fetch_decode_ms": (sql_finished - sql_started) * 1000,
+                    "row_decode_end_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "query_count": executor.query_count,
+                })
+                if persisted is None or persisted.result_pk is None or str(persisted.status) not in _COMPLETE_STATUSES:
+                    candidate = None
+                else:
+                    reconstruction_started = self._monotonic()
+                    classified = self._classify_observed(persisted, int(effective_as_of))
+                    reconstruction_finished = self._monotonic()
+                    diagnostic.update({
+                        "orm_hydration_end_at": diagnostic["row_decode_end_at"],
+                        "related_lookups_end_at": diagnostic["row_decode_end_at"],
+                        "python_reconstruction_ms": (
+                            reconstruction_finished - reconstruction_started
+                        ) * 1000,
+                    })
+                    candidate = classified.candidate
+        finished_at = datetime.now(timezone.utc)
+        diagnostic.update({
+            "execution_projection_ready_at": finished_at.isoformat().replace("+00:00", "Z"),
+            "total_exact_run_rehydration_ms": (self._monotonic() - request_started) * 1000,
+            "found": candidate is not None,
+        })
+        with self._diagnostic_lock:
+            self._exact_run_diagnostic_by_run[run_id] = diagnostic
+        return candidate
 
     def read(
         self,

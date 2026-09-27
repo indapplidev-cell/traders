@@ -130,6 +130,8 @@ def test_readonly_readiness_source_consumes_authoritative_envelope(monkeypatch):
             "status": "READY",
             "current_mutation_ready": True,
             "current_mutation_denial_reasons": [],
+            "wal_ready": True,
+            "pitr_ready": True,
             "paper_control_state": "DISABLED",
             "paper_control_effective_state": "DISABLED",
             "paper_control_health": "HEALTHY",
@@ -210,11 +212,11 @@ def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(mon
     cases = (
         (
             {"wal_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY"]},
-            (False, True, ()),
+            (False, True, ("WAL_NOT_READY",)),
         ),
         (
             {"pitr_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY"]},
-            (True, False, ()),
+            (True, False, ("PITR_NOT_READY",)),
         ),
         (
             {"current_mutation_ready": False, "current_mutation_denial_reasons": ["CANARY_SCOPE_INVALID"]},
@@ -232,9 +234,56 @@ def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(mon
     current = {**base, "paper_control_state": "EMERGENCY_STOP", "paper_control_effective_state": "EMERGENCY_STOP"}
     monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
     readiness = source()
-    assert readiness.policy_blockers == ("READONLY_RUNTIME_NOT_READY",)
+    assert readiness.policy_blockers == ("CONTROL_STATE_EMERGENCY_STOP",)
     assert readiness.live_disabled
-    assert not readiness.snapshot_authoritative
+    assert readiness.snapshot_authoritative
+
+
+def test_existing_runtime_readiness_distinguishes_timeout_from_authoritative_denial(monkeypatch):
+    source = ReadonlyExistingCanaryRuntimeReadinessSource()
+    monkeypatch.setattr(
+        "app.operator_control.runtime.urllib.request.urlopen",
+        lambda *_a, **_k: (_ for _ in ()).throw(TimeoutError()),
+    )
+    timed_out = source()
+    assert timed_out.policy_blockers == ("READINESS_REQUEST_TIMEOUT",)
+    assert not timed_out.snapshot_authoritative
+
+    payload = {
+        "status": "READY", "paper_schema_ready": True,
+        "account_baseline_exists": True, "account_baseline_valid": True,
+        "accounting_reconciliation_status": "HEALTHY",
+        "paper_reconciliation_status": "HEALTHY",
+        "paper_runtime_enabled": False,
+        "paper_control_state": "CONTINUOUS_ARMED",
+        "paper_control_effective_state": "CONTINUOUS_ARMED",
+        "paper_control_health": "HEALTHY", "paper_control_generation": 15,
+        "live_allowed": False, "market_data_adapter_ready": False,
+        "approval_source_adapter_ready": False, "wal_ready": True,
+        "pitr_ready": True, "database_durability_ready": True,
+        "paper_mutation_ready": False, "current_mutation_ready": False,
+        "current_mutation_denial_reasons": [
+            "PAPER_RUNTIME_DISABLED", "MARKET_DATA_NOT_READY",
+            "APPROVAL_SOURCE_NOT_READY",
+        ],
+    }
+
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return json.dumps({"data": payload}).encode()
+
+    monkeypatch.setattr(
+        "app.operator_control.runtime.urllib.request.urlopen",
+        lambda *_a, **_k: Response(),
+    )
+    denied = source()
+    assert denied.snapshot_authoritative
+    assert denied.policy_blockers == (
+        "PAPER_RUNTIME_DISABLED", "MARKET_DATA_NOT_READY",
+        "APPROVAL_SOURCE_NOT_READY",
+    )
 
 
 def test_runtime_database_binding_translates_only_exact_host_endpoint(monkeypatch):

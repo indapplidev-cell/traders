@@ -1840,6 +1840,7 @@ class TradingFunnelReadRepository:
             )
         for outcome in outcome_rows:
             lifecycle = values.setdefault(outcome.pipeline_run_id, {})
+            execution_details = outcome.refinement_details or {}
             lifecycle.update({
                 "execution_intent": (
                     "PAPER_COMMAND_CREATED" if lifecycle.get("command_id")
@@ -1869,6 +1870,8 @@ class TradingFunnelReadRepository:
                 "policy_generation": outcome.control_generation,
                 "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
                 "policy_source_timestamp": outcome.updated_at,
+                "execution_gate_reason": execution_details.get("execution_gate_reason"),
+                "readiness_reason": execution_details.get("readiness_reason"),
                 "entry_refinement": {
                     "mode": outcome.refinement_mode or "OFF",
                     "state": outcome.refinement_state or "NOT_REACHED",
@@ -1877,7 +1880,7 @@ class TradingFunnelReadRepository:
                     "finished_at": outcome.refinement_finished_at,
                     "valid_from_ms": outcome.refinement_valid_from_ms,
                     "valid_until_ms": outcome.refinement_valid_until_ms,
-                    **(outcome.refinement_details or {}),
+                    **execution_details,
                 },
             })
             if lifecycle.get("canary_state") == "FAILED_SAFE" and not lifecycle.get("position_id"):
@@ -2052,6 +2055,7 @@ class TradingFunnelReadRepository:
         outcomes: dict[str, dict[str, object]] = {}
         for row in rows:
             plan, command_created_at, command_status, command_id = row[:4]
+            execution_details = plan.refinement_details or {}
             order_status, order_reason, command_updated_at, position = row[4:]
             decision = None if position is None else decision_by_position.get(position.position_id)
             fill = (
@@ -2091,6 +2095,8 @@ class TradingFunnelReadRepository:
                 "selector_winner": plan.selected_winner,
                 "selector_reason": plan.selector_reason,
                 "selector_decided_at": plan.first_observed_at,
+                "execution_gate_reason": execution_details.get("execution_gate_reason"),
+                "readiness_reason": execution_details.get("readiness_reason"),
                 "plan_terminal_state": plan_terminal_state,
                 "plan_terminal_reason": plan_terminal_reason,
                 "plan_created_at": datetime.fromtimestamp(
