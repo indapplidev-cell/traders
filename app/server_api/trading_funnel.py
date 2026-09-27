@@ -2184,12 +2184,6 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES
     } == set(universe.symbols)]
     last_completed_boundary = next((value for value in complete_boundaries if value != current_boundary), None)
-    historical_plan_boundaries_4h = {
-        int(row.closed_until_ms)
-        for row, _result in rows
-        if now_ms - 4 * 60 * 60 * 1000 <= int(row.closed_until_ms) <= now_ms
-        and _stage_trace(row, _result, now_ms)[0]["PAPER_TRADE_PLAN"] == "PASS"
-    }
     cycle_cache: dict[int, dict[str, Any]] = {}
 
     def cycle(boundary: int | None) -> dict[str, Any] | None:
@@ -2215,7 +2209,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 now_ms=now_ms,
                 include_detail=boundary in {
                     current_boundary, last_completed_boundary
-                } or boundary in historical_plan_boundaries_4h,
+                },
             )
             candidate = eligible_by_run.get(row.run_id)
             production_eligibility = production_eligibility_by_run.get(row.run_id)
@@ -2708,21 +2702,6 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
 
     current = cycle(current_boundary)
     latest = current["latest_pipeline_update_ms"] if current else None
-    historical_paper_plans_4h: list[dict[str, Any]] = []
-    for boundary, pairs in sorted(by_boundary.items(), reverse=True):
-        if not now_ms - 4 * 60 * 60 * 1000 <= boundary <= now_ms:
-            continue
-        plan_run_ids = {
-            row.run_id for row, result in pairs
-            if _stage_trace(row, result, now_ms)[0]["PAPER_TRADE_PLAN"] == "PASS"
-        }
-        if not plan_run_ids:
-            continue
-        plan_cycle = cycle(boundary)
-        historical_paper_plans_4h.extend(
-            item for item in plan_cycle["items"]
-            if item["source_run_id"] in plan_run_ids
-        )
     age = None if latest is None else max(0, now_ms - latest)
     metric_stages = {
         "analysis_count": "ANALYSIS",
@@ -2839,7 +2818,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         # Exact mirror only: a current row can never inherit geometry from an
         # older opportunity merely because both rows share a symbol.
         "detail_candidates": list(current["items"]) if current else [],
-        "historical_paper_plans_4h": historical_paper_plans_4h,
+        # Historical per-symbol detail is intentionally export-only.  The
+        # interactive projection carries only current/previous cycle detail
+        # plus scalar rolling aggregates.
+        "historical_paper_plans_4h": [],
         "rolling_1h": rolling_projection(60 * 60 * 1000),
         "rolling_4h": rolling_projection(4 * 60 * 60 * 1000),
         "probability_authority_summary": {

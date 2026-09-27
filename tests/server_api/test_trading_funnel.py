@@ -278,14 +278,12 @@ def test_failed_safe_execution_reason_is_not_masked_by_plan_success():
     assert item["downstream_detail"]["position_status"] == "NOT_REACHED"
 
 
-def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_symbol_deduplication():
+def test_rolling_4h_plan_count_does_not_materialize_historical_detail():
     pairs = []
-    run_ids = []
     for index in range(3):
         boundary = NOW_MS - (index + 1) * 300_000
         plan = _run("BTCUSDT", boundary, run_id=f"run:plan:{index}")
         other = _run("ETHUSDT", boundary, run_id=f"run:other:{index}")
-        run_ids.append(plan.run_id)
         pairs.extend((
             (plan, _result(plan, valid_until=boundary + 299_999)),
             (other, _result(other, setup="NO_SETUP", approvals=False)),
@@ -293,21 +291,7 @@ def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_sym
     value = _project_5m(pairs)
     historical = value["historical_paper_plans_4h"]
     assert value["rolling_4h"]["stage_counts"]["PAPER_TRADE_PLAN"] == 3
-    assert [item["source_run_id"] for item in historical] == run_ids
-    assert [item["symbol"] for item in historical] == ["BTCUSDT"] * 3
-    assert len({item["downstream_detail"]["paper_plan_id"] for item in historical}) == 3
-    assert {item["terminal_reason_code"] for item in historical} == {
-        "EXPIRED_BEFORE_EXECUTION"
-    }
-    assert all(
-        item["downstream_detail"]["selector_state"] == "EXPIRED"
-        for item in historical
-    )
-    assert all(
-        item["downstream_detail"]["execution_lifecycle_state"]
-        == "EXPIRED_BEFORE_EXECUTION"
-        for item in historical
-    )
+    assert historical == []
 
 
 def test_new_scalping_v2_records_never_use_legacy_selector_state():
@@ -320,7 +304,7 @@ def test_new_scalping_v2_records_never_use_legacy_selector_state():
         ((run, result),), universe, NOW_MS, {}, "trade-5m-v2",
         lifecycle_by_run={},
     )
-    item = value["historical_paper_plans_4h"][0]
+    item = value["current_cycle"]["items"][0]
     assert item["downstream_detail"]["selector_state"] == "EXPIRED"
     assert item["downstream_detail"]["selector_state"] != "LEGACY_NOT_OBSERVED"
 
