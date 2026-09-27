@@ -7,6 +7,8 @@ import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Lock, Thread
+from time import monotonic
 from typing import Final
 
 from sqlalchemy import select, text
@@ -66,6 +68,8 @@ MAX_JSON_BYTES: Final = 16 * 1024
 MAX_MARKET_HEALTH_JSON_BYTES: Final = 256 * 1024
 MAX_ARTIFACT_FUTURE_SKEW_SECONDS: Final = RUNTIME_POLICY.paper_readiness.artifact_future_skew_tolerance_seconds
 MAX_MARKET_HEALTH_AGE_SECONDS: Final = RUNTIME_POLICY.paper_readiness.market_health_max_age_seconds
+RUNTIME_OBSERVATION_REFRESH_SECONDS: Final = 5.0
+RUNTIME_OBSERVATION_MAX_STALE_SECONDS: Final = 30.0
 
 
 def _json_object(path: Path, *, max_bytes: int = MAX_JSON_BYTES) -> dict[str, object]:
@@ -216,6 +220,7 @@ class ProductionPaperRuntimeObservationSource:
         market_health_root: Path = PRODUCTION_MARKET_HEALTH_ROOT,
         runtime_health_root: Path | None = None,
         clock: Callable[[], datetime] | None = None,
+        monotonic_clock: Callable[[], float] = monotonic,
     ) -> None:
         self._session_factory = session_factory
         self._control_status = control_status
@@ -225,7 +230,11 @@ class ProductionPaperRuntimeObservationSource:
         self._market_health_root = market_health_root
         self._runtime_health_root = runtime_health_root or resolve_production_control_root()
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._monotonic = monotonic_clock
         self._approval = PaperProductionApprovalSourceAdapter(session_factory)
+        self._cache_lock = Lock()
+        self._cached_observation: tuple[float, PaperRuntimeObservation] | None = None
+        self._refreshing = False
 
     def _current_execution(self) -> dict[str, object] | None:
         """Project the latest persisted SELECTED lifecycle by exact run/command identity."""
@@ -366,7 +375,7 @@ class ProductionPaperRuntimeObservationSource:
         except Exception:
             return None
 
-    def __call__(self) -> PaperRuntimeObservation:
+    def _observe(self) -> PaperRuntimeObservation:
         now = self._clock()
         market_ready = _market_data_readiness(self._market_health_root, now)
         commission = commission_runtime_status()
@@ -495,6 +504,50 @@ class ProductionPaperRuntimeObservationSource:
             canary_scope_valid=MARKET_SYMBOLS == APPROVAL_SYMBOLS,
             live_enabled=False,
         )
+
+    def _refresh_in_background(self) -> None:
+        try:
+            value = self._observe()
+        except Exception:
+            # Preserve the last authoritative bounded snapshot.  Its hard age
+            # limit below still fails closed if refresh cannot recover.
+            return
+        finally:
+            with self._cache_lock:
+                if "value" in locals():
+                    self._cached_observation = (self._monotonic(), value)
+                self._refreshing = False
+
+    def __call__(self) -> PaperRuntimeObservation:
+        """Serve a bounded current snapshot and refresh it without blocking.
+
+        The expensive approval/PITR/grant observation is independent of the
+        request path.  A snapshot older than the hard bound is never served;
+        that cold path refreshes synchronously and therefore remains fail
+        closed.  Soft-stale snapshots are returned immediately while one
+        single-flight daemon refresh runs in the background.
+        """
+        now = self._monotonic()
+        with self._cache_lock:
+            cached = self._cached_observation
+            if cached is not None:
+                age = max(0.0, now - cached[0])
+                if age <= RUNTIME_OBSERVATION_MAX_STALE_SECONDS:
+                    if (
+                        age >= RUNTIME_OBSERVATION_REFRESH_SECONDS
+                        and not self._refreshing
+                    ):
+                        self._refreshing = True
+                        Thread(
+                            target=self._refresh_in_background,
+                            name="paper-readiness-snapshot-refresh",
+                            daemon=True,
+                        ).start()
+                    return cached[1]
+        value = self._observe()
+        with self._cache_lock:
+            self._cached_observation = (self._monotonic(), value)
+        return value
 
 
 __all__ = [

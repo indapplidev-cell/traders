@@ -6,6 +6,7 @@ It never invokes analysis or trading stages.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import random
 import signal
@@ -42,6 +43,9 @@ from app.engine_market_data.historical_backfill_planner import (
     BackfillRange, group_missing_open_times_into_ranges, split_backfill_range,
 )
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
+
+
+BOUNDARY_SYNC_WORKERS = 4
 
 
 logger = logging.getLogger(__name__)
@@ -684,8 +688,22 @@ class ContinuousSyncDaemon:
         while not self._stop_event.is_set():
             try:
                 now = self.exchange_now_ms()
-                for task in self.scheduler.get_due_tasks(now):
-                    self.sync_scheduled_boundary(task, now)
+                due_tasks = self.scheduler.get_due_tasks(now)
+                # Every pair owns a distinct candle/sync-state identity.  Keep
+                # fan-out below the default DB/HTTP pool size while removing
+                # the 20-symbol serial queue from the causal boundary path.
+                if len(due_tasks) < 2:
+                    for task in due_tasks:
+                        self.sync_scheduled_boundary(task, now)
+                else:
+                    with ThreadPoolExecutor(
+                        max_workers=min(BOUNDARY_SYNC_WORKERS, len(due_tasks)),
+                        thread_name_prefix="market-boundary",
+                    ) as executor:
+                        tuple(executor.map(
+                            lambda task: self.sync_scheduled_boundary(task, now),
+                            due_tasks,
+                        ))
                 if self.config.gap_check:
                     self.run_gap_checks(now)
                 self.run_prompt_retries(now)

@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from threading import Lock
+from threading import Lock, Thread
 from time import monotonic
 from types import SimpleNamespace
 from typing import Any, Final
@@ -1300,6 +1300,34 @@ class TradingFunnelReadRepository:
                 ],
             ],
         ] = {}
+        self._refreshing_profiles: set[str] = set()
+
+    def _refresh_rows(
+        self,
+        profile: object,
+        universe: TradingUniverseVersion,
+        start_ms: int,
+        now_ms: int,
+    ) -> None:
+        """Replace one stale profile without blocking readers of last-good."""
+        profile_id = profile.trade_profile_id
+        try:
+            cold = TradingFunnelReadRepository(
+                self._session_factory,
+                self._universe_source,
+                schema_capabilities=self._schema_capabilities,
+                load_lifecycle=False,
+            )
+            rows = cold._load_rows(profile, universe, start_ms, now_ms)
+        except Exception:
+            # The stale generation remains available until its hard source
+            # facts are naturally superseded by a successful refresh.
+            return
+        finally:
+            with self._cache_lock:
+                if "rows" in locals():
+                    self._row_cache[profile_id] = (self._monotonic(), rows)
+                self._refreshing_profiles.discard(profile_id)
 
     def _load_rows(
         self,
@@ -1317,14 +1345,21 @@ class TradingFunnelReadRepository:
                 and current - cached_entry[0] < ROW_CACHE_TTL_SECONDS
             ):
                 return cached_entry[1]
-            # Release the expired ORM/JSON graph before materializing its
-            # replacement.  The 5m horizon contains 490 run/result pairs and
-            # retaining both generations at once can exceed the bounded
-            # Readonly container memory limit.  The lock preserves single-
-            # flight loading, so removing the stale value cannot create a
-            # duplicate query or expose an empty result to another request.
-            self._row_cache.pop(profile_id, None)
-            cached_entry = None
+            if cached_entry is not None:
+                if profile_id not in self._refreshing_profiles:
+                    self._refreshing_profiles.add(profile_id)
+                    Thread(
+                        target=self._refresh_rows,
+                        args=(profile, universe, start_ms, now_ms),
+                        name=f"trading-funnel-refresh-{profile_id}",
+                        daemon=True,
+                    ).start()
+                return cached_entry[1]
+            # Keep the last good graph until a replacement has completed.  A
+            # failed refresh must not turn every later desktop refresh into a
+            # cold retry.  The compact two-cycle projection below bounds the
+            # overlap to a few dozen rows, so retaining one stale generation is
+            # safe within the Readonly container limit.
             with self._session_factory() as session:
                 if self._schema_capabilities is None:
                     revisions = tuple(session.execute(text(
@@ -1429,66 +1464,13 @@ class TradingFunnelReadRepository:
                         )
                         .limit(
                             len(universe.symbols)
-                            * (50 if profile.trigger_timeframe == "5m" else 18)
+                            * 2
                         )
                     )
                     rows = tuple(
                         _projected_result_pair(row)
                         for row in session.execute(statement)
                     )
-                    if profile.trigger_timeframe == "5m":
-                        # Keep the latest persisted successful PAPER plans
-                        # selectable after they age out of the rolling 4h
-                        # funnel window.  This is one bounded set query (never
-                        # one query per symbol); its causal payload is rendered
-                        # unchanged and is not mixed with current quotes.
-                        detail_statement = (
-                            select(OnlinePipelineRun, *selected_result)
-                            .outerjoin(
-                                OnlinePipelineResultRow,
-                                (
-                                    (OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
-                                    & (OnlinePipelineResultRow.trade_profile_id == OnlinePipelineRun.trade_profile_id)
-                                    & (OnlinePipelineResultRow.profile_mode == OnlinePipelineRun.profile_mode)
-                                    & (OnlinePipelineResultRow.symbol == OnlinePipelineRun.symbol)
-                                    & (OnlinePipelineResultRow.primary_timeframe == OnlinePipelineRun.primary_timeframe)
-                                    & (OnlinePipelineResultRow.closed_until_ms == OnlinePipelineRun.closed_until_ms)
-                                ),
-                            )
-                            .where(
-                                *profile_predicates,
-                                OnlinePipelineRun.primary_timeframe
-                                == profile.trigger_timeframe,
-                                OnlinePipelineRun.symbol.in_(universe.symbols),
-                                OnlinePipelineRun.closed_until_ms
-                                >= now_ms - 7 * 24 * 60 * 60 * 1000,
-                                OnlinePipelineRun.closed_until_ms <= now_ms,
-                                OnlinePipelineRun.paper_status
-                                == "PAPER_PLAN_READY",
-                            )
-                            .order_by(
-                                OnlinePipelineRun.closed_until_ms.desc(),
-                                OnlinePipelineRun.symbol.asc(),
-                            )
-                            .limit(len(universe.symbols) * 10)
-                        )
-                        known_run_ids = {row.run_id for row, _ in rows}
-                        latest_plan_by_symbol: dict[
-                            str,
-                            tuple[OnlinePipelineRun, OnlinePipelineResultRow | None],
-                        ] = {}
-                        for raw_pair in session.execute(detail_statement):
-                            pair = _projected_result_pair(raw_pair)
-                            plan_run = pair[0]
-                            if (
-                                plan_run.run_id not in known_run_ids
-                                and plan_run.symbol not in latest_plan_by_symbol
-                            ):
-                                latest_plan_by_symbol[plan_run.symbol] = pair
-                        historical_plans = tuple(
-                            latest_plan_by_symbol.values()
-                        )
-                        rows = (*rows, *historical_plans)
             # TTL starts when the expensive materialization completes. With a
             # twenty-symbol projection the query itself can outlive the TTL;
             # stamping it at query start would make the fresh result expire
@@ -1499,7 +1481,9 @@ class TradingFunnelReadRepository:
     def project(self, now_ms: int, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
         profile = resolve_trade_profile(trade_profile_id)
         boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
-        max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
+        # Interactive UI reads only the active and previous completed cycle.
+        # Bulk 1h/4h/12h history remains exclusively on the export endpoint.
+        max_horizon_ms = boundary_ms * 2
         universe = self._universe_source()
         start_ms = now_ms - max_horizon_ms
         rows = self._load_rows(profile, universe, start_ms, now_ms)

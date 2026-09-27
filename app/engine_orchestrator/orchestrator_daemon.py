@@ -7,6 +7,7 @@ import logging
 import random
 import signal
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from threading import Event
@@ -25,6 +26,7 @@ from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 
 
 LOGGER = logging.getLogger(__name__)
+SCALPING_SYMBOL_WORKERS = 4
 
 
 def utc_now() -> datetime:
@@ -249,6 +251,18 @@ class OrchestratorDaemon:
         observation.update({"pipeline_status": result.status, "final_result": result.final_result})
         return observation
 
+    def _process_claims(self, claims: list[ClaimedWindow]) -> list[dict[str, Any]]:
+        """Run independent Scalping symbols with bounded pool concurrency."""
+        if self.config.trade_profile_id != "trade-5m-v2" or len(claims) < 2:
+            return [self._process_claim(claim) for claim in claims]
+        with ThreadPoolExecutor(
+            max_workers=min(SCALPING_SYMBOL_WORKERS, len(claims)),
+            thread_name_prefix="scalping-symbol",
+        ) as executor:
+            # map preserves configured symbol order; the selector still reads
+            # only persisted complete rows after the entire batch.
+            return list(executor.map(self._process_claim, claims))
+
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
         if self.owner_guard is not None:
             self.owner_guard.assert_active()
@@ -266,13 +280,16 @@ class OrchestratorDaemon:
             if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
                 due_kwargs["trade_profile_id"] = self.config.trade_profile_id
             due = self.result_store.claim_due_waiting(**due_kwargs)
+            due_claims: list[ClaimedWindow] = []
             for claim in due:
                 if self._stop.is_set():
                     break
                 self._event("FRESHNESS_RETRY_CLAIMED", run_id=claim.run_id,
                             symbol=claim.symbol, closed_until_ms=claim.closed_until_ms)
-                observations.append(self._process_claim(claim))
+                due_claims.append(claim)
+            observations.extend(self._process_claims(due_claims))
 
+        new_claims: list[ClaimedWindow] = []
         for symbol in self.config.symbols:
             if self._stop.is_set():
                 break
@@ -338,7 +355,8 @@ class OrchestratorDaemon:
                         "pipeline_status": PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value,
                     })
                     continue
-                observations.append(self._process_claim(self.result_store.get_claim(run_id)))
+                new_claims.append(self.result_store.get_claim(run_id))
+        observations.extend(self._process_claims(new_claims))
         self.state.cycles += 1
         self._write_health()
         if self.owner_guard is not None:

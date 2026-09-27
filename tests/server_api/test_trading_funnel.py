@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
+from threading import Event
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -947,7 +948,7 @@ def test_get_route_db_error_is_not_empty_success():
     assert response.status_code == 500
 
 
-def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
+def test_5m_repository_uses_one_compact_two_cycle_query():
     run = _run("BTCUSDT")
     run.id = 1
     run.primary_timeframe = "5m"
@@ -1001,9 +1002,9 @@ def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
     assert first["trade_profile_id"] == "trade-5m-v2"
     assert second["projection_generated_at_ms"] == NOW_MS + 1_000
     assert len(sessions) == 1
-    # One rolling-window query plus one set-based historical PAPER-plan query;
-    # neither path issues per-symbol/N+1 reads, and both are cached together.
-    assert sessions[0].execute_count == 2
+    # Interactive history is exactly current+previous; bulk history belongs to
+    # the independent export endpoint and no per-symbol/N+1 query is issued.
+    assert sessions[0].execute_count == 1
 
 
 def test_repository_eager_loads_classifier_identity_before_session_closes(tmp_path):
@@ -1085,7 +1086,7 @@ def test_slow_materialization_ttl_starts_after_query_completion():
     assert len(sessions) == 1
 
 
-def test_expired_5m_cache_is_released_before_replacement_query():
+def test_expired_5m_cache_retains_last_good_until_replacement_succeeds():
     run = _run("BTCUSDT")
     run.id = 1
     run.primary_timeframe = "5m"
@@ -1094,8 +1095,9 @@ def test_expired_5m_cache_is_released_before_replacement_query():
     result.id = 1
     result.primary_timeframe = "5m"
     result.trade_profile_id = "trade-5m-v2"
-    clock = iter((10.0, 10.0, 41.0, 41.0))
+    clock = iter((10.0, 10.0, 41.0, 42.0))
     repository = None
+    refreshed = Event()
 
     class Session:
         def __enter__(self):
@@ -1106,7 +1108,9 @@ def test_expired_5m_cache_is_released_before_replacement_query():
 
         def execute(self, _statement):
             assert repository is not None
-            assert "trade-5m-v2" not in repository._row_cache
+            if "trade-5m-v2" in repository._row_cache:
+                assert repository._row_cache["trade-5m-v2"][1] is first_rows
+                refreshed.set()
             return ((run, result),)
 
     class Capabilities:
@@ -1128,8 +1132,10 @@ def test_expired_5m_cache_is_released_before_replacement_query():
         load_lifecycle=False,
     )
 
+    first_rows = None
     repository.project(NOW_MS, "trade-5m-v2")
     first_rows = repository._row_cache["trade-5m-v2"][1]
-    repository.project(NOW_MS + 31_000, "trade-5m-v2")
+    stale = repository.project(NOW_MS + 31_000, "trade-5m-v2")
 
-    assert repository._row_cache["trade-5m-v2"][1] is not first_rows
+    assert stale["current_cycle"] is not None
+    assert refreshed.wait(2)

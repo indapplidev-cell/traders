@@ -187,6 +187,7 @@ def _exit_request(
     *,
     suffix: str,
     trigger: bool,
+    trigger_kind: str = "STOP",
     close_fill_id: str,
     correlation_id: str,
 ):
@@ -198,8 +199,16 @@ def _exit_request(
         symbol=command.symbol,
         open_ms=boundary,
         open_price=command.entry_reference_price,
-        high_price=command.entry_reference_price,
-        low_price=command.stop_price if trigger else command.entry_reference_price,
+        high_price=(
+            command.target_price
+            if trigger and trigger_kind == "TARGET"
+            else command.entry_reference_price
+        ),
+        low_price=(
+            command.stop_price
+            if trigger and trigger_kind == "STOP"
+            else command.entry_reference_price
+        ),
         close_price=command.entry_reference_price,
     )
     return PaperExitEvaluationRequest(
@@ -264,8 +273,9 @@ def clean_paper_factory(paper_session_factory):
     return factory
 
 
+@pytest.mark.parametrize("trigger_kind", ("TARGET", "STOP"))
 def test_full_controlled_lifecycle_exact_once_and_journal_complete(
-    clean_paper_factory,
+    clean_paper_factory, trigger_kind,
 ):
     factory = clean_paper_factory
     worker = _worker(factory)
@@ -334,8 +344,9 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
 
     graph = _load(factory, ingestion.command_id)
     trigger_boundary = graph.cursors[0].last_evaluated_closed_until_ms + 60_000
-    exit_decision_id = "exit:postgres:trigger"
-    close_order_id = "order:postgres:close:trigger"
+    trigger_suffix = f"trigger-{trigger_kind.lower()}"
+    exit_decision_id = f"exit:postgres:{trigger_suffix}"
+    close_order_id = f"order:postgres:close:{trigger_suffix}"
     close_fill_id = simulated_close_fill_id(
         fill_contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
         order_id=close_order_id,
@@ -350,8 +361,9 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
     )
     trigger_request = _exit_request(
         graph,
-        suffix="trigger",
+        suffix=trigger_suffix,
         trigger=True,
+        trigger_kind=trigger_kind,
         close_fill_id=close_fill_id,
         correlation_id=correlation_id,
     )
@@ -376,10 +388,22 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
     close_candle = _candle(
         symbol=graph.command.symbol,
         open_ms=trigger_boundary,
-        open_price=graph.command.stop_price,
-        high_price=graph.command.stop_price,
-        low_price=graph.command.stop_price,
-        close_price=graph.command.stop_price,
+        open_price=(
+            graph.command.target_price
+            if trigger_kind == "TARGET" else graph.command.stop_price
+        ),
+        high_price=(
+            graph.command.target_price
+            if trigger_kind == "TARGET" else graph.command.stop_price
+        ),
+        low_price=(
+            graph.command.target_price
+            if trigger_kind == "TARGET" else graph.command.stop_price
+        ),
+        close_price=(
+            graph.command.target_price
+            if trigger_kind == "TARGET" else graph.command.stop_price
+        ),
     )
     close_request = PaperCloseExecutionRequest(
         command_id=ingestion.command_id,
@@ -455,6 +479,10 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
     assert position.exit_fill_id == close_fill_id
     assert position.entry_fees > 0
     assert position.exit_fees > 0
+    if trigger_kind == "TARGET":
+        assert position.realized_pnl > 0
+    else:
+        assert position.realized_pnl < 0
 
     replay = worker.run_cycle(
         _cycle(

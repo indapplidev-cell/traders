@@ -565,11 +565,12 @@ class ProductionPaperFirstCanaryExecutor:
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
         if self._outcome_store is not None:
-            claim_attempted_at = (
-                datetime.fromtimestamp(execution_as_of_ms / 1000, tz=timezone.utc)
-                if execution_as_of_ms is not None
-                else self._clock().astimezone(timezone.utc)
-            )
+            # The approval read timestamp is source-data causality evidence.  It
+            # is not the execution clock: under queue/HTTP/DB delay it can be
+            # tens of seconds older than this mutation attempt and would let a
+            # late continuation pass the entry-window gate.  Claim ownership
+            # and every wall-clock deadline check use the actual process clock.
+            claim_attempted_at = self._clock().astimezone(timezone.utc)
             if not self._outcome_store.claim_continuation(
                 candidate.lineage.source_run_id,
                 worker_generation=state.generation,
