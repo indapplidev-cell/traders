@@ -45,7 +45,11 @@ from app.engine_market_data.historical_backfill_planner import (
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
 
 
-BOUNDARY_SYNC_WORKERS = 4
+# A normal 5m boundary releases both 1m and 5m work for all twenty symbols.
+# Four workers created observable fixed cohorts even when Binance was healthy.
+# Eight stays below SQLAlchemy's default pool+overflow ceiling while halving
+# that artificial queue; every pair still owns an independent session.
+BOUNDARY_SYNC_WORKERS = 8
 
 
 logger = logging.getLogger(__name__)

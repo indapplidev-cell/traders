@@ -429,7 +429,31 @@ class ProductionPaperFirstCanaryExecutor:
             ),
             current_control_generation=state.generation,
         )
-        if self._outcome_store is not None and self._entry_refinement is not None:
+        # A selected plan is already a durable selector decision.  Rehydrate
+        # it first instead of putting its strict entry window behind the
+        # twenty-symbol approval scan and unrelated shadow-refinement work on
+        # every retry while the causal 1m candle is closing.
+        active_cycle = self._canary_store.current()
+        pending_run_id = None
+        durable_candidate = None
+        if (
+            active_cycle is not None
+            and active_cycle.authority_mode == "CONTINUOUS"
+            and active_cycle.command_id is None
+            and self._outcome_store is not None
+        ):
+            pending_run_id = self._outcome_store.pending_selected_run_id(state.generation)
+            read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
+            if pending_run_id is not None and callable(read_by_run_id):
+                durable_candidate = read_by_run_id(pending_run_id)
+                self._outcome_store.record_candidate_rehydration(
+                    pending_run_id, found=durable_candidate is not None
+                )
+        if (
+            durable_candidate is None
+            and self._outcome_store is not None
+            and self._entry_refinement is not None
+        ):
             now = datetime.now(timezone.utc)
             self._outcome_store.expire_shadow_refinements(
                 int(now.timestamp() * 1000), observed_at=now
@@ -472,29 +496,19 @@ class ProductionPaperFirstCanaryExecutor:
         request_id = _id(
             str(state.generation), "continuous-approval-poll", continuous=True
         )
-        results = self._read_approvals(authority, request_id, timeframes=("5m",))
-        execution_as_of_ms = next(
-            (value.as_of_ms for value in results if value.as_of_ms), None
-        )
-        active_cycle = self._canary_store.current()
-        errors = self._cycle_candidate_set_error(authority, results) or self._approval_source_error(results)
-        durable_candidate = None
-        pending_run_id = None
-        if (
-            active_cycle is not None
-            and active_cycle.authority_mode == "CONTINUOUS"
-            and active_cycle.command_id is None
-            and self._outcome_store is not None
-        ):
-            pending_run_id = self._outcome_store.pending_selected_run_id(state.generation)
-            read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
-            if pending_run_id is not None and callable(read_by_run_id):
-                durable_candidate = read_by_run_id(
-                    pending_run_id, as_of_ms=execution_as_of_ms
-                )
-                self._outcome_store.record_candidate_rehydration(
-                    pending_run_id, found=durable_candidate is not None
-                )
+        if durable_candidate is None:
+            results = self._read_approvals(authority, request_id, timeframes=("5m",))
+            execution_as_of_ms = next(
+                (value.as_of_ms for value in results if value.as_of_ms), None
+            )
+            errors = (
+                self._cycle_candidate_set_error(authority, results)
+                or self._approval_source_error(results)
+            )
+        else:
+            results = ()
+            execution_as_of_ms = None
+            errors = ()
         if durable_candidate is not None:
             # The selector decision is already durable.  Never re-rank a
             # restarted continuation against a newer source snapshot.

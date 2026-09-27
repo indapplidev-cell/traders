@@ -16,10 +16,11 @@ from app.server_api.schemas.models import TradingFunnelSnapshot
 from app.server_api.trading_funnel import (
     CANONICAL_DOWNSTREAM_STAGES,
     MAX_HORIZON_MS,
+    STAGES,
     TradingFunnelReadRepository,
     build_projection,
 )
-from app.trading_universe.domain import runtime_universe
+from app.trading_universe.domain import SCALPING_TRADING_UNIVERSE, runtime_universe
 from tests.server_api.fakes import FakeReadRepository
 
 
@@ -463,6 +464,44 @@ def test_scalping_v2_cadence_separates_stage_winner_and_trade_counts():
     assert cadence["per_hour"]["plan"] == 2
     assert cadence["per_hour"]["selected"] == 1
     assert value["profile_metrics"]["profile_version"] == "v2"
+
+
+def test_true_1h_4h_aggregate_override_keeps_historical_detail_out_of_projection():
+    symbols = tuple(SCALPING_TRADING_UNIVERSE.symbols)
+    pairs = []
+    for symbol in symbols:
+        run = _run(symbol)
+        run.primary_timeframe = "5m"
+        run.trade_profile_id = "trade-5m-v2"
+        result = _result(run)
+        result.primary_timeframe = "5m"
+        result.trade_profile_id = "trade-5m-v2"
+        pairs.append((run, result))
+
+    def summary(window_ms, cycles):
+        reached = cycles * 20
+        return {
+            "window_ms": window_ms, "boundary_count": cycles,
+            "completed_cycle_count": cycles,
+            "stage_counts": {stage: reached for stage in STAGES[:-2]},
+            "stage_flow": {
+                stage: {"reached": reached, "passed": reached,
+                        "rejected": 0, "conversion": 1.0}
+                for stage in STAGES[:-2]
+            },
+        }
+    value = build_projection(
+        tuple(pairs), SimpleNamespace(version_id="trading-universe-v2", symbols=symbols),
+        NOW_MS, trade_profile_id="trade-5m-v2",
+        rolling_summaries={
+            3_600_000: summary(3_600_000, 12),
+            14_400_000: summary(14_400_000, 48),
+        },
+    )
+    assert value["rolling_1h"]["stage_counts"]["ANALYSIS"] == 12 * 20
+    assert value["rolling_4h"]["stage_counts"]["ANALYSIS"] == 48 * 20
+    assert value["rolling_1h"]["stage_flow"]["ANALYSIS"]["conversion"] == 1.0
+    assert len(value["detail_candidates"]) == 20
 
 
 def test_scalping_canonical_downstream_order_risk_distinction_and_detail():

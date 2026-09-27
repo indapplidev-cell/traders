@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.app_factory import create_app
-from app.server_api.funnel_export import EXPORT_SCHEMA_VERSION, MAX_EXPORT_ROWS
+from app.server_api.funnel_export import (
+    EXPORT_SCHEMA_VERSION, MAX_EXPORT_ROWS, build_export_record,
+)
 from app.server_api.trading_funnel import TradingFunnelReadRepository
 from tests.server_api.fakes import FakeReadRepository
 
@@ -103,6 +105,25 @@ class ExportRepo:
         values = [pair[0].closed_until_ms for pair in self.pairs
                   if pair[0].trade_profile_id == profile and (symbol is None or pair[0].symbol == symbol)]
         return (min(values), max(values)) if values else (None, None)
+
+
+def test_selector_export_uses_durable_outcome_not_mutable_strategy_payload():
+    run, result = _pair(profile="trade-5m-v2")
+    decided = datetime(2030, 3, 17, 17, 55, tzinfo=timezone.utc)
+    record = build_export_record(
+        run, result, generated_at_ms=int(NOW.timestamp() * 1000),
+        from_ms=int(datetime.fromisoformat(FROM.replace("Z", "+00:00")).timestamp() * 1000),
+        to_ms=int(NOW.timestamp() * 1000),
+        outcome={
+            "selector_status": "SELECTED", "selector_rank": 1,
+            "selector_winner": True, "selector_reason": None,
+            "selector_decided_at": decided,
+        },
+    )
+    assert record["strategy"]["selector_status"] == "SELECTED"
+    assert record["strategy"]["selector_rank"] == 1
+    assert record["strategy"]["selector_winner"] is True
+    assert record["strategy"]["selector_decided_at"] == decided.isoformat()
 
 
 def _client(repo):

@@ -485,8 +485,9 @@ def test_terminal_or_consumed_bound_is_not_polled(value):
 
 
 def test_poll_interval_is_bounded_and_live_has_no_continuation_state():
+    assert continuation_poll_seconds("0.5") == 0.5
     assert continuation_poll_seconds("30") == 30.0
-    for value in ("0", "4.99", "3601", "invalid"):
+    for value in ("0", "0.24", "3601", "invalid"):
         with pytest.raises(RuntimeError, match="INTERVAL_INVALID"):
             continuation_poll_seconds(value)
     assert not hasattr(PersistentState, "LIVE")

@@ -1300,7 +1300,104 @@ class TradingFunnelReadRepository:
                 ],
             ],
         ] = {}
+        self._aggregate_cache: dict[str, tuple[float, dict[int, dict[str, Any]]]] = {}
         self._refreshing_profiles: set[str] = set()
+
+    def _load_rolling_aggregates(
+        self, profile: object, universe: TradingUniverseVersion, now_ms: int,
+    ) -> dict[int, dict[str, Any]] | None:
+        """Compute true 1h/4h counts in SQL without returning historical JSON rows."""
+        factory_bind = getattr(self._session_factory, "kw", {}).get("bind")
+        if (
+            factory_bind is None
+            or getattr(getattr(factory_bind, "dialect", None), "name", None)
+            != "postgresql"
+        ):
+            return None
+        profile_id = profile.trade_profile_id
+        current = self._monotonic()
+        with self._cache_lock:
+            cached = self._aggregate_cache.get(profile_id)
+            if cached is not None and current - cached[0] < ROW_CACHE_TTL_SECONDS:
+                return cached[1]
+        with self._session_factory() as session:
+            statement = text("""
+                WITH base AS (
+                    SELECT r.closed_until_ms, r.symbol,
+                      r.status IN ('COMPLETED','SKIPPED_DUPLICATE_WINDOW',
+                        'SKIPPED_FRESHNESS_NOT_OK','SKIPPED_FRESHNESS_TIMEOUT',
+                        'SKIPPED_NOT_ENOUGH_DATA','MODULE_ERROR','ERROR') AS terminal,
+                      COALESCE(r.analysis_status,'') = 'ANALYZED' AS analysis_pass,
+                      COALESCE(r.setup_status,'') = 'SETUP_CANDIDATE' AS setup_pass,
+                      COALESCE(r.strategy_status,'') = 'ALLOW_RESEARCH_TRADE_PLAN' AS strategy_pass,
+                      COALESCE(r.risk_status,'') IN ('RISK_PRE_APPROVED_RESEARCH','RISK_APPROVED') AS risk_pass,
+                      COALESCE(r.paper_status,'') = 'PAPER_PLAN_READY' AS plan_pass,
+                      r.position_size_approved AS quantity_pass,
+                      r.order_approved AS validity_pass,
+                      r.execution_approved AS final_pass
+                    FROM online_pipeline_runs r
+                    WHERE r.trade_profile_id=:profile_id
+                      AND r.primary_timeframe=:timeframe
+                      AND r.symbol = ANY(:symbols)
+                      AND r.closed_until_ms > :start_ms
+                      AND r.closed_until_ms <= :now_ms
+                ), flags AS (SELECT * FROM base), cycles AS (
+                    SELECT closed_until_ms,
+                      count(DISTINCT symbol) FILTER (WHERE terminal) AS terminal_symbols
+                    FROM flags GROUP BY closed_until_ms
+                )
+                SELECT count(DISTINCT closed_until_ms) AS boundary_count,
+                  (SELECT count(*) FROM cycles WHERE terminal_symbols=:universe_size) AS completed_cycle_count,
+                  count(*) FILTER (WHERE terminal) AS analysis_reached,
+                  count(*) FILTER (WHERE analysis_pass) AS analysis_passed,
+                  count(*) FILTER (WHERE analysis_pass) AS setup_reached,
+                  count(*) FILTER (WHERE setup_pass) AS setup_passed,
+                  count(*) FILTER (WHERE setup_pass) AS strategy_reached,
+                  count(*) FILTER (WHERE strategy_pass) AS strategy_passed,
+                  count(*) FILTER (WHERE strategy_pass) AS risk_reached,
+                  count(*) FILTER (WHERE risk_pass) AS risk_passed,
+                  count(*) FILTER (WHERE risk_pass) AS plan_reached,
+                  count(*) FILTER (WHERE plan_pass) AS plan_passed,
+                  count(*) FILTER (WHERE plan_pass) AS quantity_reached,
+                  count(*) FILTER (WHERE quantity_pass) AS quantity_passed,
+                  count(*) FILTER (WHERE quantity_pass) AS validity_reached,
+                  count(*) FILTER (WHERE validity_pass) AS validity_passed,
+                  count(*) FILTER (WHERE validity_pass) AS final_reached,
+                  count(*) FILTER (WHERE final_pass) AS final_passed
+                FROM flags
+            """)
+            stages = (
+                ("ANALYSIS", "analysis"), ("STRUCTURAL_SETUP", "setup"),
+                ("STRATEGY_ELIGIBLE", "strategy"), ("RISK_APPROVED", "risk"),
+                ("PAPER_TRADE_PLAN", "plan"), ("QUANTITY_APPROVED", "quantity"),
+                ("VALIDITY_APPROVED", "validity"), ("FINAL_APPROVAL", "final"),
+            )
+            output: dict[int, dict[str, Any]] = {}
+            for window_ms in (60 * 60 * 1000, 4 * 60 * 60 * 1000):
+                row = session.execute(statement, {
+                    "profile_id": profile_id, "timeframe": profile.trigger_timeframe,
+                    "symbols": list(universe.symbols), "universe_size": len(universe.symbols),
+                    "start_ms": now_ms - window_ms, "now_ms": now_ms,
+                }).mappings().one()
+                flow, counts = {}, {}
+                for stage, prefix in stages:
+                    reached = int(row[f"{prefix}_reached"] or 0)
+                    passed = int(row[f"{prefix}_passed"] or 0)
+                    flow[stage] = {
+                        "reached": reached, "passed": passed,
+                        "rejected": max(0, reached - passed),
+                        "conversion": None if reached == 0 else passed / reached,
+                    }
+                    counts[stage] = passed
+                output[window_ms] = {
+                    "window_ms": window_ms,
+                    "boundary_count": int(row["boundary_count"] or 0),
+                    "completed_cycle_count": int(row["completed_cycle_count"] or 0),
+                    "stage_counts": counts, "stage_flow": flow,
+                }
+        with self._cache_lock:
+            self._aggregate_cache[profile_id] = (self._monotonic(), output)
+        return output
 
     def _refresh_rows(
         self,
@@ -1487,6 +1584,7 @@ class TradingFunnelReadRepository:
         universe = self._universe_source()
         start_ms = now_ms - max_horizon_ms
         rows = self._load_rows(profile, universe, start_ms, now_ms)
+        rolling_summaries = self._load_rolling_aggregates(profile, universe, now_ms)
         eligible_by_run: dict[str, object] = {}
         production_eligibility_by_run: dict[str, object] = {}
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
@@ -1541,6 +1639,7 @@ class TradingFunnelReadRepository:
             profile.trade_profile_id,
             production_eligibility_by_run,
             lifecycle_by_run,
+            rolling_summaries,
         )
 
     def _load_lifecycle(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, Any]]:
@@ -1984,6 +2083,14 @@ class TradingFunnelReadRepository:
                 None if hold is None else hold.exit_decision_reason or hold.exit_reason
             ) or (None if decision is None else decision.cause)
             outcomes[plan.pipeline_run_id] = {
+                # The selector decision belongs to the immutable plan outcome,
+                # not to the strategy payload and not to the later command or
+                # position lifecycle.  Export it directly from that authority.
+                "selector_status": plan.selector_state,
+                "selector_rank": plan.selector_rank,
+                "selector_winner": plan.selected_winner,
+                "selector_reason": plan.selector_reason,
+                "selector_decided_at": plan.first_observed_at,
                 "plan_terminal_state": plan_terminal_state,
                 "plan_terminal_reason": plan_terminal_reason,
                 "plan_created_at": datetime.fromtimestamp(
@@ -2056,7 +2163,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                      now_ms: int, eligible_by_run: Mapping[str, object] | None = None,
                      trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
                      production_eligibility_by_run: Mapping[str, object] | None = None,
-                     lifecycle_by_run: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
+                     lifecycle_by_run: Mapping[str, Mapping[str, Any]] | None = None,
+                     rolling_summaries: Mapping[int, Mapping[str, Any]] | None = None) -> dict[str, Any]:
     profile = resolve_trade_profile(trade_profile_id)
     active_config = get_trading_config_manager().get_active_snapshot()
     active_set = active_config.resolved
@@ -2066,6 +2174,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     eligible_by_run = eligible_by_run or {}
     production_eligibility_by_run = production_eligibility_by_run or {}
     lifecycle_by_run = lifecycle_by_run or {}
+    rolling_summaries = rolling_summaries or {}
     by_boundary: dict[int, list[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None]]] = {}
     for pair in rows:
         by_boundary.setdefault(int(pair[0].closed_until_ms), []).append(pair)
@@ -2638,6 +2747,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 shadow_candidate.get("status") in {"CANDIDATE", "PLAN_READY", "ELIGIBLE"}
             )
     freshness_state = "NOT_AVAILABLE" if age is None else "CURRENT" if age <= boundary_ms * 2 else "STALE"
+    def rolling_projection(window_ms: int) -> dict[str, Any]:
+        value = rolling(window_ms)
+        aggregate = rolling_summaries.get(window_ms)
+        if aggregate is not None:
+            value.update(aggregate)
+        return value
+
     authority_rows: list[dict[str, Any]] = []
     for boundary, pairs in by_boundary.items():
         if not now_ms - 4 * 60 * 60 * 1000 <= boundary <= now_ms:
@@ -2724,7 +2840,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         # older opportunity merely because both rows share a symbol.
         "detail_candidates": list(current["items"]) if current else [],
         "historical_paper_plans_4h": historical_paper_plans_4h,
-        "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
+        "rolling_1h": rolling_projection(60 * 60 * 1000),
+        "rolling_4h": rolling_projection(4 * 60 * 60 * 1000),
         "probability_authority_summary": {
             "rr_blocked_insufficient_probability": len(authority_rows),
             "unique_buckets": len(unique_authority_buckets),
