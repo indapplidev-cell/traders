@@ -31,7 +31,10 @@ from app.engine_paper.controlled_worker import (
     PaperLifecycleState,
 )
 from app.engine_paper.exit_evaluation_service import PaperExitEvaluationRequest
-from app.engine_paper.exit_evaluator import PAPER_EXIT_EVALUATION_POLICY_ID
+from app.engine_paper.exit_evaluator import (
+    PAPER_EXIT_EVALUATION_POLICY_ID,
+    PaperSafetyExitDirective,
+)
 from app.engine_paper.fill_causal_boundary import (
     PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
 )
@@ -41,7 +44,7 @@ from app.engine_paper.order_execution_service import (
     PaperEntryExecutionRequest,
 )
 from app.engine_paper.unit_of_work import PaperUnitOfWork
-from app.engine_safety import ExecutionMode, PaperPositionState
+from app.engine_safety import ExecutionMode, PaperPositionState, PaperSide
 from tests.paper_command_ingestion_retry.conftest import (
     Q,
     make_request as make_ingestion_request,
@@ -211,6 +214,22 @@ def _exit_request(
         ),
         close_price=command.entry_reference_price,
     )
+    safety_directive = None
+    if trigger and trigger_kind in {"TIME_EXIT", "NET_PNL_PROTECTION"}:
+        safety_directive = PaperSafetyExitDirective(
+            directive_id=f"directive:postgres:{suffix}", version=1,
+            position_id=position.position_id, symbol=position.symbol,
+            side=PaperSide(position.side),
+            effective_closed_until_ms=candle.close_boundary_ms,
+            issued_at=_at(candle.open_time_ms),
+            valid_until_ms=candle.close_boundary_ms + 600_000,
+            final_safety_authorization=True,
+            reason=("MAX_HOLD_TIME" if trigger_kind == "TIME_EXIT"
+                    else "NET_PNL_PROTECTION"),
+            correlation_id=correlation_id,
+            causation_id=f"causation:postgres:directive:{suffix}",
+            mode=ExecutionMode.PAPER,
+        )
     return PaperExitEvaluationRequest(
         position_id=position.position_id,
         expected_position_version=position.version,
@@ -222,7 +241,7 @@ def _exit_request(
         entry_fill_id=position.entry_fill_id,
         candles=(candle,),
         market_snapshot_closed_until_ms=candle.close_boundary_ms,
-        safety_directive=None,
+        safety_directive=safety_directive,
         evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
         execution_mode=ExecutionMode.PAPER,
         explicit_paper_authorization=True,
@@ -273,7 +292,9 @@ def clean_paper_factory(paper_session_factory):
     return factory
 
 
-@pytest.mark.parametrize("trigger_kind", ("TARGET", "STOP"))
+@pytest.mark.parametrize(
+    "trigger_kind", ("TARGET", "STOP", "TIME_EXIT", "NET_PNL_PROTECTION")
+)
 def test_full_controlled_lifecycle_exact_once_and_journal_complete(
     clean_paper_factory, trigger_kind,
 ):
@@ -385,25 +406,20 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
         is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN
     )
 
+    close_price = (
+        graph.command.target_price
+        if trigger_kind == "TARGET"
+        else graph.command.stop_price
+        if trigger_kind == "STOP"
+        else graph.command.entry_reference_price
+    )
     close_candle = _candle(
         symbol=graph.command.symbol,
         open_ms=trigger_boundary,
-        open_price=(
-            graph.command.target_price
-            if trigger_kind == "TARGET" else graph.command.stop_price
-        ),
-        high_price=(
-            graph.command.target_price
-            if trigger_kind == "TARGET" else graph.command.stop_price
-        ),
-        low_price=(
-            graph.command.target_price
-            if trigger_kind == "TARGET" else graph.command.stop_price
-        ),
-        close_price=(
-            graph.command.target_price
-            if trigger_kind == "TARGET" else graph.command.stop_price
-        ),
+        open_price=close_price,
+        high_price=close_price,
+        low_price=close_price,
+        close_price=close_price,
     )
     close_request = PaperCloseExecutionRequest(
         command_id=ingestion.command_id,
@@ -481,7 +497,7 @@ def test_full_controlled_lifecycle_exact_once_and_journal_complete(
     assert position.exit_fees > 0
     if trigger_kind == "TARGET":
         assert position.realized_pnl > 0
-    else:
+    elif trigger_kind == "STOP":
         assert position.realized_pnl < 0
 
     replay = worker.run_cycle(
