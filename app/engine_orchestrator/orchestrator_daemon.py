@@ -10,7 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-from threading import Event
+from threading import Event, Lock
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -59,6 +59,11 @@ class OrchestratorDaemon:
         self.clock = clock
         self.state = OrchestratorState()
         self._stop = Event()
+        # The 5m profile deliberately keeps its advisory ownership and all
+        # authoritative lifecycle writes on one pinned SQLAlchemy session.
+        # Symbol computation may run concurrently, but that session must
+        # never be entered by more than one worker at a time.
+        self._result_store_lock = Lock()
         self._last_health_monotonic = 0.0
         self._hydrate_persisted_health()
 
@@ -200,12 +205,13 @@ class OrchestratorDaemon:
                 now + timedelta(seconds=self.config.freshness_retry_interval_seconds),
                 claim.freshness_deadline_at,
             )
-            changed = self.result_store.mark_waiting(
-                claim, daemon_instance_id=self.daemon_instance_id,
-                checked_at=now, next_retry_at=next_retry,
-                reason_code=freshness.reason_code or "WAITING_FOR_REQUIRED_BOUNDARY",
-                waiting_timeframes=freshness.waiting_timeframes, payload=payload,
-            )
+            with self._result_store_lock:
+                changed = self.result_store.mark_waiting(
+                    claim, daemon_instance_id=self.daemon_instance_id,
+                    checked_at=now, next_retry_at=next_retry,
+                    reason_code=freshness.reason_code or "WAITING_FOR_REQUIRED_BOUNDARY",
+                    waiting_timeframes=freshness.waiting_timeframes, payload=payload,
+                )
             if changed:
                 event = "FRESHNESS_RETRY_SCHEDULED" if claim.was_waiting else "FRESHNESS_WAIT_STARTED"
                 self._event(event, run_id=claim.run_id, symbol=claim.symbol,
@@ -220,11 +226,12 @@ class OrchestratorDaemon:
         if freshness.classification == FreshnessClassification.TERMINAL_NOT_READY.value:
             deadline_exceeded = freshness.reason_code == "FRESHNESS_DEADLINE_EXCEEDED"
             status = PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value
-            changed = self.result_store.mark_terminal_freshness(
-                claim, daemon_instance_id=self.daemon_instance_id, checked_at=now,
-                status=status, reason_code=freshness.reason_code or freshness.status,
-                waiting_timeframes=freshness.waiting_timeframes, payload=payload,
-            )
+            with self._result_store_lock:
+                changed = self.result_store.mark_terminal_freshness(
+                    claim, daemon_instance_id=self.daemon_instance_id, checked_at=now,
+                    status=status, reason_code=freshness.reason_code or freshness.status,
+                    waiting_timeframes=freshness.waiting_timeframes, payload=payload,
+                )
             result = self._freshness_skip_result(claim, freshness.reason_code or freshness.status)
             if changed:
                 self._record(result)
@@ -235,9 +242,12 @@ class OrchestratorDaemon:
             observation.update({"pipeline_status": status, "final_result": result.final_result})
             return observation
 
-        if not self.result_store.mark_running(
+        with self._result_store_lock:
+            marked_running = self.result_store.mark_running(
                 claim, daemon_instance_id=self.daemon_instance_id,
-                checked_at=now, payload=payload):
+                checked_at=now, payload=payload,
+            )
+        if not marked_running:
             observation["pipeline_status"] = PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value
             return observation
         if claim.was_waiting:
@@ -245,9 +255,12 @@ class OrchestratorDaemon:
                         closed_until_ms=claim.closed_until_ms,
                         attempts=claim.freshness_attempt_count + 1)
         result = self.pipeline_runner.run(claim.symbol, claim.closed_until_ms)
-        persisted = self.result_store.finish(claim.run_id, result, freshness_status="READY")
-        if persisted:
-            self._record(result)
+        with self._result_store_lock:
+            persisted = self.result_store.finish(
+                claim.run_id, result, freshness_status="READY"
+            )
+            if persisted:
+                self._record(result)
         observation.update({"pipeline_status": result.status, "final_result": result.final_result})
         return observation
 
