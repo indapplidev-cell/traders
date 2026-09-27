@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from threading import Event
 
 import pytest
 
@@ -406,3 +407,34 @@ def test_each_authoritative_failure_remains_fail_closed(monkeypatch, tmp_path: P
         "principal": value.paper_principal_ready,
     }
     assert checks[failure] is False
+
+
+def test_production_prewarm_keeps_cold_request_fast_and_fail_closed(tmp_path: Path) -> None:
+    source = observation.ProductionPaperRuntimeObservationSource(
+        lambda: None, lambda: None, runtime_root=tmp_path,
+        recovery_root=tmp_path, runtime_health_root=tmp_path,
+    )
+    release = Event()
+    started = Event()
+    finished = Event()
+
+    def slow_observe():
+        started.set()
+        release.wait(2)
+        try:
+            return observation.PaperRuntimeObservation(
+                environment="production", runtime_enabled=True
+            )
+        finally:
+            finished.set()
+
+    source._observe = slow_observe
+    source.start_background_refresh()
+    assert started.wait(1)
+
+    cold = source()
+
+    assert cold.environment == "production"
+    assert cold.runtime_enabled is False
+    release.set()
+    assert finished.wait(1)

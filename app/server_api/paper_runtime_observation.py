@@ -518,14 +518,27 @@ class ProductionPaperRuntimeObservationSource:
                     self._cached_observation = (self._monotonic(), value)
                 self._refreshing = False
 
+    def start_background_refresh(self) -> None:
+        """Prewarm the authoritative snapshot without blocking API startup."""
+        with self._cache_lock:
+            if self._refreshing:
+                return
+            self._refreshing = True
+        Thread(
+            target=self._refresh_in_background,
+            name="paper-readiness-snapshot-prewarm",
+            daemon=True,
+        ).start()
+
     def __call__(self) -> PaperRuntimeObservation:
         """Serve a bounded current snapshot and refresh it without blocking.
 
         The expensive approval/PITR/grant observation is independent of the
-        request path.  A snapshot older than the hard bound is never served;
-        that cold path refreshes synchronously and therefore remains fail
-        closed.  Soft-stale snapshots are returned immediately while one
-        single-flight daemon refresh runs in the background.
+        production request path.  A snapshot older than the hard bound is
+        never served: callers receive an immediate fail-closed observation
+        while one single-flight daemon refresh runs in the background.
+        Direct callers that do not start the production prewarm retain the
+        synchronous cold behavior used by isolated validation.
         """
         now = self._monotonic()
         with self._cache_lock:
@@ -544,6 +557,16 @@ class ProductionPaperRuntimeObservationSource:
                             daemon=True,
                         ).start()
                     return cached[1]
+                if not self._refreshing:
+                    self._refreshing = True
+                    Thread(
+                        target=self._refresh_in_background,
+                        name="paper-readiness-snapshot-hard-refresh",
+                        daemon=True,
+                    ).start()
+                return PaperRuntimeObservation(environment="production")
+            if self._refreshing:
+                return PaperRuntimeObservation(environment="production")
         value = self._observe()
         with self._cache_lock:
             self._cached_observation = (self._monotonic(), value)

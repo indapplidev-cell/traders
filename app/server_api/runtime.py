@@ -278,6 +278,7 @@ def create_runtime_app() -> FastAPI:
                 schema_capabilities.activate(
                     inspect_readonly_schema_capabilities(connection)
                 )
+            paper_runtime.start_background_refresh()
             yield
         finally:
             config_manager.stop()
