@@ -38,6 +38,7 @@ services:
       TRADERS_READONLY_API_INTERNAL_URL: "http://readonly-api:8765"
       TRADERS_SCALPING_1M_REFINEMENT_MODE: "SHADOW"
       TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: "/run/traders-commission/binance-account-commission.json"
+      PAPER_EXPLORATION_ENABLED: "${PAPER_EXPLORATION_ENABLED:-false}"
     ports:
       - "127.0.0.1:8766:8766"
     secrets:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from hashlib import sha256
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -213,6 +214,23 @@ def hierarchy_from_outcomes(
             if not row.won and row.net_return_bps is not None and row.net_return_bps < 0
         )
         evidence_sources = sorted({row.evidence_source for row in selected})
+        population_dimensions: dict[str, object] = {
+            "version": EMPIRICAL_REGIME_MAPPING_VERSION,
+            "level": level,
+            "parameter_set_id": parameter_set_id,
+            "resolved_config_hash": resolved_config_hash,
+            "setup_type": setup_type if level != "global" else None,
+            "direction": direction if level in {"exact", "setup_direction_regime", "setup_direction"} else None,
+            "regime": lookup_regime if level in {"exact", "setup_direction_regime"} else None,
+            "symbol": symbol if level == "exact" else None,
+            "cost_bucket": cost_bucket if level == "exact" else None,
+        }
+        population_material = json.dumps(
+            population_dimensions, sort_keys=True, separators=(",", ":")
+        )
+        position_ids = sorted(
+            str(row.position_id) for row in selected if row.position_id
+        )
         buckets.append(EmpiricalSetupBucket(
             setup_type=setup_type,
             direction=direction,
@@ -236,6 +254,13 @@ def hierarchy_from_outcomes(
                 sum(losing_returns) / len(losing_returns)
                 if losing_returns else None
             ),
+            authority_population_id=(
+                "empirical-authority-population-v1:"
+                + sha256(population_material.encode("utf-8")).hexdigest()
+            ),
+            observation_set_fingerprint=sha256(
+                "\n".join(position_ids).encode("utf-8")
+            ).hexdigest(),
         ))
     return StatisticalHierarchy(buckets[0], tuple(buckets[1:]), outcome_count=len(rows))
 
@@ -302,6 +327,10 @@ class PostgresPaperOutcomeStatisticsSource:
                 continue
             seen_position_ids.add(position_id)
             context = _nested(row.paper_payload_json, "paper_context")
+            if _text(_nested(context, "admission_mode_at_entry")) == "PAPER_EXPLORATION_ADMISSION":
+                # Exploration is realized recovery evidence, never an implicit
+                # rewrite of the established normal empirical authority.
+                continue
             effective = _nested(row.paper_payload_json, "effective_configuration")
             outcomes.append(PaperOutcome(
                 symbol=_text(row.symbol),

@@ -13,7 +13,9 @@ from statistics import median
 from typing import Iterable
 
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
+from app.engine_paper.paper_exploration import exploration_eligible
 from app.engine_paper.scalping_policy_v2 import (
+    ADMISSION_PAPER_EXPLORATION,
     PROFILE_ID as V2_PROFILE_ID,
     RR_EV_POLICY_VERSION as V2_RR_EV_POLICY_VERSION,
     TARGET_POLICY_VERSION as V2_TARGET_POLICY_VERSION,
@@ -212,6 +214,7 @@ class ShadowGeometryConfig:
     minimum_expected_value_bps: float = 0.0
     minimum_positive_ev_r: float = 0.0
     minimum_ev_reserve_r: float = 0.0
+    paper_exploration_enabled: bool = False
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -331,6 +334,15 @@ class ShadowGeometryDiagnostic:
     rr_empirical_status: str | None = None
     paper_bootstrap_eligible: bool = False
     paper_bootstrap_reason: str | None = None
+    normal_admission_result: str | None = None
+    normal_reject_reason: str | None = None
+    exploration_policy_version: str | None = None
+    exploration_eligible: bool = False
+    exploration_selected: bool = False
+    exploration_rank: int | None = None
+    exploration_block_reason: str | None = None
+    authority_population_id: str | None = None
+    authority_observation_set_fingerprint: str | None = None
     bootstrap_observation_ingested: bool = False
     fee_source: str | None = None
     commission_authoritative: bool = False
@@ -969,10 +981,29 @@ def evaluate_scalping_shadow(
         )
         result.paper_bootstrap_eligible = expectancy.paper_bootstrap_eligible
         result.paper_bootstrap_reason = expectancy.paper_bootstrap_reason
+        result.authority_population_id = expectancy.authority_population_id
+        result.authority_observation_set_fingerprint = (
+            expectancy.authority_observation_set_fingerprint
+        )
         result.expected_value_bps = expectancy.expected_value_bps
         result.expectancy_gate_reason = expectancy.reason
         if not expectancy.admitted:
-            return result.reject("EXPECTANCY_GATE", "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED")
+            result.normal_admission_result = "REJECTED"
+            result.normal_reject_reason = "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+            if exploration_eligible(
+                expectancy,
+                candidate_net_rr=result.net_rr,
+                profile_id=config.profile_id,
+                execution_mode="PAPER",
+                enabled=config.paper_exploration_enabled,
+            ):
+                result.admission_mode = ADMISSION_PAPER_EXPLORATION
+                result.exploration_eligible = True
+                result.exploration_policy_version = "limited-paper-exploration-v1"
+            else:
+                return result.reject(
+                    "EXPECTANCY_GATE", "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+                )
     result.economic_gate_pass = True
     result.rr_cohorts_gross = {
         f"{rr:.2f}": result.gross_rr >= rr for rr in config.rr_shadow_cohorts

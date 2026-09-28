@@ -17,6 +17,11 @@ from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_paper.paper_config import PaperConfig
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
 from app.engine_paper.paper_runner import PaperRunner
+from app.engine_paper.paper_exploration import (
+    EXPLORATION_POLICY_VERSION,
+    exploration_id,
+    feature_enabled as exploration_feature_enabled,
+)
 from app.engine_paper.scalping_policy_v2 import policy_provenance
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
@@ -362,6 +367,7 @@ class ScalpingPaperRunner(PaperRunner):
         self.scalping_parameters = scalping_parameters or SCALPING_V2
         self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
         self.statistics_source = statistics_source
+        self.paper_exploration_enabled = exploration_feature_enabled()
         self.cost_source = cost_source or BinancePublicScalpingCostSource(
             reference_notional=float(runtime_parameters.vwap_reference_notional),
             depth_limit=int(runtime_parameters.bounded_book_depth_limit),
@@ -389,6 +395,7 @@ class ScalpingPaperRunner(PaperRunner):
             ),
             rr_shadow_cohorts=tuple(runtime_parameters.rr_shadow_cohorts),
             profile_id=profile_id,
+            paper_exploration_enabled=self.paper_exploration_enabled,
         )
 
     def _process(self, source: RiskDecision):
@@ -509,6 +516,17 @@ class ScalpingPaperRunner(PaperRunner):
             "paper_bootstrap_eligible": diagnostic.paper_bootstrap_eligible,
             "paper_bootstrap_reason": diagnostic.paper_bootstrap_reason,
             "admission_mode_at_entry": diagnostic.admission_mode,
+            "normal_admission_result": diagnostic.normal_admission_result,
+            "normal_reject_reason": diagnostic.normal_reject_reason,
+            "exploration_eligible": diagnostic.exploration_eligible,
+            "exploration_selected": False,
+            "exploration_rank": None,
+            "exploration_block_reason": diagnostic.exploration_block_reason,
+            "exploration_policy_version": diagnostic.exploration_policy_version,
+            "authority_population_id": diagnostic.authority_population_id,
+            "authority_observation_set_fingerprint": (
+                diagnostic.authority_observation_set_fingerprint
+            ),
             "parameter_set_id": self.runtime_parameters.parameter_set_id,
             "parameter_set_label": self.runtime_parameters.parameter_set_label,
             "parameter_set_version": self.runtime_parameters.parameter_set_version,
@@ -519,6 +537,27 @@ class ScalpingPaperRunner(PaperRunner):
         }
         if is_v2:
             paper_context["scalping_policy_provenance"] = policy_provenance()
+        if diagnostic.exploration_eligible:
+            paper_context["exploration_id"] = exploration_id(
+                pipeline_run_id=(
+                    f"pending:{candidate.symbol}:{candidate.closed_until_ms}"
+                ),
+                candidate_id=diagnostic.candidate_id,
+                population_id=str(diagnostic.authority_population_id),
+            )
+            paper_context["exploration_policy_version"] = EXPLORATION_POLICY_VERSION
+            paper_context["authority_bucket_key"] = diagnostic.empirical_bucket
+            paper_context["authority_sample_before"] = diagnostic.bucket_sample_count
+            paper_context["authority_wins_before"] = diagnostic.bucket_wins
+            paper_context["authority_losses_before"] = diagnostic.bucket_losses
+            paper_context["authority_ev_before"] = diagnostic.empirical_ev_net_bps
+            paper_context["authority_required_dynamic_rr_before"] = (
+                diagnostic.dynamic_required_net_rr
+            )
+            paper_context["candidate_net_rr"] = diagnostic.candidate_net_rr
+            paper_context["candidate_required_dynamic_rr"] = (
+                diagnostic.dynamic_required_net_rr
+            )
         common = dict(
             context=context,
             # The shadow evaluator owns the immutable normalized geometry

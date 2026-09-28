@@ -251,6 +251,11 @@ def test_export_always_emits_rr_rejection_diagnostic_contract():
         "paper_bootstrap_reason",
         "empirical_regime_source", "empirical_regime_normalized",
         "empirical_regime_mapping_reason", "empirical_regime_mapping_version",
+        "normal_admission", "normal_reason", "exploration_eligible",
+        "exploration_selected", "exploration_rank", "exploration_reason",
+        "exploration_policy_version", "authority_population_id",
+        "authority_observation_set_fingerprint", "budget_snapshot",
+        "cooldown_until",
     }
 
 

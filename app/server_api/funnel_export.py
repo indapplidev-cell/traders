@@ -373,7 +373,7 @@ def build_export_record(
         "required_dynamic_rr": diagnostic.get("required_dynamic_rr", diagnostic.get("dynamic_required_net_rr")),
         "expected_ev_r": diagnostic.get("expected_ev_r"),
         "fallback_bucket_used": diagnostic.get("fallback_bucket_used", diagnostic.get("probability_fallback_level")),
-        "admission_mode": diagnostic.get("admission_mode"),
+        "admission_mode": outcome.get("admission_mode") or diagnostic.get("admission_mode"),
         "empirical_authority_status": diagnostic.get("empirical_authority_status"),
         "empirical_sample_count": diagnostic.get("empirical_sample_count"),
         "empirical_required_sample": diagnostic.get("empirical_required_sample"),
@@ -384,6 +384,29 @@ def build_export_record(
         "empirical_regime_normalized": diagnostic.get("empirical_regime_normalized"),
         "empirical_regime_mapping_reason": diagnostic.get("empirical_regime_mapping_reason"),
         "empirical_regime_mapping_version": diagnostic.get("empirical_regime_mapping_version"),
+        "normal_admission": diagnostic.get("normal_admission_result"),
+        "normal_reason": diagnostic.get("normal_reject_reason"),
+        "exploration_eligible": diagnostic.get("exploration_eligible"),
+        "exploration_selected": outcome.get(
+            "exploration_selected", diagnostic.get("exploration_selected")
+        ),
+        "exploration_rank": outcome.get(
+            "exploration_rank", diagnostic.get("exploration_rank")
+        ),
+        "exploration_reason": outcome.get(
+            "exploration_block_reason", diagnostic.get("exploration_block_reason")
+        ),
+        "exploration_policy_version": outcome.get("exploration_policy_version") or diagnostic.get(
+            "exploration_policy_version"
+        ),
+        "authority_population_id": outcome.get("authority_population_id") or diagnostic.get(
+            "authority_population_id"
+        ),
+        "budget_snapshot": outcome.get("budget_snapshot"),
+        "cooldown_until": outcome.get("cooldown_until"),
+        "authority_observation_set_fingerprint": diagnostic.get(
+            "authority_observation_set_fingerprint"
+        ),
     }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
@@ -425,6 +448,10 @@ def build_export_record(
         "paper_bootstrap_reason", "bootstrap_observation_ingested",
         "empirical_regime_source", "empirical_regime_normalized",
         "empirical_regime_mapping_reason", "empirical_regime_mapping_version",
+        "normal_admission_result", "normal_reject_reason",
+        "exploration_eligible", "exploration_selected", "exploration_rank",
+        "exploration_block_reason", "exploration_policy_version",
+        "authority_population_id", "authority_observation_set_fingerprint",
     )
     configuration = effective_configuration(result)
     runtime_revision = (

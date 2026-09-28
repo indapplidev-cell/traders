@@ -24,6 +24,7 @@ from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
+from app.engine_paper.paper_exploration import PaperExplorationStore
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
 from app.engine_paper.controlled_worker import (
@@ -330,6 +331,7 @@ def create_runtime_app(
             continuous_store=continuous_store,
             entry_refinement=entry_refinement,
             opportunity_registry=opportunity_registry,
+            exploration_store=PaperExplorationStore(sessions),
         )
     else:
         continuous_store = PaperContinuousAuthorityStore(sessions) if sessions is not None else None

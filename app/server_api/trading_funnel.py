@@ -868,6 +868,16 @@ def _downstream_trace_facts(
         "rr_empirical_status": diagnostic.get("rr_empirical_status"),
         "paper_bootstrap_eligible": diagnostic.get("paper_bootstrap_eligible"),
         "paper_bootstrap_reason": diagnostic.get("paper_bootstrap_reason"),
+        "normal_admission": diagnostic.get("normal_admission_result"),
+        "normal_reason": diagnostic.get("normal_reject_reason"),
+        "exploration_eligible": diagnostic.get("exploration_eligible"),
+        "exploration_selected": diagnostic.get("exploration_selected"),
+        "exploration_reason": diagnostic.get("exploration_block_reason"),
+        "exploration_policy_version": diagnostic.get("exploration_policy_version"),
+        "authority_population_id": diagnostic.get("authority_population_id"),
+        "authority_observation_set_fingerprint": diagnostic.get(
+            "authority_observation_set_fingerprint"
+        ),
         "bootstrap_observation_ingested": diagnostic.get("bootstrap_observation_ingested"),
         "causal_opportunity_id": _first_present(
             context.get("causal_opportunity_id"), diagnostic.get("causal_opportunity_id"),
@@ -2097,6 +2107,20 @@ class TradingFunnelReadRepository:
                 "selector_decided_at": plan.first_observed_at,
                 "execution_gate_reason": execution_details.get("execution_gate_reason"),
                 "readiness_reason": execution_details.get("readiness_reason"),
+                "admission_mode": execution_details.get("admission_mode"),
+                "exploration_selected": execution_details.get("exploration_selected"),
+                "exploration_rank": execution_details.get("exploration_rank"),
+                "exploration_block_reason": execution_details.get(
+                    "exploration_block_reason"
+                ),
+                "exploration_policy_version": execution_details.get(
+                    "exploration_policy_version"
+                ),
+                "authority_population_id": execution_details.get(
+                    "authority_population_id"
+                ),
+                "budget_snapshot": execution_details.get("budget_snapshot"),
+                "cooldown_until": execution_details.get("cooldown_until"),
                 "plan_terminal_state": plan_terminal_state,
                 "plan_terminal_reason": plan_terminal_reason,
                 "plan_created_at": datetime.fromtimestamp(

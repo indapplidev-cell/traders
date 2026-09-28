@@ -97,6 +97,7 @@ services:
     environment:
       TRADERS_BINANCE_ACCOUNT_CREDENTIALS_PATH: /run/secrets/binance_account_credentials
       TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/traders-commission/binance-account-commission.json
+      PAPER_EXPLORATION_ENABLED: "${PAPER_EXPLORATION_ENABLED:-false}"
     volumes:
       - ./reports:/service/reports
       - ./config/trading:/service/config/trading:ro

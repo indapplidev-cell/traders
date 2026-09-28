@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -30,6 +30,11 @@ from app.engine_paper.first_canary_correlation import (
     continuous_cycle_id,
 )
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
+from app.engine_paper.paper_exploration import (
+    PaperExplorationStore,
+    feature_enabled as exploration_feature_enabled,
+    is_exploration_candidate,
+)
 from app.engine_paper.entry_refinement import (
     EntryRefinementMode,
     ScalpingEntryRefinementService,
@@ -162,6 +167,7 @@ class ProductionPaperFirstCanaryExecutor:
         continuous_store: PaperContinuousAuthorityStore | None = None,
         entry_refinement: ScalpingEntryRefinementService | None = None,
         opportunity_registry: object | None = None,
+        exploration_store: PaperExplorationStore | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._control = control
@@ -175,6 +181,7 @@ class ProductionPaperFirstCanaryExecutor:
         self._continuous_store = continuous_store
         self._entry_refinement = entry_refinement
         self._opportunity_registry = opportunity_registry
+        self._exploration_store = exploration_store
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._prepared = None
         self.last_selection_diagnostics = None
@@ -240,17 +247,73 @@ class ProductionPaperFirstCanaryExecutor:
         if exclude_executed and self._outcome_store is not None:
             candidates = self._outcome_store.unconsumed_candidates(candidates)
         selector_started_at = self._clock().astimezone(timezone.utc)
-        selection = self._selector.select(
-            candidates, policy_version=canary.selection_policy_version
-        )
+        normal = tuple(value for value in candidates if not is_exploration_candidate(value))
+        exploration = tuple(value for value in candidates if is_exploration_candidate(value))
+        selection_reasons: dict[str, str] = {}
+        observed_candidates = candidates
+        if normal:
+            selection = self._selector.select(
+                normal, policy_version=canary.selection_policy_version
+            )
+            selection_reasons.update({
+                value.candidate_id: "NORMAL_COMMAND_TAKES_PRECEDENCE"
+                for value in exploration
+            })
+        elif exploration:
+            if not exploration_feature_enabled() or self._exploration_store is None:
+                base = self._selector.select((), policy_version=canary.selection_policy_version)
+                selection = EligibleApprovalSelectionResult(
+                    None, base.diagnostics, "PAPER_EXPLORATION_DISABLED"
+                )
+                selection_reasons.update({
+                    value.candidate_id: "PAPER_EXPLORATION_DISABLED"
+                    for value in exploration
+                })
+            else:
+                permitted = []
+                for value in exploration:
+                    population_id = str(
+                        value.exploration_provenance.get("authority_population_id") or ""
+                    )
+                    if not population_id:
+                        selection_reasons[value.candidate_id] = "EXPLORATION_AUTHORITY_MISSING"
+                        continue
+                    budget = self._exploration_store.evaluate_budget(
+                        population_id, now=selector_started_at
+                    )
+                    if not budget.permitted:
+                        selection_reasons[value.candidate_id] = str(budget.block_reason)
+                        continue
+                    provenance = dict(value.exploration_provenance)
+                    provenance["budget_snapshot"] = budget.to_dict()
+                    provenance["cooldown_until"] = budget.to_dict()["cooldown_until"]
+                    permitted.append(replace(value, exploration_provenance=provenance))
+                permitted_candidates = tuple(permitted)
+                replacements = {value.candidate_id: value for value in permitted_candidates}
+                observed_candidates = tuple(
+                    replacements.get(value.candidate_id, value) for value in candidates
+                )
+                if permitted_candidates:
+                    selection = self._selector.select(
+                        permitted_candidates, policy_version=canary.selection_policy_version
+                    )
+                else:
+                    base = self._selector.select((), policy_version=canary.selection_policy_version)
+                    failure = next(iter(selection_reasons.values()), "EXPLORATION_BUDGET_BLOCKED")
+                    selection = EligibleApprovalSelectionResult(None, base.diagnostics, failure)
+        else:
+            selection = self._selector.select(
+                (), policy_version=canary.selection_policy_version
+            )
         self.last_selection_diagnostics = selection.diagnostics
-        if self._outcome_store is not None and selection.failure_code is None and candidates:
+        if self._outcome_store is not None and observed_candidates:
             self._outcome_store.observe_selection(
-                candidates,
+                observed_candidates,
                 selection,
                 universe_id=canary.universe_version_id,
                 control_generation=canary.current_control_generation,
                 selector_started_at=selector_started_at,
+                selection_reasons=selection_reasons,
             )
         return selection
 

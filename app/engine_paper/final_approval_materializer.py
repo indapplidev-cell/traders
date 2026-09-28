@@ -34,7 +34,12 @@ from app.engine_paper.paper_trade_plan import PaperTradePlan
 from app.engine_paper.portfolio_gate import evaluate_paper_portfolio_gate
 from app.engine_paper.scalping_policy_v2 import (
     ADMISSION_PAPER_BOOTSTRAP,
+    ADMISSION_PAPER_EXPLORATION,
     bootstrap_execution_permitted,
+)
+from app.engine_paper.paper_exploration import (
+    exploration_execution_permitted,
+    feature_enabled as exploration_feature_enabled,
 )
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_safety.paper_domain import (
@@ -216,6 +221,25 @@ class NaturalFinalApprovalMaterializer:
                     attempted_stage="FINAL_APPROVAL",
                     stage_status="REJECTED",
                     safe_reason_detail="bootstrap admission is restricted to trade-5m-v2 PAPER",
+                )
+            if (
+                admission_mode == ADMISSION_PAPER_EXPLORATION
+                and not exploration_execution_permitted(
+                    admission_mode=admission_mode,
+                    execution_mode=ExecutionMode.PAPER.value,
+                    live_allowed=False,
+                    trade_profile_id=result.trade_profile_id,
+                    enabled=exploration_feature_enabled(),
+                )
+            ):
+                return self._not_created(
+                    result,
+                    "PAPER_EXPLORATION_EXECUTION_FORBIDDEN",
+                    attempted_stage="FINAL_APPROVAL",
+                    stage_status="REJECTED",
+                    safe_reason_detail=(
+                        "exploration admission requires the explicit trade-5m-v2 PAPER flag"
+                    ),
                 )
             analysis = result.analysis_payload
             setup = result.setup_payload

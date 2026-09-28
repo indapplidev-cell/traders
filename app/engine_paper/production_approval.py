@@ -11,7 +11,7 @@ objects, which is a healthy, fail-closed outcome.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -30,6 +30,10 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineRun,
 )
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.engine_paper.paper_exploration import (
+    feature_enabled as exploration_feature_enabled,
+)
+from app.engine_paper.scalping_policy_v2 import ADMISSION_PAPER_EXPLORATION
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 if TYPE_CHECKING:
     from app.engine_paper.paper_approvals import PaperQuantityApprovalSource
@@ -265,6 +269,8 @@ class PaperProductionApprovalCandidate:
     trade_profile_id: str
     primary_timeframe: str
     causal_opportunity_id: str | None = None
+    admission_mode: str = "NORMAL_EMPIRICAL_ADMISSION"
+    exploration_provenance: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -902,6 +908,29 @@ class PaperProductionApprovalSourceAdapter:
         analysis, setup, strategy, risk, paper = (
             row.analysis, row.setup, row.strategy, row.risk, row.paper
         )
+        paper_context = paper.get("paper_context")
+        paper_context = paper_context if isinstance(paper_context, Mapping) else {}
+        admission_mode = str(
+            paper_context.get("admission_mode_at_entry")
+            or paper_context.get("admission_mode")
+            or "NORMAL_EMPIRICAL_ADMISSION"
+        )
+        if admission_mode == ADMISSION_PAPER_EXPLORATION:
+            if row.trade_profile_id != "trade-5m-v2" or not exploration_feature_enabled():
+                return self._symbol_result(
+                    row, PaperProductionApprovalOutcome.APPROVAL_NOT_FINAL,
+                    lineage_valid=True,
+                )
+            if (
+                paper_context.get("normal_admission_result") != "REJECTED"
+                or paper_context.get("normal_reject_reason")
+                != "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+                or paper_context.get("exploration_eligible") is not True
+            ):
+                return self._symbol_result(
+                    row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH,
+                    lineage_valid=False,
+                )
         expected_profiles = EXECUTION_PROFILES_BY_TIMEFRAME.get(row.primary_timeframe)
         expected_profile = row.trade_profile_id
         if (
@@ -1162,6 +1191,21 @@ class PaperProductionApprovalSourceAdapter:
                 or (paper.get("paper_context") or {}).get("scalping_geometry_diagnostics", {}).get("opportunity_id")
                 or ""
             ) or None,
+            admission_mode,
+            {
+                key: paper_context.get(key)
+                for key in (
+                    "exploration_id", "exploration_policy_version",
+                    "authority_population_id", "authority_bucket_key",
+                    "authority_observation_set_fingerprint",
+                    "authority_sample_before", "authority_wins_before",
+                    "authority_losses_before", "authority_ev_before",
+                    "authority_required_dynamic_rr_before",
+                    "normal_admission_result", "normal_reject_reason",
+                    "candidate_net_rr", "candidate_required_dynamic_rr",
+                    "exploration_eligible",
+                )
+            } if admission_mode == ADMISSION_PAPER_EXPLORATION else {},
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,
