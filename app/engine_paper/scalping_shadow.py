@@ -10,10 +10,14 @@ from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
 from hashlib import sha256
 from math import isfinite
 from statistics import median
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
-from app.engine_paper.paper_exploration import exploration_eligible
+from app.engine_paper.paper_exploration import (
+    configured_admission_mode,
+    configured_policy_version,
+    exploration_eligible,
+)
 from app.engine_paper.scalping_policy_v2 import (
     ADMISSION_PAPER_EXPLORATION,
     PROFILE_ID as V2_PROFILE_ID,
@@ -215,6 +219,7 @@ class ShadowGeometryConfig:
     minimum_positive_ev_r: float = 0.0
     minimum_ev_reserve_r: float = 0.0
     paper_exploration_enabled: bool = False
+    authority_context: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -341,8 +346,23 @@ class ShadowGeometryDiagnostic:
     exploration_selected: bool = False
     exploration_rank: int | None = None
     exploration_block_reason: str | None = None
+    exploration_v2_eligible: bool = False
+    exploration_v2_selected: bool = False
+    exploration_v2_block_reason: str | None = None
     authority_population_id: str | None = None
     authority_observation_set_fingerprint: str | None = None
+    authority_generation_id: str | None = None
+    authority_state: str | None = None
+    recovery_campaign_id: str | None = None
+    recovery_new_observation_count: int = 0
+    recovery_distinct_symbol_count: int = 0
+    recovery_positive_confirmation_count: int = 0
+    recovery_window_sample_count: int = 0
+    recovery_window_ev_net_bps: float | None = None
+    recovery_window_expected_ev_r: float | None = None
+    recovery_window_fingerprint: str | None = None
+    requalification_status: str | None = None
+    requalification_reason: str | None = None
     bootstrap_observation_ingested: bool = False
     fee_source: str | None = None
     commission_authoritative: bool = False
@@ -985,6 +1005,38 @@ def evaluate_scalping_shadow(
         result.authority_observation_set_fingerprint = (
             expectancy.authority_observation_set_fingerprint
         )
+        result.authority_generation_id = config.authority_context.get(
+            "authority_generation_id"
+        )
+        result.authority_state = config.authority_context.get("authority_state")
+        result.recovery_campaign_id = config.authority_context.get("recovery_campaign_id")
+        result.recovery_new_observation_count = int(
+            config.authority_context.get("recovery_new_observation_count") or 0
+        )
+        result.recovery_distinct_symbol_count = int(
+            config.authority_context.get("recovery_distinct_symbol_count") or 0
+        )
+        result.recovery_positive_confirmation_count = int(
+            config.authority_context.get("recovery_positive_confirmation_count") or 0
+        )
+        result.recovery_window_sample_count = int(
+            config.authority_context.get("recovery_window_sample_count") or 0
+        )
+        result.recovery_window_ev_net_bps = config.authority_context.get(
+            "recovery_window_ev_net_bps"
+        )
+        result.recovery_window_expected_ev_r = config.authority_context.get(
+            "recovery_window_expected_ev_r"
+        )
+        result.recovery_window_fingerprint = config.authority_context.get(
+            "recovery_window_fingerprint"
+        )
+        result.requalification_status = config.authority_context.get(
+            "requalification_status"
+        )
+        result.requalification_reason = config.authority_context.get(
+            "requalification_reason"
+        )
         result.expected_value_bps = expectancy.expected_value_bps
         result.expectancy_gate_reason = expectancy.reason
         if not expectancy.admitted:
@@ -996,11 +1048,28 @@ def evaluate_scalping_shadow(
                 profile_id=config.profile_id,
                 execution_mode="PAPER",
                 enabled=config.paper_exploration_enabled,
+                minimum_planned_rr=config.production_rr_floor,
+                policy_version=configured_policy_version(),
             ):
-                result.admission_mode = ADMISSION_PAPER_EXPLORATION
+                result.admission_mode = configured_admission_mode()
                 result.exploration_eligible = True
-                result.exploration_policy_version = "limited-paper-exploration-v1"
+                result.exploration_policy_version = configured_policy_version()
+                result.exploration_block_reason = "EXPLORATION_V2_ELIGIBLE"
+                result.exploration_v2_eligible = True
+                result.exploration_v2_block_reason = result.exploration_block_reason
             else:
+                if (
+                    config.paper_exploration_enabled
+                    and configured_policy_version() == "limited-paper-exploration-v2"
+                ):
+                    result.exploration_policy_version = configured_policy_version()
+                    result.exploration_block_reason = (
+                        "EXPLORATION_V2_BASE_RR_NOT_MET"
+                        if result.net_rr is not None
+                        and result.net_rr < config.production_rr_floor
+                        else "EXPLORATION_V2_OTHER_GATE_FAILED"
+                    )
+                    result.exploration_v2_block_reason = result.exploration_block_reason
                 return result.reject(
                     "EXPECTANCY_GATE", "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
                 )

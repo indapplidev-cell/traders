@@ -12,6 +12,10 @@ from app.engine_paper.paper_exploration import (
     exploration_eligible,
     exploration_execution_permitted,
 )
+from app.engine_paper.empirical_requalification import (
+    EXPLORATION_V2_ADMISSION_MODE,
+    EXPLORATION_V2_POLICY_VERSION,
+)
 from app.engine_paper.scalping_policy_v2 import (
     ADMISSION_PAPER_EXPLORATION,
     EMPIRICAL_AUTHORITY_ESTABLISHED,
@@ -44,12 +48,14 @@ def decision(**changes):
 
 def test_sole_blocker_eligibility_and_rr_floor():
     assert exploration_eligible(
-        decision(), candidate_net_rr=2.94, profile_id="trade-5m-v2",
-        execution_mode="PAPER", enabled=True,
+        decision(), candidate_net_rr=0.60, profile_id="trade-5m-v2",
+        execution_mode="PAPER", enabled=True, minimum_planned_rr=0.476,
+        policy_version=EXPLORATION_V2_POLICY_VERSION,
     )
     assert not exploration_eligible(
-        decision(), candidate_net_rr=2.74, profile_id="trade-5m-v2",
-        execution_mode="PAPER", enabled=True,
+        decision(), candidate_net_rr=0.47, profile_id="trade-5m-v2",
+        execution_mode="PAPER", enabled=True, minimum_planned_rr=0.476,
+        policy_version=EXPLORATION_V2_POLICY_VERSION,
     )
 
 
@@ -106,54 +112,59 @@ def test_one_open_probe_and_cross_symbol_authority_budget():
     ),))
     btc = store.evaluate_budget(POPULATION, now=now)
     fet = store.evaluate_budget(POPULATION, now=now)
-    assert not btc.permitted and btc.block_reason == "EXPLORATION_POSITION_ALREADY_OPEN"
+    assert not btc.permitted and btc.block_reason == "EXPLORATION_V2_OPEN_POSITION_EXISTS"
     assert fet == btc
 
 
 def test_cooldown_and_rolling_24h_budgets_with_deterministic_clock():
     now = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
     one = (
-        _outcome(POPULATION, updated=now - timedelta(hours=2)),
+        _outcome(POPULATION, updated=now - timedelta(minutes=3)),
         _position(
-            opened=now - timedelta(hours=2), closed=now - timedelta(hours=1), pnl="1"
+            opened=now - timedelta(minutes=3), closed=now - timedelta(minutes=2), pnl="1"
         ),
     )
     store = RowsStore((one,))
     assert store.evaluate_budget(POPULATION, now=now).block_reason == (
-        "EXPLORATION_AUTHORITY_COOLDOWN_ACTIVE"
+        "EXPLORATION_V2_COOLDOWN_ACTIVE"
     )
-    assert store.evaluate_budget(POPULATION, now=now + timedelta(hours=6)).permitted
+    assert store.evaluate_budget(POPULATION, now=now + timedelta(minutes=3)).permitted
 
-    two = (
-        _outcome(POPULATION, updated=now - timedelta(hours=8)),
-        _position(
-            opened=now - timedelta(hours=8), closed=now - timedelta(hours=7), pnl="-1"
-        ),
+    rows = tuple(
+        (
+            _outcome(POPULATION, updated=now - timedelta(hours=index + 1)),
+            _position(
+                opened=now - timedelta(hours=index + 1),
+                closed=now - timedelta(hours=index + 1) + timedelta(minutes=1),
+                pnl="-1",
+            ),
+        )
+        for index in range(16)
     )
-    exhausted = RowsStore((one, two)).evaluate_budget(POPULATION, now=now)
-    # Cooldown is evaluated first; after it expires, the rolling cap remains.
-    assert RowsStore((one, two)).evaluate_budget(
-        POPULATION, now=now + timedelta(hours=6)
-    ).block_reason == "EXPLORATION_AUTHORITY_24H_BUDGET_EXHAUSTED"
-    assert exhausted.block_reason == "EXPLORATION_AUTHORITY_COOLDOWN_ACTIVE"
+    assert RowsStore(rows).evaluate_budget(
+        POPULATION, now=now
+    ).block_reason == "EXPLORATION_V2_24H_BUDGET_EXHAUSTED"
+    assert RowsStore(rows).evaluate_budget(
+        POPULATION, now=now + timedelta(hours=17)
+    ).permitted
 
 
 def test_global_rolling_24h_budget_is_shared_across_authorities():
     now = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
     rows = tuple(
         (
-            _outcome(f"population:{index}", updated=now - timedelta(hours=9 - index)),
+            _outcome(f"population:{index}", updated=now - timedelta(hours=index + 1)),
             _position(
-                opened=now - timedelta(hours=9 - index),
-                closed=now - timedelta(hours=8 - index),
+                opened=now - timedelta(hours=index + 1),
+                closed=now - timedelta(hours=index + 1) + timedelta(minutes=1),
                 pnl="1",
             ),
         )
-        for index in range(2)
+        for index in range(16)
     )
     decision = RowsStore(rows).evaluate_budget("population:new", now=now)
-    assert decision.block_reason == "EXPLORATION_GLOBAL_24H_BUDGET_EXHAUSTED"
-    assert decision.global_24h == 2 and decision.authority_24h == 0
+    assert decision.block_reason == "EXPLORATION_V2_24H_BUDGET_EXHAUSTED"
+    assert decision.global_24h == 16 and decision.authority_24h == 0
 
 
 def test_restart_replay_preserves_budget_and_recovery_evidence():
@@ -242,7 +253,7 @@ def _candidate(name, symbol, *, exploration=False):
     )
     return Candidate(
         name, symbol, ranking,
-        ADMISSION_PAPER_EXPLORATION if exploration else "NORMAL_EMPIRICAL_ADMISSION",
+        EXPLORATION_V2_ADMISSION_MODE if exploration else "NORMAL_EMPIRICAL_ADMISSION",
         {"authority_population_id": POPULATION} if exploration else {},
     )
 
@@ -272,7 +283,7 @@ def test_normal_priority_and_same_mechanics(monkeypatch):
     selected = executor._select_candidate(canary, results)
     assert selected.winner is normal
     assert executor._outcome_store.observed[2]["selection_reasons"][probe.candidate_id] == (
-        "NORMAL_COMMAND_TAKES_PRECEDENCE"
+        "EXPLORATION_V2_NORMAL_COMMAND_PRIORITY"
     )
     # Admission/provenance are the only differences; geometry/ranking is reused.
     assert (

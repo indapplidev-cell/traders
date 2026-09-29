@@ -27,17 +27,23 @@ from app.engine_paper.scalping_policy_v2 import (
     EMPIRICAL_AUTHORITY_ESTABLISHED,
     ExpectancyDecision,
 )
+from app.engine_paper.empirical_requalification import (
+    EXPLORATION_POLICY_FLAG,
+    EXPLORATION_V2_ADMISSION_MODE,
+    EXPLORATION_V2_POLICY_VERSION,
+)
 
 
-EXPLORATION_POLICY_VERSION = "limited-paper-exploration-v1"
+EXPLORATION_V1_POLICY_VERSION = "limited-paper-exploration-v1"
+EXPLORATION_POLICY_VERSION = EXPLORATION_V2_POLICY_VERSION
 EXPLORATION_FLAG = "PAPER_EXPLORATION_ENABLED"
 EXPLORATION_PROFILE = "trade-5m-v2"
 MAX_CONCURRENT_EXPLORATION_POSITIONS_GLOBAL = 1
 MAX_OPEN_EXPLORATION_PER_AUTHORITY_POPULATION = 1
 MAX_NEW_EXPLORATION_COMMANDS_PER_CYCLE = 1
-MAX_EXPLORATION_PROBES_PER_AUTHORITY_POPULATION_ROLLING_24H = 2
-MAX_EXPLORATION_PROBES_GLOBAL_ROLLING_24H = 2
-EXPLORATION_COOLDOWN_AFTER_CLOSED_HOURS = 6
+MAX_EXPLORATION_PROBES_PER_AUTHORITY_POPULATION_ROLLING_24H = 16
+MAX_EXPLORATION_PROBES_GLOBAL_ROLLING_24H = 16
+EXPLORATION_COOLDOWN_AFTER_CLOSED_MINUTES = 5
 
 NORMAL_EMPIRICAL_REJECT_REASON = "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
 
@@ -48,11 +54,24 @@ def feature_enabled(environment: Mapping[str, str] | None = None) -> bool:
     return str(values.get(EXPLORATION_FLAG, "false")).strip().lower() == "true"
 
 
+def configured_policy_version(environment: Mapping[str, str] | None = None) -> str:
+    values = os.environ if environment is None else environment
+    return str(values.get(EXPLORATION_POLICY_FLAG, "")).strip()
+
+
+def configured_admission_mode(environment: Mapping[str, str] | None = None) -> str:
+    return (
+        EXPLORATION_V2_ADMISSION_MODE
+        if configured_policy_version(environment) == EXPLORATION_V2_POLICY_VERSION
+        else ADMISSION_PAPER_EXPLORATION
+    )
+
+
 def exploration_execution_permitted(
     *, admission_mode: str, execution_mode: str, live_allowed: bool,
     trade_profile_id: str, enabled: bool,
 ) -> bool:
-    if admission_mode != ADMISSION_PAPER_EXPLORATION:
+    if admission_mode not in {ADMISSION_PAPER_EXPLORATION, EXPLORATION_V2_ADMISSION_MODE}:
         return True
     return bool(
         enabled
@@ -65,9 +84,16 @@ def exploration_execution_permitted(
 def exploration_eligible(
     decision: ExpectancyDecision, *, candidate_net_rr: float | None,
     profile_id: str, execution_mode: str, enabled: bool,
+    minimum_planned_rr: float | None = None,
+    policy_version: str | None = None,
 ) -> bool:
     """Allow bypass of the established negative-EV veto and nothing else."""
-    required = decision.dynamic_required_net_rr
+    selected_policy = policy_version or configured_policy_version()
+    rr_gate = (
+        minimum_planned_rr
+        if selected_policy == EXPLORATION_V2_POLICY_VERSION
+        else decision.dynamic_required_net_rr
+    )
     return bool(
         enabled
         and profile_id == EXPLORATION_PROFILE
@@ -78,20 +104,24 @@ def exploration_eligible(
         and decision.empirical_ev_net_bps is not None
         and decision.empirical_ev_net_bps < 0
         and candidate_net_rr is not None
-        and required is not None
-        and candidate_net_rr >= required
+        and rr_gate is not None
+        and candidate_net_rr >= rr_gate
         and bool(decision.authority_population_id)
         and bool(decision.authority_observation_set_fingerprint)
     )
 
 
 def exploration_id(*, pipeline_run_id: str, candidate_id: str, population_id: str) -> str:
-    material = f"{EXPLORATION_POLICY_VERSION}|{pipeline_run_id}|{candidate_id}|{population_id}"
-    return "paper-exploration:v1:" + sha256(material.encode("utf-8")).hexdigest()
+    policy = configured_policy_version() or EXPLORATION_POLICY_VERSION
+    material = f"{policy}|{pipeline_run_id}|{candidate_id}|{population_id}"
+    version = "v2" if policy == EXPLORATION_V2_POLICY_VERSION else "v1"
+    return f"paper-exploration:{version}:" + sha256(material.encode("utf-8")).hexdigest()
 
 
 def is_exploration_candidate(candidate: object) -> bool:
-    return getattr(candidate, "admission_mode", None) == ADMISSION_PAPER_EXPLORATION
+    return getattr(candidate, "admission_mode", None) in {
+        ADMISSION_PAPER_EXPLORATION, EXPLORATION_V2_ADMISSION_MODE,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,7 +151,7 @@ class ExplorationBudgetDecision:
                 "authority_concurrent": MAX_OPEN_EXPLORATION_PER_AUTHORITY_POPULATION,
                 "global_rolling_24h": MAX_EXPLORATION_PROBES_GLOBAL_ROLLING_24H,
                 "authority_rolling_24h": MAX_EXPLORATION_PROBES_PER_AUTHORITY_POPULATION_ROLLING_24H,
-                "cooldown_hours": EXPLORATION_COOLDOWN_AFTER_CLOSED_HOURS,
+                "cooldown_minutes": EXPLORATION_COOLDOWN_AFTER_CLOSED_MINUTES,
             },
         }
 
@@ -157,7 +187,9 @@ class PaperExplorationStore:
 
     @staticmethod
     def _is_exploration(row: PaperPlanExecutionOutcomeRecord) -> bool:
-        return _details(row).get("admission_mode") == ADMISSION_PAPER_EXPLORATION
+        return _details(row).get("admission_mode") in {
+            ADMISSION_PAPER_EXPLORATION, EXPLORATION_V2_ADMISSION_MODE,
+        }
 
     def _rows(self) -> tuple[tuple[PaperPlanExecutionOutcomeRecord, PaperPositionRecord | None], ...]:
         statement = (
@@ -210,20 +242,20 @@ class PaperExplorationStore:
         )
         last_closed = max(closed) if closed else None
         cooldown_until = (
-            last_closed + timedelta(hours=EXPLORATION_COOLDOWN_AFTER_CLOSED_HOURS)
+            last_closed + timedelta(minutes=EXPLORATION_COOLDOWN_AFTER_CLOSED_MINUTES)
             if last_closed is not None else None
         )
         reason = None
         if unresolved:
-            reason = "EXPLORATION_POSITION_ALREADY_OPEN"
+            reason = "EXPLORATION_V2_OPEN_POSITION_EXISTS"
         elif authority_unresolved:
-            reason = "EXPLORATION_POSITION_ALREADY_OPEN"
+            reason = "EXPLORATION_V2_OPEN_POSITION_EXISTS"
         elif cooldown_until is not None and observed < cooldown_until:
-            reason = "EXPLORATION_AUTHORITY_COOLDOWN_ACTIVE"
+            reason = "EXPLORATION_V2_COOLDOWN_ACTIVE"
         elif authority_24h >= MAX_EXPLORATION_PROBES_PER_AUTHORITY_POPULATION_ROLLING_24H:
-            reason = "EXPLORATION_AUTHORITY_24H_BUDGET_EXHAUSTED"
+            reason = "EXPLORATION_V2_24H_BUDGET_EXHAUSTED"
         elif global_24h >= MAX_EXPLORATION_PROBES_GLOBAL_ROLLING_24H:
-            reason = "EXPLORATION_GLOBAL_24H_BUDGET_EXHAUSTED"
+            reason = "EXPLORATION_V2_24H_BUDGET_EXHAUSTED"
         return ExplorationBudgetDecision(
             reason is None, reason, len(unresolved), len(authority_unresolved),
             global_24h, authority_24h, last_closed, cooldown_until,
@@ -258,19 +290,22 @@ class PaperExplorationStore:
 def exploration_selection_metadata(candidate: object) -> dict[str, object]:
     provenance = getattr(candidate, "exploration_provenance", None)
     values = dict(provenance) if isinstance(provenance, Mapping) else {}
-    values["admission_mode"] = ADMISSION_PAPER_EXPLORATION
-    values["exploration_policy_version"] = EXPLORATION_POLICY_VERSION
+    values["admission_mode"] = getattr(
+        candidate, "admission_mode", configured_admission_mode()
+    )
+    values["exploration_policy_version"] = configured_policy_version()
     return values
 
 
 __all__ = (
-    "EXPLORATION_COOLDOWN_AFTER_CLOSED_HOURS", "EXPLORATION_FLAG",
+    "EXPLORATION_COOLDOWN_AFTER_CLOSED_MINUTES", "EXPLORATION_FLAG",
     "EXPLORATION_POLICY_VERSION", "ExplorationBudgetDecision",
     "ExplorationRecoveryEvidence", "MAX_CONCURRENT_EXPLORATION_POSITIONS_GLOBAL",
     "MAX_EXPLORATION_PROBES_GLOBAL_ROLLING_24H",
     "MAX_EXPLORATION_PROBES_PER_AUTHORITY_POPULATION_ROLLING_24H",
     "MAX_NEW_EXPLORATION_COMMANDS_PER_CYCLE", "MAX_OPEN_EXPLORATION_PER_AUTHORITY_POPULATION",
-    "PaperExplorationStore", "exploration_eligible", "exploration_execution_permitted",
+    "PaperExplorationStore", "configured_admission_mode", "configured_policy_version",
+    "exploration_eligible", "exploration_execution_permitted",
     "exploration_id", "exploration_selection_metadata", "feature_enabled",
     "is_exploration_candidate",
 )

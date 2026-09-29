@@ -98,6 +98,9 @@ services:
       TRADERS_BINANCE_ACCOUNT_CREDENTIALS_PATH: /run/secrets/binance_account_credentials
       TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/traders-commission/binance-account-commission.json
       PAPER_EXPLORATION_ENABLED: "${PAPER_EXPLORATION_ENABLED:-false}"
+      PAPER_EXPLORATION_POLICY_VERSION: "${PAPER_EXPLORATION_POLICY_VERSION:-limited-paper-exploration-v2}"
+      EMPIRICAL_REQUALIFICATION_ENABLED: "${EMPIRICAL_REQUALIFICATION_ENABLED:-false}"
+      EMPIRICAL_REQUALIFICATION_POLICY_VERSION: "${EMPIRICAL_REQUALIFICATION_POLICY_VERSION:-empirical-requalification-v1}"
     volumes:
       - ./reports:/service/reports
       - ./config/trading:/service/config/trading:ro

@@ -127,7 +127,9 @@ class PaperPlanExecutionOutcomeStore:
                     ),
                 }
                 admission_mode = getattr(candidate, "admission_mode", None)
-                if admission_mode == "PAPER_EXPLORATION_ADMISSION":
+                if admission_mode in {
+                    "PAPER_EXPLORATION_ADMISSION", "PAPER_EXPLORATION_V2",
+                }:
                     provenance = getattr(candidate, "exploration_provenance", {})
                     if isinstance(provenance, Mapping):
                         selection_details.update(dict(provenance))
@@ -136,6 +138,10 @@ class PaperPlanExecutionOutcomeStore:
                         "exploration_selected": selected,
                         "exploration_rank": ranks[candidate.candidate_id],
                         "exploration_block_reason": reason,
+                        "exploration_v2_selected": selected,
+                        "exploration_v2_block_reason": (
+                            "EXPLORATION_V2_SELECTED" if selected else reason
+                        ),
                     })
                 if row is None:
                     row = PaperPlanExecutionOutcomeRecord(

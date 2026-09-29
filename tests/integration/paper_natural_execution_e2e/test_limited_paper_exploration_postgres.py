@@ -6,6 +6,9 @@ from decimal import Decimal
 from sqlalchemy import func, select
 
 from app.db.paper_models import (
+    EmpiricalAuthorityGenerationRecord,
+    EmpiricalRecoveryCampaignRecord,
+    EmpiricalRecoveryEvaluationRecord,
     PaperExecutionCommandRecord,
     PaperFillRecord,
     PaperOrderRecord,
@@ -18,6 +21,12 @@ from app.engine_paper.paper_exploration import (
     exploration_eligible,
     exploration_execution_permitted,
 )
+from app.engine_paper.empirical_requalification import (
+    EXPLORATION_V2_ADMISSION_MODE,
+    EXPLORATION_V2_POLICY_VERSION,
+    EmpiricalRequalificationStore,
+    RecoveryObservation,
+)
 from app.engine_paper.scalping_policy_v2 import ADMISSION_PAPER_EXPLORATION, evaluate_expectancy
 from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsSource
 
@@ -28,7 +37,12 @@ SETUP = "SCALP_MOMENTUM_CONTINUATION"
 POPULATION = "empirical-authority-population-v1:e2e-shared"
 
 
-def _persist_closed(session, index: int, *, exploration: bool, won: bool) -> None:
+def _persist_closed(
+    session, index: int, *, exploration: bool, won: bool,
+    policy_version: str = "limited-paper-exploration-v1",
+    symbol_override: str | None = None,
+    pnl_override: Decimal | None = None,
+) -> None:
     now = datetime(2026, 9, 20, tzinfo=timezone.utc) + timedelta(hours=index)
     boundary_ms = int((now - timedelta(minutes=1)).timestamp() * 1000)
     suffix = f"{index:02d}"
@@ -39,19 +53,27 @@ def _persist_closed(session, index: int, *, exploration: bool, won: bool) -> Non
     entry_fill_id = f"explore-e2e-entry-fill-{suffix}"
     exit_fill_id = f"explore-e2e-exit-fill-{suffix}"
     position_id = f"explore-e2e-position-{suffix}"
-    symbol = "FETUSDT" if exploration else f"T{index:02d}USDT"
-    pnl = Decimal("0.5") if exploration else (Decimal("0.2") if won else Decimal("-0.3"))
+    symbol = symbol_override or ("FETUSDT" if exploration else f"T{index:02d}USDT")
+    pnl = pnl_override if pnl_override is not None else (
+        Decimal("0.5") if exploration else (Decimal("0.2") if won else Decimal("-0.3"))
+    )
+    admission_mode = (
+        EXPLORATION_V2_ADMISSION_MODE
+        if exploration and policy_version == EXPLORATION_V2_POLICY_VERSION
+        else ADMISSION_PAPER_EXPLORATION if exploration else "EMPIRICAL"
+    )
+    exit_price = Decimal("100") + pnl
     context = {
         "parameter_set_id": SET_ID,
         "resolved_config_hash": CONFIG_HASH,
         "admission_mode_at_entry": (
-            ADMISSION_PAPER_EXPLORATION if exploration else "EMPIRICAL"
+            admission_mode
         ),
     }
     if exploration:
         context.update({
             "exploration_id": "paper-exploration:v1:e2e",
-            "exploration_policy_version": "limited-paper-exploration-v1",
+            "exploration_policy_version": policy_version,
             "authority_population_id": POPULATION,
             "authority_observation_set_fingerprint": "f" * 64,
             "normal_admission_result": "REJECTED",
@@ -94,7 +116,7 @@ def _persist_closed(session, index: int, *, exploration: bool, won: bool) -> Non
     ))
     for role, order_id, fill_id, price in (
         ("ENTRY", entry_order_id, entry_fill_id, Decimal("100")),
-        ("EXIT", exit_order_id, exit_fill_id, Decimal("100.5") if won or exploration else Decimal("99.7")),
+        ("EXIT", exit_order_id, exit_fill_id, exit_price),
     ):
         session.add(PaperOrderRecord(
             order_id=order_id, command_id=command_id,
@@ -119,7 +141,7 @@ def _persist_closed(session, index: int, *, exploration: bool, won: bool) -> Non
         position_id=position_id, mode="PAPER", symbol=symbol, side="LONG", state="CLOSED",
         entry_order_id=entry_order_id, entry_fill_id=entry_fill_id,
         entry_quantity=Decimal("1"), remaining_quantity=Decimal("0"),
-        average_entry_price=Decimal("100"), average_exit_price=Decimal("100.5") if won or exploration else Decimal("99.7"),
+        average_entry_price=Decimal("100"), average_exit_price=exit_price,
         entry_fees=Decimal("0"), exit_fees=Decimal("0"), realized_pnl=pnl,
         unrealized_pnl=Decimal("0"), stop_price=Decimal("99"), target_price=Decimal("103"),
         opened_at=now, closed_at=now + timedelta(minutes=5), last_mark_price=Decimal("100"),
@@ -140,9 +162,10 @@ def _persist_closed(session, index: int, *, exploration: bool, won: bool) -> Non
             scheduler_enabled=True, mutation_enabled=True, live_enabled=False,
             attempt_count=1, first_observed_at=now, updated_at=now,
             refinement_details={
-                "admission_mode": ADMISSION_PAPER_EXPLORATION,
+                "admission_mode": admission_mode,
                 "authority_population_id": POPULATION,
                 "exploration_selected": True,
+                "exploration_policy_version": policy_version,
             },
         ))
 
@@ -187,3 +210,137 @@ def test_limited_exploration_closed_evidence_is_durable_and_normal_authority_iso
             PaperExecutionCommandRecord.pipeline_run_id == "explore-e2e-run-20"
         ))
         assert command.mode == "PAPER"
+
+
+def test_exploration_v2_postgres_full_requalification_lifecycle(
+    natural_e2e_sessions, monkeypatch,
+):
+    monkeypatch.setenv("EMPIRICAL_REQUALIFICATION_ENABLED", "false")
+    original = {}
+    with natural_e2e_sessions() as session, session.begin():
+        for index in range(20):
+            _persist_closed(
+                session, index, exploration=False, won=8 <= index < 15,
+                symbol_override=("BTCUSDT", "ETHUSDT", "SOLUSDT")[index % 3],
+            )
+        session.flush()
+        original = {
+            row.position_id: (row.realized_pnl, row.opened_at, row.closed_at)
+            for row in session.scalars(select(PaperPositionRecord))
+        }
+
+    source = PostgresPaperOutcomeStatisticsSource(natural_e2e_sessions)
+    hierarchy = source.resolve(
+        symbol="BTCUSDT", setup_type=SETUP, direction="BULLISH", regime="EXPANSION",
+        cost_bucket="MEDIUM", parameter_set_id=SET_ID, resolved_config_hash=CONFIG_HASH,
+    )
+    base_bucket = hierarchy.parents[2]
+    assert base_bucket.samples == 20 and base_bucket.wins == 7
+    normal = evaluate_expectancy(
+        net_win_bps=120, net_loss_bps=40, bucket=hierarchy.exact,
+        parent_buckets=hierarchy.parents, minimum_samples=20,
+    )
+    assert not normal.admitted
+    assert exploration_eligible(
+        normal, candidate_net_rr=0.60, minimum_planned_rr=0.476,
+        policy_version=EXPLORATION_V2_POLICY_VERSION,
+        profile_id="trade-5m-v2", execution_mode="PAPER", enabled=True,
+    )
+
+    monkeypatch.setenv("PAPER_EXPLORATION_POLICY_VERSION", EXPLORATION_V2_POLICY_VERSION)
+    monkeypatch.setenv("EMPIRICAL_REQUALIFICATION_ENABLED", "true")
+    monkeypatch.setenv("EMPIRICAL_REQUALIFICATION_POLICY_VERSION", "empirical-requalification-v1")
+
+    def observations():
+        with natural_e2e_sessions() as session:
+            rows = session.execute(
+                select(PaperPositionRecord, OnlinePipelineResultRow)
+                .join(
+                    PaperOrderRecord,
+                    PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id,
+                )
+                .join(
+                    PaperExecutionCommandRecord,
+                    PaperExecutionCommandRecord.command_id == PaperOrderRecord.command_id,
+                )
+                .join(
+                    OnlinePipelineResultRow,
+                    OnlinePipelineResultRow.run_id == PaperExecutionCommandRecord.pipeline_run_id,
+                )
+                .order_by(PaperPositionRecord.closed_at, PaperPositionRecord.position_id)
+            )
+            return tuple(
+                RecoveryObservation(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    closed_at=position.closed_at,
+                    net_return_bps=float(position.realized_pnl) / 100.0 * 10_000,
+                    admission_mode=str(
+                        result.paper_payload_json["paper_context"]["admission_mode_at_entry"]
+                    ),
+                    exploration_policy_version=(
+                        result.paper_payload_json["paper_context"].get(
+                            "exploration_policy_version"
+                        )
+                    ),
+                )
+                for position, result in rows
+            )
+
+    store = EmpiricalRequalificationStore(natural_e2e_sessions)
+    _, started = store.reconcile(
+        base_bucket=base_bucket, observations=observations(),
+        now=datetime(2026, 9, 21, 12, tzinfo=timezone.utc),
+    )
+    assert started.authority_state == "EXPLORATION_RECOVERY_ACTIVE"
+
+    first = None
+    second = None
+    for probe in range(9):
+        index = 100 + probe
+        with natural_e2e_sessions() as session, session.begin():
+            _persist_closed(
+                session, index, exploration=True, won=True,
+                policy_version=EXPLORATION_V2_POLICY_VERSION,
+                symbol_override=("BTCUSDT", "ETHUSDT", "SOLUSDT")[probe % 3],
+                pnl_override=Decimal("1.0"),
+            )
+        active_bucket, snapshot = store.reconcile(
+            base_bucket=base_bucket, observations=observations(),
+            now=datetime(2026, 9, 25, tzinfo=timezone.utc) + timedelta(minutes=probe),
+        )
+        if probe == 7:
+            first = snapshot
+        if probe == 8:
+            second = snapshot
+
+    assert first is not None and first.recovery_positive_confirmation_count == 1
+    assert first.authority_state == "EXPLORATION_RECOVERY_ACTIVE"
+    assert second is not None and second.recovery_positive_confirmation_count == 2
+    assert second.authority_state == "REQUALIFIED_ACTIVE"
+    assert active_bucket.observation_set_fingerprint == second.recovery_window_fingerprint
+    assert evaluate_expectancy(
+        net_win_bps=300, net_loss_bps=100, bucket=active_bucket,
+    ).admitted
+
+    replay_bucket, replay = store.reconcile(
+        base_bucket=base_bucket, observations=observations(),
+        now=datetime(2026, 9, 25, 1, tzinfo=timezone.utc),
+    )
+    assert replay.authority_generation_id == second.authority_generation_id
+    assert replay_bucket.observation_set_fingerprint == active_bucket.observation_set_fingerprint
+    with natural_e2e_sessions() as session:
+        assert session.scalar(select(func.count()).select_from(EmpiricalRecoveryEvaluationRecord)) == 9
+        assert session.scalar(select(func.count()).select_from(EmpiricalAuthorityGenerationRecord)) == 2
+        assert session.scalar(select(func.count()).select_from(EmpiricalRecoveryCampaignRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 29
+        assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord).where(
+            PaperExecutionCommandRecord.mode != "PAPER"
+        )) == 0
+        after = {
+            row.position_id: (row.realized_pnl, row.opened_at, row.closed_at)
+            for row in session.scalars(select(PaperPositionRecord).where(
+                PaperPositionRecord.position_id.in_(tuple(original))
+            ))
+        }
+    assert after == original

@@ -652,6 +652,113 @@ class PaperPlanExecutionOutcomeRecord(Base):
     refinement_details: Mapped[dict[str, object] | None] = mapped_column(JSON)
 
 
+class EmpiricalAuthorityGenerationRecord(Base):
+    """Immutable empirical authority snapshot; only active lineage may switch."""
+
+    __tablename__ = "empirical_authority_generations"
+    __table_args__ = (
+        UniqueConstraint(
+            "authority_population_id", "observation_set_fingerprint",
+            name="uq_empirical_authority_population_window",
+        ),
+        Index(
+            "uq_empirical_authority_one_active",
+            "authority_population_id",
+            unique=True,
+            postgresql_where=text("is_active"),
+            sqlite_where=text("is_active"),
+        ),
+        Index("ix_empirical_authority_population_activated", "authority_population_id", "activated_at"),
+        CheckConstraint("sample_count = 20", name="ck_empirical_authority_sample_20"),
+        CheckConstraint("wins >= 0 AND losses >= 0 AND wins + losses = sample_count", name="ck_empirical_authority_counts"),
+    )
+
+    authority_generation_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    authority_population_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    authority_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    observation_set_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    wins: Mapped[int] = mapped_column(Integer, nullable=False)
+    losses: Mapped[int] = mapped_column(Integer, nullable=False)
+    win_rate: Mapped[Decimal] = mapped_column(Numeric(RATIO_PRECISION, RATIO_SCALE), nullable=False)
+    average_win_net_bps: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    average_loss_net_bps: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    empirical_ev_net_bps: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    expected_ev_r: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    break_even_win_rate: Mapped[Decimal] = mapped_column(Numeric(RATIO_PRECISION, RATIO_SCALE), nullable=False)
+    required_dynamic_rr: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    bucket_level: Mapped[str] = mapped_column(String(40), nullable=False)
+    bucket_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    recovery_campaign_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+
+
+class EmpiricalRecoveryCampaignRecord(Base):
+    """Restart-safe recovery state for one shared authority population."""
+
+    __tablename__ = "empirical_recovery_campaigns"
+    __table_args__ = (
+        Index("ix_empirical_recovery_population_started", "authority_population_id", "started_at"),
+        CheckConstraint(
+            "state IN ('ESTABLISHED_NEGATIVE','EXPLORATION_RECOVERY_ACTIVE',"
+            "'REQUALIFICATION_PENDING','REQUALIFIED_ACTIVE')",
+            name="ck_empirical_recovery_state",
+        ),
+        CheckConstraint("v2_closed_probe_count >= 0", name="ck_empirical_recovery_probe_count"),
+        CheckConstraint("distinct_symbol_count >= 0", name="ck_empirical_recovery_symbol_count"),
+        CheckConstraint("positive_confirmation_count BETWEEN 0 AND 2", name="ck_empirical_recovery_confirmations"),
+    )
+
+    recovery_campaign_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    authority_population_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    state: Mapped[str] = mapped_column(String(40), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    v2_closed_probe_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    distinct_symbol_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    positive_confirmation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    latest_window_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    latest_window_ev_net_bps: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    latest_window_expected_ev_r: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    latest_evaluated_closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    requalified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active_authority_generation_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    initial_authority_generation_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EmpiricalRecoveryEvaluationRecord(Base):
+    """Exactly-once evaluation caused by one newly CLOSED v2 probe."""
+
+    __tablename__ = "empirical_recovery_evaluations"
+    __table_args__ = (
+        UniqueConstraint(
+            "recovery_campaign_id", "trigger_position_id",
+            name="uq_empirical_recovery_probe_evaluation",
+        ),
+        Index("ix_empirical_recovery_evaluation_campaign", "recovery_campaign_id", "trigger_closed_at"),
+        CheckConstraint("window_sample_count BETWEEN 0 AND 20", name="ck_empirical_recovery_window_count"),
+        CheckConstraint("positive_confirmation_count BETWEEN 0 AND 2", name="ck_empirical_recovery_evaluation_confirmations"),
+    )
+
+    evaluation_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    recovery_campaign_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    trigger_position_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    trigger_closed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    window_sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    window_ev_net_bps: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    window_expected_ev_r: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    new_v2_probe_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    distinct_symbol_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    predicate_passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    positive_confirmation_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    promoted_authority_generation_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ScalpingOpportunityRecord(Base):
     """Server-owned reservation and execution binding for one causal setup."""
 

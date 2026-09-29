@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0035_scalping_v2_ingestion_policy_contract"
+EXPECTED_HEAD = "0036_empirical_requalification_authority"
 
 
 @pytest.fixture(scope="session")
@@ -79,6 +79,9 @@ def natural_e2e_engine() -> Iterator[Engine]:
 @pytest.fixture
 def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     tables = (
+        "empirical_recovery_evaluations",
+        "empirical_recovery_campaigns",
+        "empirical_authority_generations",
         "scalping_stale_position_shadow_diagnostics",
         "scalping_outcome_diagnostics",
         "scalping_opportunities",

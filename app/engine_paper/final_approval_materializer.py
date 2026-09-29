@@ -35,6 +35,7 @@ from app.engine_paper.portfolio_gate import evaluate_paper_portfolio_gate
 from app.engine_paper.scalping_policy_v2 import (
     ADMISSION_PAPER_BOOTSTRAP,
     ADMISSION_PAPER_EXPLORATION,
+    ADMISSION_PAPER_EXPLORATION_V2,
     bootstrap_execution_permitted,
 )
 from app.engine_paper.paper_exploration import (
@@ -223,7 +224,9 @@ class NaturalFinalApprovalMaterializer:
                     safe_reason_detail="bootstrap admission is restricted to trade-5m-v2 PAPER",
                 )
             if (
-                admission_mode == ADMISSION_PAPER_EXPLORATION
+                admission_mode in {
+                    ADMISSION_PAPER_EXPLORATION, ADMISSION_PAPER_EXPLORATION_V2,
+                }
                 and not exploration_execution_permitted(
                     admission_mode=admission_mode,
                     execution_mode=ExecutionMode.PAPER.value,

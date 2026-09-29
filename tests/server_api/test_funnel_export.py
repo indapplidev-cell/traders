@@ -256,6 +256,14 @@ def test_export_always_emits_rr_rejection_diagnostic_contract():
         "exploration_policy_version", "authority_population_id",
         "authority_observation_set_fingerprint", "budget_snapshot",
         "cooldown_until",
+        "exploration_v2_eligible", "exploration_v2_selected",
+        "exploration_v2_block_reason", "authority_generation_id",
+        "authority_state", "recovery_campaign_id",
+        "recovery_new_observation_count", "recovery_distinct_symbol_count",
+        "recovery_positive_confirmation_count", "recovery_window_sample_count",
+        "recovery_window_ev_net_bps", "recovery_window_expected_ev_r",
+        "recovery_window_fingerprint", "requalification_status",
+        "requalification_reason",
     }
 
 

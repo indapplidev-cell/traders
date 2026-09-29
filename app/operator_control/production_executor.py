@@ -256,7 +256,7 @@ class ProductionPaperFirstCanaryExecutor:
                 normal, policy_version=canary.selection_policy_version
             )
             selection_reasons.update({
-                value.candidate_id: "NORMAL_COMMAND_TAKES_PRECEDENCE"
+                value.candidate_id: "EXPLORATION_V2_NORMAL_COMMAND_PRIORITY"
                 for value in exploration
             })
         elif exploration:

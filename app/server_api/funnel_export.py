@@ -407,6 +407,21 @@ def build_export_record(
         "authority_observation_set_fingerprint": diagnostic.get(
             "authority_observation_set_fingerprint"
         ),
+        "exploration_v2_eligible": diagnostic.get("exploration_v2_eligible", diagnostic.get("exploration_eligible")),
+        "exploration_v2_selected": outcome.get("exploration_v2_selected", diagnostic.get("exploration_v2_selected")),
+        "exploration_v2_block_reason": outcome.get("exploration_v2_block_reason", diagnostic.get("exploration_v2_block_reason")),
+        "authority_generation_id": diagnostic.get("authority_generation_id"),
+        "authority_state": diagnostic.get("authority_state"),
+        "recovery_campaign_id": diagnostic.get("recovery_campaign_id"),
+        "recovery_new_observation_count": diagnostic.get("recovery_new_observation_count"),
+        "recovery_distinct_symbol_count": diagnostic.get("recovery_distinct_symbol_count"),
+        "recovery_positive_confirmation_count": diagnostic.get("recovery_positive_confirmation_count"),
+        "recovery_window_sample_count": diagnostic.get("recovery_window_sample_count"),
+        "recovery_window_ev_net_bps": diagnostic.get("recovery_window_ev_net_bps"),
+        "recovery_window_expected_ev_r": diagnostic.get("recovery_window_expected_ev_r"),
+        "recovery_window_fingerprint": diagnostic.get("recovery_window_fingerprint"),
+        "requalification_status": diagnostic.get("requalification_status"),
+        "requalification_reason": diagnostic.get("requalification_reason"),
     }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
@@ -452,6 +467,13 @@ def build_export_record(
         "exploration_eligible", "exploration_selected", "exploration_rank",
         "exploration_block_reason", "exploration_policy_version",
         "authority_population_id", "authority_observation_set_fingerprint",
+        "authority_generation_id", "authority_state", "recovery_campaign_id",
+        "recovery_new_observation_count", "recovery_distinct_symbol_count",
+        "recovery_positive_confirmation_count", "recovery_window_sample_count",
+        "recovery_window_ev_net_bps", "recovery_window_expected_ev_r",
+        "recovery_window_fingerprint", "requalification_status",
+        "requalification_reason", "exploration_v2_eligible",
+        "exploration_v2_selected", "exploration_v2_block_reason",
     )
     configuration = effective_configuration(result)
     runtime_revision = (
