@@ -3,13 +3,85 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 915ffcbacbdcb0ef3dd8225f7525627fb7a7b395
+STATUS_AS_OF_COMMIT = a8b7863607c2be1ecb5e6913dc1dc13e0fc3df72
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-28T20:25:58Z
-RECONCILED_BY_TASK = TRADERS_LIMITED_PAPER_EXPLORATION_LANE_01
-FILES_CHANGED = app/engine_paper/paper_exploration.py; app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_statistics.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/final_approval_materializer.py; app/engine_paper/production_approval.py; app/engine_paper/plan_execution_outcome.py; app/operator_control/production_executor.py; app/operator_control/runtime.py; app/server_api/funnel_export.py; app/server_api/trading_funnel.py; docker-compose.yml; ops/production/operator-control-api/compose.yaml; tests/test_limited_paper_exploration.py; tests/integration/paper_natural_execution_e2e/test_limited_paper_exploration_postgres.py; tests/server_api/test_funnel_export.py; docs/audits/TRADERS_LIMITED_PAPER_EXPLORATION_LANE_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-29T20:07:00Z
+RECONCILED_BY_TASK = TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_01
+FILES_CHANGED = alembic/versions/0036_empirical_requalification_authority.py; app/db/paper_models.py; app/engine_paper/empirical_requalification.py; app/engine_paper/paper_exploration.py; app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_statistics.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/final_approval_materializer.py; app/engine_paper/production_approval.py; app/engine_paper/plan_execution_outcome.py; app/operator_control/production_executor.py; app/server_api/schema_compatibility.py; app/server_api/schemas/paper.py; app/server_api/funnel_export.py; app/server_api/trading_funnel.py; scripts/engine_orchestrator_online_pipeline.py; docker-compose.yml; ops/production/operator-control-api/compose.yaml; tests/test_exploration_v2_requalification.py; tests/test_limited_paper_exploration.py; tests/integration/paper_natural_execution_e2e/conftest.py; tests/integration/paper_natural_execution_e2e/test_limited_paper_exploration_postgres.py; tests/engine_orchestrator/test_5m_runtime_parameterization_and_owner.py; tests/server_api/test_funnel_export.py; docs/audits/TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_01_FINAL.md; online_trader.md.
+
+## Exploration v2 and empirical requalification policy 01
+
+```text
+TASK = TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_CODEX_PROMPT
+FINAL_STATUS = PASS
+FINAL_VERDICT = EXPLORATION_V2_AND_DURABLE_EMPIRICAL_REQUALIFICATION_IMPLEMENTED_TESTED_DEPLOYED_AND_ENABLED_FOR_TRADE_5M_V2_PAPER_ONLY; NORMAL_NEGATIVE_EV_VETO_AND_LIVE_SAFETY_UNCHANGED
+PROJECT_STATE_COMMIT = a8b7863607c2be1ecb5e6913dc1dc13e0fc3df72
+CORE_IMPLEMENTATION_COMMIT = 3c54e6ee50b73ba1f0163ab76e3be3352c074b98
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = a8b7863607c2be1ecb5e6913dc1dc13e0fc3df72
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+MODE = PAPER
+ACTIVE_PROFILE = trade-5m-v2
+EXPLORATION_V1_STATUS = SUPERSEDED_BY_V2; PRODUCTION_COMMANDS_OPENED_CLOSED_0_0_0
+EXPLORATION_V2_POLICY_VERSION = limited-paper-exploration-v2
+REQUALIFICATION_POLICY_VERSION = empirical-requalification-v1
+PAPER_EXPLORATION_ENABLED = true only in trade-5m-v2 PAPER orchestrator and PAPER operator-control
+EMPIRICAL_REQUALIFICATION_ENABLED = true only in trade-5m-v2 PAPER orchestrator and PAPER operator-control
+V2_DYNAMIC_RR_REQUIRED = NO
+V2_BASE_RR_REQUIRED = YES
+V2_SOLE_BYPASS = SCALPING_EMPIRICAL_EXPECTANCY_REJECTED
+NORMAL_EMPIRICAL_POLICY_CHANGED = NO
+NEGATIVE_EV_NORMAL_VETO_CHANGED = NO
+BOOTSTRAP_POLICY_CHANGED = NO
+FALLBACK_HIERARCHY_CHANGED = NO
+BUDGET_KEY = AUTHORITY_POPULATION_ID; CROSS_SYMBOL_SHARED
+MAX_CONCURRENT_EXPLORATION_POSITIONS_GLOBAL = 1
+MAX_OPEN_EXPLORATION_PER_AUTHORITY = 1
+MAX_EXPLORATION_PER_AUTHORITY_ROLLING_24H = 16
+MAX_EXPLORATION_GLOBAL_ROLLING_24H = 16
+EXPLORATION_COOLDOWN_MINUTES = 5
+MAX_NEW_COMMANDS_PER_CYCLE = 1; UNCHANGED
+RECOVERY_WINDOW_SIZE = 20
+REQUALIFICATION_MIN_NEW_V2_PROBES = 8
+REQUALIFICATION_MIN_DISTINCT_SYMBOLS = 3
+REQUALIFICATION_EV_REQUIREMENT = >0
+REQUALIFICATION_EXPECTED_EV_R_REQUIREMENT = >0
+REQUALIFICATION_CONSECUTIVE_POSITIVE_WINDOWS = 2
+AUTHORITY_GENERATIONS = DURABLE_IMMUTABLE_LINEAGE; ONE_ACTIVE_PER_POPULATION
+RECOVERY_CAMPAIGNS = DURABLE_RESTART_SAFE_AND_EXACTLY_ONCE
+CONTINUOUS_LEARNING_AFTER_PROMOTION = LATEST_COMPATIBLE_20_REALIZED_OBSERVATIONS
+NEGATIVE_AGAIN_LOOP = NEW_CAMPAIGN_WITH_ZERO_PROBES_AND_CONFIRMATIONS
+TESTS = PY_COMPILE_PASS; PRIMARY_REGRESSION_1546_PASS; POST_FIX_FOCUSED_26_PASS; SERVER_SCHEMA_EXPORT_18_PASS_7_SKIPPED; EXACT_SCHEMA_GUARD_1_PASS; ISOLATED_POSTGRESQL_E2E_2_PASS
+POSTGRES_FULL_REQUALIFICATION_E2E = PASS; 20_BASELINE_PLUS_9_V2_CLOSED; FIRST_CONFIRMATION_AT_8; PROMOTION_AT_9; NORMAL_RESUME; REPLAY_IDEMPOTENT; ORIGINAL_HISTORY_IMMUTABLE
+KNOWN_UNRELATED_TEST_BASELINE = SEVEN_LEGACY_ORCHESTRATOR_TESTS_STILL_REFERENCE_REMOVED_TRADE_5M_V1_PROFILE
+DEPLOY = PASS; ALEMBIC_0036; DISABLED_FIRST; SCHEMA_GUARD_FAIL_CLOSED_FOUND_AND_FIXED; THEN_ENABLED_ONLY_FOR_5M_PAPER
+RUNTIME_SOURCE_IDENTITY = a8b7863607c2be1ecb5e6913dc1dc13e0fc3df72
+ORCHESTRATOR_IMAGE = sha256:b4a425c8c334d0cdacce42859282128a5fc5f34b8a0c3d5323db283445714132
+READONLY_IMAGE = sha256:65440431f73ac87d1b961fce31249f2a19d1b2bb35ad2a19d990ada9b2dd7aee
+OPERATOR_IMAGE = sha256:96caebe40a82dcf72aa93a3b9bfe3f557430263f05f1ca0d85cba16267e73ada
+HEALTH = OK; CURRENT; OPERATIONAL
+READINESS = READY; SCHEMA_READY; CONTROL_HEALTHY
+COMMISSION = READY_20_OF_20; REAL_ACCOUNT_DATA
+UNIVERSE = trading-universe-v3; EXACT_20; MARKET_STREAMS_120_OF_120
+ALEMBIC = 0036_empirical_requalification_authority
+LIVE_STATE = DISABLED
+REAL_BINANCE_ORDER_CALLS = 0
+PRODUCTION_COMMANDS = 75; NON_PAPER_0; CLOSED_POSITIONS_73
+PRODUCTION_AUTHORITY_GENERATIONS_CAMPAIGNS_EVALUATIONS = 0_0_0
+PRODUCTION_HISTORY_MUTATED = NO
+NATURAL_V2_PROBE = NOT_OBSERVED_DURING_BOUNDED_SMOKE
+CURRENT_STAGE = PASSIVE_NATURAL_V2_PROBE_AND_REAL_RECOVERY_EVIDENCE_OBSERVATION
+CURRENT_BLOCKER = NONE_FOR_IMPLEMENTATION_TEST_DEPLOYMENT_OR_BOUNDED_PRODUCTION_ACCEPTANCE; NATURAL_V2_PROBE_NOT_OBSERVED
+NEXT_ACTION = PASSIVELY_OBSERVE_FIRST_NATURAL_BUDGET_PERMITTED_V2_PAPER_OPEN_TO_CLOSED_LIFECYCLE_AND_SUBSEQUENT_REAL_RECOVERY_WINDOWS; KEEP_LIVE_DISABLED
+```
+
+Evidence: `docs/audits/TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_01_FINAL.md`.
+Exploration v2 removes only the old negative authority's dynamic-RR gate while
+preserving configured base RR and every other admission protection. Durable
+requalification can promote a new authority only from real CLOSED evidence
+after the full two-window predicate; production has not yet observed such a
+probe or campaign.
 
 ## Limited PAPER exploration lane 01
 
