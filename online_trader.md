@@ -3,13 +3,62 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = a8b7863607c2be1ecb5e6913dc1dc13e0fc3df72
+STATUS_AS_OF_COMMIT = 2d48f1d2ba14ea1b1a0fef0c8b0af78eeba7c899
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-29T20:07:00Z
-RECONCILED_BY_TASK = TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_01
-FILES_CHANGED = alembic/versions/0036_empirical_requalification_authority.py; app/db/paper_models.py; app/engine_paper/empirical_requalification.py; app/engine_paper/paper_exploration.py; app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_statistics.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/final_approval_materializer.py; app/engine_paper/production_approval.py; app/engine_paper/plan_execution_outcome.py; app/operator_control/production_executor.py; app/server_api/schema_compatibility.py; app/server_api/schemas/paper.py; app/server_api/funnel_export.py; app/server_api/trading_funnel.py; scripts/engine_orchestrator_online_pipeline.py; docker-compose.yml; ops/production/operator-control-api/compose.yaml; tests/test_exploration_v2_requalification.py; tests/test_limited_paper_exploration.py; tests/integration/paper_natural_execution_e2e/conftest.py; tests/integration/paper_natural_execution_e2e/test_limited_paper_exploration_postgres.py; tests/engine_orchestrator/test_5m_runtime_parameterization_and_owner.py; tests/server_api/test_funnel_export.py; docs/audits/TRADERS_EXPLORATION_V2_AND_REQUALIFICATION_POLICY_01_FINAL.md; online_trader.md.
+RECONCILED_AT_UTC = 2026-09-30T19:04:51Z
+RECONCILED_BY_TASK = TRADERS_ROLLBACK_EXPLORATION_V1_V2_TO_PRE_EXPLORATION_BASELINE_01
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 2d48f1d2ba14ea1b1a0fef0c8b0af78eeba7c899
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+FILES_CHANGED = app/engine_paper/empirical_requalification.py; app/engine_paper/final_approval_materializer.py; app/engine_paper/paper_exploration.py; app/engine_paper/plan_execution_outcome.py; app/engine_paper/production_approval.py; app/engine_paper/scalping_paper_runner.py; app/engine_paper/scalping_policy_v2.py; app/engine_paper/scalping_shadow.py; app/engine_paper/scalping_statistics.py; app/operator_control/production_executor.py; app/operator_control/runtime.py; app/server_api/funnel_export.py; app/server_api/trading_funnel.py; docker-compose.yml; ops/production/operator-control-api/compose.yaml; tests/integration/paper_natural_execution_e2e/test_limited_paper_exploration_postgres.py; tests/server_api/test_funnel_export.py; tests/test_exploration_rollback.py; tests/test_exploration_v2_requalification.py; tests/test_limited_paper_exploration.py; docs/audits/TRADERS_ROLLBACK_EXPLORATION_V1_V2_TO_PRE_EXPLORATION_BASELINE_01_FINAL.md; online_trader.md.
+
+## Safe rollback of exploration v1/v2 to pre-exploration baseline 01
+
+```text
+TASK = TRADERS_SAFE_ROLLBACK_EXPLORATION_V1_V2_TO_PRE_EXPLORATION_BASELINE_CODEX_PROMPT
+FINAL_STATUS = PASS
+FINAL_VERDICT = EXPLORATION_V1_V2_AND_REQUALIFICATION_RUNTIME_ROLLED_BACK_TO_EXACT_PRE_EXPLORATION_BEHAVIOR; 0036_HISTORY_PRESERVED_DORMANT; LIVE_DISABLED
+PROJECT_STATE_COMMIT = 2d48f1d2ba14ea1b1a0fef0c8b0af78eeba7c899
+PRE_EXPLORATION_BASELINE_COMMIT = c2bd22603b596c2152bf9010e287063fe3183cd8
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 2d48f1d2ba14ea1b1a0fef0c8b0af78eeba7c899
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
+ACTIVE_PROFILE = trade-5m-v2
+MODE = PAPER
+EXPLORATION_V1 = ROLLED_BACK_INACTIVE
+EXPLORATION_V2 = ROLLED_BACK_INACTIVE
+REQUALIFICATION_V1 = ROLLED_BACK_INACTIVE
+CURRENT_ACTIVE_PRODUCTION_BEHAVIOR = EXACT_PRE_EXPLORATION_BASELINE_FOR_ALL_TOUCHED_TRADING_BEHAVIOR_FILES
+SOURCE_PARITY_WITH_C2BD226 = PASS; UNEXPECTED_PRODUCTION_BEHAVIOR_DIFFERENCES_0
+ALEMBIC = 0036_empirical_requalification_authority; NOT_DOWNGRADED
+SCHEMA_STATUS = ADDITIVE_HISTORY_TABLES_AND_MODELS_RETAINED_AS_DORMANT_COMPATIBILITY_ARTIFACTS
+PRODUCTION_COMMANDS = 75; NON_PAPER_0
+PRODUCTION_POSITIONS = 73_TOTAL; 0_OPEN; 73_CLOSED
+EXPLORATION_COMMANDS_OPENED_CLOSED = 0_0_0_FOR_V1; 0_0_0_FOR_V2
+RECOVERY_HISTORY = 2_CAMPAIGNS; 2_ESTABLISHED_BASELINE_GENERATIONS; 0_REQUALIFIED_GENERATIONS; 0_EVALUATIONS; PRESERVED_DORMANT
+HISTORY_IMMUTABILITY = PASS; POSITION_PLAN_OUTCOME_AND_RECOVERY_FINGERPRINTS_UNCHANGED
+TESTS = PY_COMPILE_PASS; FOCUSED_154_PASS_7_SKIPPED; ISOLATED_POSTGRESQL16_0036_17_PASS_WITH_4_BASELINE_FIXTURE_FAILURES_DISCLOSED; ACTIVE_PRODUCTION_28346_PASS_26_SKIPPED_WITH_PREEXISTING_DEBT_DISCLOSED
+DEPLOY = PASS; ONLY_ORCHESTRATOR5M_OPERATOR_CONTROL_READONLY_REBUILT_AND_RECREATED
+RUNTIME_SOURCE_IDENTITY = 2d48f1d2ba14ea1b1a0fef0c8b0af78eeba7c899
+ORCHESTRATOR_IMAGE = sha256:de78d867006af5447bc090e1007745f0c45bbbeed4457d9404d20939a56aa51e
+OPERATOR_IMAGE = sha256:74618bd436a145532577550f5a64f670c7abcf01af9d2687310ad84914861d0d
+READONLY_IMAGE = sha256:3c41f2c230694d2161e701bd72ee29bb472c90606303ffeee2f873d4bcbae411
+HEALTH = OK_CURRENT_OPERATIONAL; OPERATOR_HEALTHY; READONLY_HEALTHY
+READINESS = READY; SCHEMA_READY; CONTROL_HEALTHY
+COMMISSION = READY_20_OF_20; REAL_ACCOUNT_DATA; STUB_FALSE
+UNIVERSE = trading-universe-v3; EXACT_20
+LIVE_STATE = DISABLED
+REAL_BINANCE_ORDER_CALLS = 0
+NATURAL_MARKET_PERFORMANCE_CLAIM = NONE
+CURRENT_STAGE = PASSIVE_12_TO_24H_FUNNEL_OBSERVATION_ON_RESTORED_PRE_EXPLORATION_BASELINE
+CURRENT_BLOCKER = NONE_FOR_ROLLBACK_IMPLEMENTATION_TEST_DEPLOYMENT_OR_RUNTIME_ACCEPTANCE
+NEXT_ACTION = PASSIVELY_OBSERVE_12_TO_24H_FUNNEL_ON_RESTORED_PRE_EXPLORATION_BASELINE; DO_NOT_TUNE_OR_REDESIGN
+```
+
+Evidence: `docs/audits/TRADERS_ROLLBACK_EXPLORATION_V1_V2_TO_PRE_EXPLORATION_BASELINE_01_FINAL.md`.
+Historical v1/v2 audit sections below are retained as history and no longer
+describe active behavior. No natural-market performance claim is made by the
+rollback task.
 
 ## Exploration v2 and empirical requalification policy 01
 
