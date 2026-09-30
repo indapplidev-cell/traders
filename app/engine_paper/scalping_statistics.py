@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from hashlib import sha256
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -23,13 +22,6 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineRun,
 )
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
-from app.engine_paper.empirical_requalification import (
-    EXPLORATION_V2_ADMISSION_MODE,
-    EXPLORATION_V2_POLICY_VERSION,
-    EmpiricalRequalificationStore,
-    RecoveryObservation,
-    requalification_enabled,
-)
 from app.engine_paper.empirical_regime import (
     EMPIRICAL_REGIME_MAPPING_VERSION,
     normalize_empirical_regime,
@@ -62,7 +54,6 @@ class PaperOutcome:
     source_commit: str | None = None
     runtime_revision: str | None = None
     admission_mode_at_entry: str | None = None
-    exploration_policy_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +62,6 @@ class StatisticalHierarchy:
     parents: tuple[EmpiricalSetupBucket, ...]
     source_version: str = STATISTICS_SOURCE_VERSION
     outcome_count: int = 0
-    authority_context: Mapping[str, object] | None = None
 
 
 def _text(value: object, default: str = "UNKNOWN") -> str:
@@ -223,23 +213,6 @@ def hierarchy_from_outcomes(
             if not row.won and row.net_return_bps is not None and row.net_return_bps < 0
         )
         evidence_sources = sorted({row.evidence_source for row in selected})
-        population_dimensions: dict[str, object] = {
-            "version": EMPIRICAL_REGIME_MAPPING_VERSION,
-            "level": level,
-            "parameter_set_id": parameter_set_id,
-            "resolved_config_hash": resolved_config_hash,
-            "setup_type": setup_type if level != "global" else None,
-            "direction": direction if level in {"exact", "setup_direction_regime", "setup_direction"} else None,
-            "regime": lookup_regime if level in {"exact", "setup_direction_regime"} else None,
-            "symbol": symbol if level == "exact" else None,
-            "cost_bucket": cost_bucket if level == "exact" else None,
-        }
-        population_material = json.dumps(
-            population_dimensions, sort_keys=True, separators=(",", ":")
-        )
-        position_ids = sorted(
-            str(row.position_id) for row in selected if row.position_id
-        )
         buckets.append(EmpiricalSetupBucket(
             setup_type=setup_type,
             direction=direction,
@@ -263,13 +236,6 @@ def hierarchy_from_outcomes(
                 sum(losing_returns) / len(losing_returns)
                 if losing_returns else None
             ),
-            authority_population_id=(
-                "empirical-authority-population-v1:"
-                + sha256(population_material.encode("utf-8")).hexdigest()
-            ),
-            observation_set_fingerprint=sha256(
-                "\n".join(position_ids).encode("utf-8")
-            ).hexdigest(),
         ))
     return StatisticalHierarchy(buckets[0], tuple(buckets[1:]), outcome_count=len(rows))
 
@@ -284,7 +250,6 @@ class PostgresPaperOutcomeStatisticsSource:
             raise ValueError("maximum_outcomes must be positive")
         self._session_factory = session_factory
         self.maximum_outcomes = maximum_outcomes
-        self._requalification = EmpiricalRequalificationStore(session_factory)
 
     def _load(self) -> tuple[PaperOutcome, ...]:
         statement = (
@@ -383,36 +348,8 @@ class PostgresPaperOutcomeStatisticsSource:
                 admission_mode_at_entry=(
                     str(_nested(context, "admission_mode_at_entry") or "") or None
                 ),
-                exploration_policy_version=(
-                    str(_nested(context, "exploration_policy_version") or "") or None
-                ),
             ))
         return tuple(outcomes)
-
-    @staticmethod
-    def _population_members(
-        outcomes: Iterable[PaperOutcome], *, level: str, symbol: str,
-        setup_type: str, direction: str, regime: str, cost_bucket: str,
-    ) -> tuple[PaperOutcome, ...]:
-        normalized_regime = normalize_empirical_regime(regime).normalized_regime
-
-        def matches(row: PaperOutcome) -> bool:
-            row_regime = normalize_empirical_regime(row.regime).normalized_regime
-            if level == "exact":
-                return (
-                    row.symbol, row.setup_type, row.direction, row_regime, row.cost_bucket
-                ) == (symbol, setup_type, direction, normalized_regime, cost_bucket)
-            if level == "setup_direction_regime":
-                return (row.setup_type, row.direction, row_regime) == (
-                    setup_type, direction, normalized_regime,
-                )
-            if level == "setup_direction":
-                return (row.setup_type, row.direction) == (setup_type, direction)
-            if level == "setup":
-                return row.setup_type == setup_type
-            return True
-
-        return tuple(row for row in outcomes if matches(row))
 
     def resolve(
         self, *, symbol: str, setup_type: str, direction: str,
@@ -425,67 +362,12 @@ class PostgresPaperOutcomeStatisticsSource:
         # outcomes remain available through ``load_prospective_outcomes`` for
         # research, but are never mixed into the runtime probability authority.
         outcomes = self._load()
-        normal_outcomes = tuple(
-            row for row in outcomes
-            if row.admission_mode_at_entry not in {
-                "PAPER_EXPLORATION_ADMISSION", EXPLORATION_V2_ADMISSION_MODE,
-            }
-        )
-        hierarchy = hierarchy_from_outcomes(
-            normal_outcomes, symbol=_text(symbol), setup_type=_text(setup_type),
+        return hierarchy_from_outcomes(
+            outcomes, symbol=_text(symbol), setup_type=_text(setup_type),
             direction=_text(direction), regime=_text(regime),
             cost_bucket=_text(cost_bucket),
             parameter_set_id=parameter_set_id,
             resolved_config_hash=resolved_config_hash,
-        )
-        if not requalification_enabled():
-            return hierarchy
-        buckets = ((hierarchy.exact,) if hierarchy.exact is not None else ()) + hierarchy.parents
-        selected = next((item for item in buckets if item.samples >= 20), None)
-        if selected is None:
-            return hierarchy
-        compatible_all = tuple(
-            row for row in outcomes
-            if row.parameter_set_id == parameter_set_id
-            and row.resolved_config_hash == resolved_config_hash
-            and (
-                row.admission_mode_at_entry not in {
-                    "PAPER_EXPLORATION_ADMISSION", EXPLORATION_V2_ADMISSION_MODE,
-                }
-                or (
-                    row.admission_mode_at_entry == EXPLORATION_V2_ADMISSION_MODE
-                    and row.exploration_policy_version == EXPLORATION_V2_POLICY_VERSION
-                )
-            )
-        )
-        population = self._population_members(
-            compatible_all, level=selected.level, symbol=_text(symbol),
-            setup_type=_text(setup_type), direction=_text(direction),
-            regime=_text(regime), cost_bucket=_text(cost_bucket),
-        )
-        observations = tuple(
-            RecoveryObservation(
-                position_id=str(row.position_id), symbol=row.symbol,
-                closed_at=datetime.fromtimestamp(row.observed_at_ms / 1000, timezone.utc),
-                net_return_bps=float(row.net_return_bps),
-                admission_mode=str(row.admission_mode_at_entry or "LEGACY_NORMAL"),
-                exploration_policy_version=row.exploration_policy_version,
-            )
-            for row in population
-            if row.position_id and row.net_return_bps is not None and row.observed_at_ms > 0
-        )
-        active_bucket, snapshot = self._requalification.reconcile(
-            base_bucket=selected, observations=observations,
-        )
-        replacement = tuple(
-            active_bucket if item.authority_population_id == selected.authority_population_id else item
-            for item in buckets
-        )
-        exact = replacement[0] if hierarchy.exact is not None else None
-        parents = replacement[1:] if hierarchy.exact is not None else replacement
-        return StatisticalHierarchy(
-            exact, tuple(parents), hierarchy.source_version, hierarchy.outcome_count,
-            snapshot.to_dict(),
         )
 
 

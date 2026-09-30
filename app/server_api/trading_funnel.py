@@ -868,33 +868,6 @@ def _downstream_trace_facts(
         "rr_empirical_status": diagnostic.get("rr_empirical_status"),
         "paper_bootstrap_eligible": diagnostic.get("paper_bootstrap_eligible"),
         "paper_bootstrap_reason": diagnostic.get("paper_bootstrap_reason"),
-        "normal_admission": diagnostic.get("normal_admission_result"),
-        "normal_reason": diagnostic.get("normal_reject_reason"),
-        "exploration_eligible": diagnostic.get("exploration_eligible"),
-        "exploration_selected": diagnostic.get("exploration_selected"),
-        "exploration_reason": diagnostic.get("exploration_block_reason"),
-        "exploration_policy_version": diagnostic.get("exploration_policy_version"),
-        "authority_population_id": diagnostic.get("authority_population_id"),
-        "authority_observation_set_fingerprint": diagnostic.get(
-            "authority_observation_set_fingerprint"
-        ),
-        "exploration_v2_eligible": diagnostic.get(
-            "exploration_v2_eligible", diagnostic.get("exploration_eligible")
-        ),
-        "exploration_v2_selected": diagnostic.get("exploration_v2_selected"),
-        "exploration_v2_block_reason": diagnostic.get("exploration_v2_block_reason"),
-        "authority_generation_id": diagnostic.get("authority_generation_id"),
-        "authority_state": diagnostic.get("authority_state"),
-        "recovery_campaign_id": diagnostic.get("recovery_campaign_id"),
-        "recovery_new_observation_count": diagnostic.get("recovery_new_observation_count"),
-        "recovery_distinct_symbol_count": diagnostic.get("recovery_distinct_symbol_count"),
-        "recovery_positive_confirmation_count": diagnostic.get("recovery_positive_confirmation_count"),
-        "recovery_window_sample_count": diagnostic.get("recovery_window_sample_count"),
-        "recovery_window_ev_net_bps": diagnostic.get("recovery_window_ev_net_bps"),
-        "recovery_window_expected_ev_r": diagnostic.get("recovery_window_expected_ev_r"),
-        "recovery_window_fingerprint": diagnostic.get("recovery_window_fingerprint"),
-        "requalification_status": diagnostic.get("requalification_status"),
-        "requalification_reason": diagnostic.get("requalification_reason"),
         "bootstrap_observation_ingested": diagnostic.get("bootstrap_observation_ingested"),
         "causal_opportunity_id": _first_present(
             context.get("causal_opportunity_id"), diagnostic.get("causal_opportunity_id"),
@@ -2125,24 +2098,6 @@ class TradingFunnelReadRepository:
                 "selector_decided_at": plan.first_observed_at,
                 "execution_gate_reason": execution_details.get("execution_gate_reason"),
                 "readiness_reason": execution_details.get("readiness_reason"),
-                "admission_mode": execution_details.get("admission_mode"),
-                "exploration_selected": execution_details.get("exploration_selected"),
-                "exploration_rank": execution_details.get("exploration_rank"),
-                "exploration_block_reason": execution_details.get(
-                    "exploration_block_reason"
-                ),
-                "exploration_policy_version": execution_details.get(
-                    "exploration_policy_version"
-                ),
-                "authority_population_id": execution_details.get(
-                    "authority_population_id"
-                ),
-                "budget_snapshot": execution_details.get("budget_snapshot"),
-                "cooldown_until": execution_details.get("cooldown_until"),
-                "exploration_v2_selected": execution_details.get("exploration_v2_selected"),
-                "exploration_v2_block_reason": execution_details.get(
-                    "exploration_v2_block_reason"
-                ),
                 "plan_terminal_state": plan_terminal_state,
                 "plan_terminal_reason": plan_terminal_reason,
                 "plan_created_at": datetime.fromtimestamp(

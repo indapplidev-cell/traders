@@ -22,8 +22,6 @@ RISK_POLICY_VERSION = "scalping-risk-capped-v2"
 COST_POLICY_VERSION = "scalping-round-trip-net-pnl-v2"
 ADMISSION_EMPIRICAL = "EMPIRICAL"
 ADMISSION_PAPER_BOOTSTRAP = "PAPER_BOOTSTRAP"
-ADMISSION_PAPER_EXPLORATION = "PAPER_EXPLORATION_ADMISSION"
-ADMISSION_PAPER_EXPLORATION_V2 = "PAPER_EXPLORATION_V2"
 ADMISSION_REJECTED = "REJECTED"
 EMPIRICAL_AUTHORITY_ESTABLISHED = "ESTABLISHED"
 EMPIRICAL_AUTHORITY_NOT_ESTABLISHED = "NOT_ESTABLISHED"
@@ -55,8 +53,6 @@ class EmpiricalSetupBucket:
     evidence_source: str = "PERSISTED_PAPER_OUTCOME"
     average_win_net_bps: float | None = None
     average_loss_net_bps: float | None = None
-    authority_population_id: str | None = None
-    observation_set_fingerprint: str | None = None
 
     def __post_init__(self) -> None:
         if self.samples < 0 or not 0 <= self.wins <= self.samples:
@@ -102,8 +98,6 @@ class ExpectancyDecision:
     paper_bootstrap_eligible: bool = False
     paper_bootstrap_reason: str | None = None
     empirical_pass: bool = False
-    authority_population_id: str | None = None
-    authority_observation_set_fingerprint: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,10 +200,6 @@ def evaluate_expectancy(
             paper_bootstrap_eligible=paper_bootstrap_allowed,
             paper_bootstrap_reason=bootstrap_reason,
             empirical_pass=False,
-            authority_population_id=(None if leaf is None else leaf.authority_population_id),
-            authority_observation_set_fingerprint=(
-                None if leaf is None else leaf.observation_set_fingerprint
-            ),
         )
     selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
     hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
@@ -291,25 +281,18 @@ def evaluate_expectancy(
         paper_bootstrap_eligible=False,
         paper_bootstrap_reason=None,
         empirical_pass=admitted,
-        authority_population_id=selected.authority_population_id,
-        authority_observation_set_fingerprint=selected.observation_set_fingerprint,
     )
 
 
 def bootstrap_execution_permitted(*, admission_mode: str, execution_mode: str) -> bool:
-    """Permanent invariant: non-normal evidence collection is PAPER-only."""
-    if admission_mode in {
-        ADMISSION_PAPER_BOOTSTRAP, ADMISSION_PAPER_EXPLORATION,
-        ADMISSION_PAPER_EXPLORATION_V2,
-    }:
+    """Permanent invariant: bootstrap evidence collection is PAPER-only."""
+    if admission_mode == ADMISSION_PAPER_BOOTSTRAP:
         return str(execution_mode).upper() == "PAPER"
     return True
 
 
 __all__ = (
-    "ADMISSION_EMPIRICAL", "ADMISSION_PAPER_BOOTSTRAP", "ADMISSION_PAPER_EXPLORATION",
-    "ADMISSION_PAPER_EXPLORATION_V2",
-    "ADMISSION_REJECTED",
+    "ADMISSION_EMPIRICAL", "ADMISSION_PAPER_BOOTSTRAP", "ADMISSION_REJECTED",
     "COST_POLICY_VERSION", "ENTRY_POLICY_VERSION", "EmpiricalSetupBucket", "ExpectancyDecision",
     "EMPIRICAL_AUTHORITY_ESTABLISHED", "EMPIRICAL_AUTHORITY_NOT_ESTABLISHED",
     "CONFIDENCE_METHOD", "PROBABILITY_ESTIMATOR_VERSION", "ProbabilityEstimate",

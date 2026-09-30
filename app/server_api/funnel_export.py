@@ -373,7 +373,7 @@ def build_export_record(
         "required_dynamic_rr": diagnostic.get("required_dynamic_rr", diagnostic.get("dynamic_required_net_rr")),
         "expected_ev_r": diagnostic.get("expected_ev_r"),
         "fallback_bucket_used": diagnostic.get("fallback_bucket_used", diagnostic.get("probability_fallback_level")),
-        "admission_mode": outcome.get("admission_mode") or diagnostic.get("admission_mode"),
+        "admission_mode": diagnostic.get("admission_mode"),
         "empirical_authority_status": diagnostic.get("empirical_authority_status"),
         "empirical_sample_count": diagnostic.get("empirical_sample_count"),
         "empirical_required_sample": diagnostic.get("empirical_required_sample"),
@@ -384,44 +384,6 @@ def build_export_record(
         "empirical_regime_normalized": diagnostic.get("empirical_regime_normalized"),
         "empirical_regime_mapping_reason": diagnostic.get("empirical_regime_mapping_reason"),
         "empirical_regime_mapping_version": diagnostic.get("empirical_regime_mapping_version"),
-        "normal_admission": diagnostic.get("normal_admission_result"),
-        "normal_reason": diagnostic.get("normal_reject_reason"),
-        "exploration_eligible": diagnostic.get("exploration_eligible"),
-        "exploration_selected": outcome.get(
-            "exploration_selected", diagnostic.get("exploration_selected")
-        ),
-        "exploration_rank": outcome.get(
-            "exploration_rank", diagnostic.get("exploration_rank")
-        ),
-        "exploration_reason": outcome.get(
-            "exploration_block_reason", diagnostic.get("exploration_block_reason")
-        ),
-        "exploration_policy_version": outcome.get("exploration_policy_version") or diagnostic.get(
-            "exploration_policy_version"
-        ),
-        "authority_population_id": outcome.get("authority_population_id") or diagnostic.get(
-            "authority_population_id"
-        ),
-        "budget_snapshot": outcome.get("budget_snapshot"),
-        "cooldown_until": outcome.get("cooldown_until"),
-        "authority_observation_set_fingerprint": diagnostic.get(
-            "authority_observation_set_fingerprint"
-        ),
-        "exploration_v2_eligible": diagnostic.get("exploration_v2_eligible", diagnostic.get("exploration_eligible")),
-        "exploration_v2_selected": outcome.get("exploration_v2_selected", diagnostic.get("exploration_v2_selected")),
-        "exploration_v2_block_reason": outcome.get("exploration_v2_block_reason", diagnostic.get("exploration_v2_block_reason")),
-        "authority_generation_id": diagnostic.get("authority_generation_id"),
-        "authority_state": diagnostic.get("authority_state"),
-        "recovery_campaign_id": diagnostic.get("recovery_campaign_id"),
-        "recovery_new_observation_count": diagnostic.get("recovery_new_observation_count"),
-        "recovery_distinct_symbol_count": diagnostic.get("recovery_distinct_symbol_count"),
-        "recovery_positive_confirmation_count": diagnostic.get("recovery_positive_confirmation_count"),
-        "recovery_window_sample_count": diagnostic.get("recovery_window_sample_count"),
-        "recovery_window_ev_net_bps": diagnostic.get("recovery_window_ev_net_bps"),
-        "recovery_window_expected_ev_r": diagnostic.get("recovery_window_expected_ev_r"),
-        "recovery_window_fingerprint": diagnostic.get("recovery_window_fingerprint"),
-        "requalification_status": diagnostic.get("requalification_status"),
-        "requalification_reason": diagnostic.get("requalification_reason"),
     }
     math_fields = (
         "entry_price", "entry_source", "stop_price", "stop_source",
@@ -463,17 +425,6 @@ def build_export_record(
         "paper_bootstrap_reason", "bootstrap_observation_ingested",
         "empirical_regime_source", "empirical_regime_normalized",
         "empirical_regime_mapping_reason", "empirical_regime_mapping_version",
-        "normal_admission_result", "normal_reject_reason",
-        "exploration_eligible", "exploration_selected", "exploration_rank",
-        "exploration_block_reason", "exploration_policy_version",
-        "authority_population_id", "authority_observation_set_fingerprint",
-        "authority_generation_id", "authority_state", "recovery_campaign_id",
-        "recovery_new_observation_count", "recovery_distinct_symbol_count",
-        "recovery_positive_confirmation_count", "recovery_window_sample_count",
-        "recovery_window_ev_net_bps", "recovery_window_expected_ev_r",
-        "recovery_window_fingerprint", "requalification_status",
-        "requalification_reason", "exploration_v2_eligible",
-        "exploration_v2_selected", "exploration_v2_block_reason",
     )
     configuration = effective_configuration(result)
     runtime_revision = (

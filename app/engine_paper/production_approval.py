@@ -11,7 +11,7 @@ objects, which is a healthy, fail-closed outcome.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -30,14 +30,6 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineRun,
 )
 from app.config.yaml_authority import RUNTIME_POLICY
-from app.engine_paper.paper_exploration import (
-    configured_policy_version,
-    feature_enabled as exploration_feature_enabled,
-)
-from app.engine_paper.scalping_policy_v2 import (
-    ADMISSION_PAPER_EXPLORATION,
-    ADMISSION_PAPER_EXPLORATION_V2,
-)
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 if TYPE_CHECKING:
     from app.engine_paper.paper_approvals import PaperQuantityApprovalSource
@@ -273,8 +265,6 @@ class PaperProductionApprovalCandidate:
     trade_profile_id: str
     primary_timeframe: str
     causal_opportunity_id: str | None = None
-    admission_mode: str = "NORMAL_EMPIRICAL_ADMISSION"
-    exploration_provenance: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -912,40 +902,6 @@ class PaperProductionApprovalSourceAdapter:
         analysis, setup, strategy, risk, paper = (
             row.analysis, row.setup, row.strategy, row.risk, row.paper
         )
-        paper_context = paper.get("paper_context")
-        paper_context = paper_context if isinstance(paper_context, Mapping) else {}
-        admission_mode = str(
-            paper_context.get("admission_mode_at_entry")
-            or paper_context.get("admission_mode")
-            or "NORMAL_EMPIRICAL_ADMISSION"
-        )
-        if admission_mode in {
-            ADMISSION_PAPER_EXPLORATION, ADMISSION_PAPER_EXPLORATION_V2,
-        }:
-            if row.trade_profile_id != "trade-5m-v2" or not exploration_feature_enabled():
-                return self._symbol_result(
-                    row, PaperProductionApprovalOutcome.APPROVAL_NOT_FINAL,
-                    lineage_valid=True,
-                )
-            if (
-                admission_mode == ADMISSION_PAPER_EXPLORATION_V2
-                and paper_context.get("exploration_policy_version")
-                != configured_policy_version()
-            ):
-                return self._symbol_result(
-                    row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH,
-                    lineage_valid=False,
-                )
-            if (
-                paper_context.get("normal_admission_result") != "REJECTED"
-                or paper_context.get("normal_reject_reason")
-                != "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
-                or paper_context.get("exploration_eligible") is not True
-            ):
-                return self._symbol_result(
-                    row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH,
-                    lineage_valid=False,
-                )
         expected_profiles = EXECUTION_PROFILES_BY_TIMEFRAME.get(row.primary_timeframe)
         expected_profile = row.trade_profile_id
         if (
@@ -1206,30 +1162,6 @@ class PaperProductionApprovalSourceAdapter:
                 or (paper.get("paper_context") or {}).get("scalping_geometry_diagnostics", {}).get("opportunity_id")
                 or ""
             ) or None,
-            admission_mode,
-            {
-                key: paper_context.get(key)
-                for key in (
-                    "exploration_id", "exploration_policy_version",
-                    "authority_population_id", "authority_bucket_key",
-                    "authority_observation_set_fingerprint",
-                    "authority_sample_before", "authority_wins_before",
-                    "authority_losses_before", "authority_ev_before",
-                    "authority_required_dynamic_rr_before",
-                    "normal_admission_result", "normal_reject_reason",
-                    "candidate_net_rr", "candidate_required_dynamic_rr",
-                    "exploration_eligible", "exploration_v2_eligible",
-                    "authority_generation_id", "authority_state",
-                    "recovery_campaign_id", "recovery_new_observation_count",
-                    "recovery_distinct_symbol_count",
-                    "recovery_positive_confirmation_count",
-                    "recovery_window_sample_count", "recovery_window_ev_net_bps",
-                    "recovery_window_expected_ev_r", "recovery_window_fingerprint",
-                    "requalification_status", "requalification_reason",
-                )
-            } if admission_mode in {
-                ADMISSION_PAPER_EXPLORATION, ADMISSION_PAPER_EXPLORATION_V2,
-            } else {},
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,

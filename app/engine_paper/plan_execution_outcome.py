@@ -77,7 +77,6 @@ class PaperPlanExecutionOutcomeStore:
         control_generation: int,
         observed_at: datetime | None = None,
         selector_started_at: datetime | None = None,
-        selection_reasons: Mapping[str, str] | None = None,
     ) -> None:
         now = self._utc(observed_at)
         ordered = rank_eligible_candidates(candidates)
@@ -101,10 +100,8 @@ class PaperPlanExecutionOutcomeStore:
                 plan_id, created, _finished_at = identities[run_id]
                 selected = candidate.candidate_id == winner_id
                 state = "PLAN_OBSERVED" if selected else "NOT_SELECTED"
-                reason = None if selected else (
-                    (selection_reasons or {}).get(
-                        candidate.candidate_id, "LOWER_SELECTOR_RANK"
-                    )
+                reason = (
+                    None if selected else "LOWER_SELECTOR_RANK"
                 )
                 selection_details = {
                     "cycle_complete_at": (
@@ -126,23 +123,6 @@ class PaperPlanExecutionOutcomeStore:
                         - int(now.timestamp() * 1000)
                     ),
                 }
-                admission_mode = getattr(candidate, "admission_mode", None)
-                if admission_mode in {
-                    "PAPER_EXPLORATION_ADMISSION", "PAPER_EXPLORATION_V2",
-                }:
-                    provenance = getattr(candidate, "exploration_provenance", {})
-                    if isinstance(provenance, Mapping):
-                        selection_details.update(dict(provenance))
-                    selection_details.update({
-                        "admission_mode": admission_mode,
-                        "exploration_selected": selected,
-                        "exploration_rank": ranks[candidate.candidate_id],
-                        "exploration_block_reason": reason,
-                        "exploration_v2_selected": selected,
-                        "exploration_v2_block_reason": (
-                            "EXPLORATION_V2_SELECTED" if selected else reason
-                        ),
-                    })
                 if row is None:
                     row = PaperPlanExecutionOutcomeRecord(
                         pipeline_run_id=run_id,
