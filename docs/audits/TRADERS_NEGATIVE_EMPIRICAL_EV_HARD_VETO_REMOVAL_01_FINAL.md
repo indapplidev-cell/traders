@@ -86,6 +86,18 @@ had `STRUCTURAL_SETUP=2`, `STRATEGY_ELIGIBLE=1`, `RR_PASS=0`; this is an
 observation, not a replay or forced trade, and does not prove that dynamic RR
 is yet the next material bottleneck.
 
+### Post-deployment correction
+
+The first orchestrator recreation used the abbreviated label `fbe71e7`, while
+the orchestrator entrypoint requires an immutable 40-hex revision. It therefore
+restarted without processing cycles and the client correctly displayed
+`Недоступно`. No trading mutation occurred. The orchestrator image was rebuilt
+and recreated with the full revision
+`fbe71e7edf4030abbf368e92f9a10f46a1c505a9`; it is now running with
+`Restart=0`. After the next natural 5m boundary, the read-only endpoint and
+client parser both returned `freshness=CURRENT`, current and last-completed
+cycles present, `symbols_processed=20`, and `cycle_complete=true`.
+
 ## Safety and next stage
 
 ```text
