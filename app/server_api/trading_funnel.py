@@ -840,6 +840,7 @@ def _downstream_trace_facts(
         "probability_source": diagnostic.get("probability_estimator_version"),
         "candidate_net_rr": diagnostic.get("candidate_net_rr"),
         "dynamic_required_net_rr": diagnostic.get("dynamic_required_net_rr"),
+        "dynamic_rr_pass": diagnostic.get("dynamic_rr_pass"),
         "minimum_planned_rr": required_rr,
         "final_required_rr": (
             max(float(value) for value in (

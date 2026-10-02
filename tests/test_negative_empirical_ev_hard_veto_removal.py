@@ -114,16 +114,28 @@ def test_ena_negative_empirical_ev_is_diagnostic_above_dynamic_rr() -> None:
     assert result.rejection_reason is None
 
 
-def test_negative_ev_below_dynamic_rr_keeps_actual_terminal_blocker() -> None:
+def test_negative_ev_below_dynamic_rr_is_non_terminal() -> None:
     result = _shadow(net_rr=2.70)
 
     assert result.expected_value_bps < 0
     assert result.net_rr < result.dynamic_required_net_rr
     assert result.expectancy_gate_reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
-    assert result.rejection_stage == "EXPECTANCY_GATE"
-    assert result.rejection_reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
-    assert result.rejection_reason != "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
-    assert result.valid_plan is False
+    assert result.rejection_stage is None
+    assert result.rejection_reason is None
+    assert result.valid_plan is True
+
+
+def test_dynamic_rr_below_threshold_above_base_rr_reaches_risk() -> None:
+    result = _shadow(net_rr=0.90)
+
+    assert result.net_rr >= 0.476674
+    assert result.net_rr < result.dynamic_required_net_rr
+    assert result.dynamic_rr_pass is False
+    assert result.expectancy_gate_reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
+    assert result.admission_decision == "PASS"
+    assert result.valid_plan is True
+    assert result.final_shadow_approval is True
+    assert result.rejection_reason is None
 
 
 def test_positive_empirical_ev_and_insufficient_sample_semantics_are_unchanged() -> None:

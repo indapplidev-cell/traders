@@ -72,7 +72,7 @@ def test_target_task_detects_late_dynamic_ordering_defect() -> None:
     assert report["bounded_replay"]["no_lookahead"] is True
 
 
-def test_runtime_selector_continues_to_farther_causal_target_for_dynamic_rr() -> None:
+def test_runtime_selector_keeps_first_causal_target_when_dynamic_rr_is_diagnostic() -> None:
     boundary = 2_000
     candidate = ShadowGeometryCandidate(
         trade_profile_id="trade-5m-v2", symbol="BTCUSDT", boundary_ms=boundary,
@@ -96,8 +96,9 @@ def test_runtime_selector_continues_to_farther_causal_target_for_dynamic_rr() ->
         minimum_ev_reserve_r=.05,
     ))
     assert result.first_actionable_target["target_price"] == 100.35
-    assert result.causal_target == 101
-    assert result.net_rr == 2
+    assert result.causal_target == 100.35
+    assert result.net_rr == .7
+    assert result.dynamic_rr_pass is False
     assert result.valid_plan is True
 
 

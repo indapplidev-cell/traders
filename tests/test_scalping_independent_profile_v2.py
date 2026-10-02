@@ -115,7 +115,8 @@ def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():
         static_net_rr=0.4, static_minimum_net_rr=0.4,
     )
     assert positive.admitted and positive.expected_value_bps > 0
-    assert not negative.admitted and negative.expected_value_bps < 0
+    assert negative.admitted and negative.expected_value_bps < 0
+    assert negative.dynamic_rr_pass is False
     assert not fallback.admitted and fallback.expected_value_bps is None
     assert fallback.reason == "EMPIRICAL_INSUFFICIENT_SAMPLE_BOOTSTRAP_REJECTED_PRECONDITION"
 

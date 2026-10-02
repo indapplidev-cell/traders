@@ -21,7 +21,7 @@ def test_dynamic_required_rr_uses_conservative_probability():
     assert result.admitted
 
 
-def test_dynamic_rr_still_rejects_negative_ev_candidate_below_threshold():
+def test_dynamic_rr_below_threshold_is_diagnostic_only():
     result = evaluate_expectancy(
         net_win_bps=20, net_loss_bps=100,
         bucket=EmpiricalSetupBucket(
@@ -31,7 +31,8 @@ def test_dynamic_rr_still_rejects_negative_ev_candidate_below_threshold():
         static_net_rr=99, static_minimum_net_rr=0,
     )
     assert result.expected_ev_r < 0
-    assert not result.admitted
+    assert result.admitted
+    assert result.dynamic_rr_pass is False
     assert result.reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
 
 

@@ -80,6 +80,7 @@ class ExpectancyDecision:
     estimator_version: str = PROBABILITY_ESTIMATOR_VERSION
     confidence_method: str = CONFIDENCE_METHOD
     dynamic_required_net_rr: float | None = None
+    dynamic_rr_pass: bool | None = None
     candidate_net_rr: float | None = None
     expected_ev_r: float | None = None
     ev_reserve: float | None = None
@@ -232,11 +233,6 @@ def evaluate_expectancy(
         if expected_value is not None and average_loss_net_bps else None
     )
     ev_reserve = candidate_net_rr - break_even_rr
-    admitted = (
-        expected_value is not None
-        and candidate_net_rr >= dynamic_required_net_rr
-        and ev_reserve >= minimum_ev_reserve_r
-    )
     empirical_expectancy_positive = (
         expected_value is not None
         and expected_value >= minimum_expected_value_bps
@@ -244,14 +240,15 @@ def evaluate_expectancy(
         and expected_ev_r >= minimum_positive_ev_r
     )
     empirical_expectancy_negative = expected_value is not None and expected_value < 0
+    dynamic_rr_pass = candidate_net_rr >= dynamic_required_net_rr
     admitted = (
-        admitted
+        expected_value is not None
         and (empirical_expectancy_negative or empirical_expectancy_positive)
     )
     reason = (
         "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE"
         if not empirical_payoff_ready
-        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT" if not admitted
+        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT" if not dynamic_rr_pass
         else "EMPIRICAL_SUFFICIENT_POSITIVE_EV" if empirical_expectancy_positive
         else "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
     )
@@ -269,6 +266,7 @@ def evaluate_expectancy(
         sample_size=estimate.sample_size,
         parent_sample_size=estimate.parent_sample_size,
         dynamic_required_net_rr=dynamic_required_net_rr,
+        dynamic_rr_pass=dynamic_rr_pass,
         candidate_net_rr=candidate_net_rr,
         expected_ev_r=expected_ev_r,
         ev_reserve=ev_reserve,

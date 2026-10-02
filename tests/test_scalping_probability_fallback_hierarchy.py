@@ -78,15 +78,16 @@ def test_sufficient_positive_authority_uses_empirical_mode_not_bootstrap():
     assert result.reason == "EMPIRICAL_SUFFICIENT_POSITIVE_EV"
 
 
-def test_sufficient_negative_ev_below_dynamic_rr_cannot_fall_back_to_bootstrap():
+def test_sufficient_negative_ev_below_dynamic_rr_is_diagnostic_not_bootstrap():
     result = evaluate_expectancy(
         net_win_bps=80, net_loss_bps=40,
         bucket=bucket("exact", 20, 1), minimum_samples=20,
         paper_bootstrap_allowed=True,
     )
-    assert result.admitted is False
+    assert result.admitted is True
+    assert result.dynamic_rr_pass is False
     assert result.empirical_pass is False
-    assert result.admission_mode == "REJECTED"
+    assert result.admission_mode == "EMPIRICAL"
     assert result.paper_bootstrap_eligible is False
     assert result.reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
 
@@ -100,7 +101,7 @@ def test_sufficient_compatible_parent_prevents_bootstrap():
         paper_bootstrap_allowed=True,
     )
     assert result.paper_bootstrap_eligible is False
-    assert result.admission_mode == "REJECTED"
+    assert result.admission_mode == "EMPIRICAL"
     assert result.fallback_level == "setup_direction"
 
 
