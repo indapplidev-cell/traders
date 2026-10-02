@@ -964,6 +964,10 @@ def evaluate_scalping_shadow(
         result.empirical_ev_net_bps = expectancy.empirical_ev_net_bps
         result.rr_empirical_status = (
             "PASS" if expectancy.empirical_pass
+            else "NEGATIVE_DIAGNOSTIC" if (
+                expectancy.admitted
+                and expectancy.empirical_authority_status == "ESTABLISHED"
+            )
             else "REJECT" if expectancy.empirical_authority_status == "ESTABLISHED"
             else "NOT_ESTABLISHED"
         )
@@ -972,7 +976,12 @@ def evaluate_scalping_shadow(
         result.expected_value_bps = expectancy.expected_value_bps
         result.expectancy_gate_reason = expectancy.reason
         if not expectancy.admitted:
-            return result.reject("EXPECTANCY_GATE", "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED")
+            terminal_reason = (
+                expectancy.reason
+                if expectancy.reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
+                else "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+            )
+            return result.reject("EXPECTANCY_GATE", terminal_reason)
     result.economic_gate_pass = True
     result.rr_cohorts_gross = {
         f"{rr:.2f}": result.gross_rr >= rr for rr in config.rr_shadow_cohorts

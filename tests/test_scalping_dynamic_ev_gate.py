@@ -21,7 +21,7 @@ def test_dynamic_required_rr_uses_conservative_probability():
     assert result.admitted
 
 
-def test_negative_conservative_ev_never_passes_even_with_old_static_floor():
+def test_dynamic_rr_still_rejects_negative_ev_candidate_below_threshold():
     result = evaluate_expectancy(
         net_win_bps=20, net_loss_bps=100,
         bucket=EmpiricalSetupBucket(
@@ -32,7 +32,7 @@ def test_negative_conservative_ev_never_passes_even_with_old_static_floor():
     )
     assert result.expected_ev_r < 0
     assert not result.admitted
-    assert result.reason == "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
+    assert result.reason == "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT"
 
 
 def test_ev_and_reserve_thresholds_are_independent_gates():

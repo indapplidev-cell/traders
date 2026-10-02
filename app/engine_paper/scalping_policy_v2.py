@@ -234,16 +234,25 @@ def evaluate_expectancy(
     ev_reserve = candidate_net_rr - break_even_rr
     admitted = (
         expected_value is not None
-        and expected_value >= minimum_expected_value_bps
         and candidate_net_rr >= dynamic_required_net_rr
+        and ev_reserve >= minimum_ev_reserve_r
+    )
+    empirical_expectancy_positive = (
+        expected_value is not None
+        and expected_value >= minimum_expected_value_bps
         and expected_ev_r is not None
         and expected_ev_r >= minimum_positive_ev_r
-        and ev_reserve >= minimum_ev_reserve_r
+    )
+    empirical_expectancy_negative = expected_value is not None and expected_value < 0
+    admitted = (
+        admitted
+        and (empirical_expectancy_negative or empirical_expectancy_positive)
     )
     reason = (
         "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE"
         if not empirical_payoff_ready
-        else "EMPIRICAL_SUFFICIENT_POSITIVE_EV" if admitted
+        else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT" if not admitted
+        else "EMPIRICAL_SUFFICIENT_POSITIVE_EV" if empirical_expectancy_positive
         else "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
     )
     return ExpectancyDecision(
@@ -280,7 +289,7 @@ def evaluate_expectancy(
         empirical_ev_net_bps=expected_value,
         paper_bootstrap_eligible=False,
         paper_bootstrap_reason=None,
-        empirical_pass=admitted,
+        empirical_pass=empirical_expectancy_positive,
     )
 
 

@@ -531,7 +531,6 @@ def _downstream_trace_facts(
             or diagnostic.get("expectancy_gate_reason") in {
                 "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
                 "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
-                "EMPIRICAL_SUFFICIENT_NEGATIVE_EV",
                 "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE",
             }
             or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
@@ -592,7 +591,6 @@ def _downstream_trace_facts(
         or diagnostic.get("expectancy_gate_reason") in {
             "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
             "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
-            "EMPIRICAL_SUFFICIENT_NEGATIVE_EV",
             "EMPIRICAL_PAYOFF_DISTRIBUTION_INCOMPLETE_NO_TRADE",
         }
         or diagnostic.get("rejection_reason") == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"

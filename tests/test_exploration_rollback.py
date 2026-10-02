@@ -38,7 +38,7 @@ def test_exploration_and_requalification_have_no_active_runtime_branch() -> None
         assert "empirical_requalification" not in source
 
 
-def test_negative_empirical_authority_remains_a_normal_reject() -> None:
+def test_negative_empirical_authority_is_diagnostic_above_dynamic_rr() -> None:
     decision = evaluate_expectancy(
         net_win_bps=300.0,
         net_loss_bps=100.0,
@@ -46,7 +46,7 @@ def test_negative_empirical_authority_remains_a_normal_reject() -> None:
             setup_type="SCALP_MOMENTUM_CONTINUATION",
             direction="BULLISH",
             samples=20,
-            wins=5,
+            wins=7,
             bucket_key="rollback-negative-authority",
             average_win_net_bps=10.0,
             average_loss_net_bps=20.0,
@@ -56,8 +56,8 @@ def test_negative_empirical_authority_remains_a_normal_reject() -> None:
     assert decision.candidate_net_rr == 3.0
     assert decision.reason == "EMPIRICAL_SUFFICIENT_NEGATIVE_EV"
     assert decision.empirical_authority_status == EMPIRICAL_AUTHORITY_ESTABLISHED
-    assert decision.admission_mode == ADMISSION_REJECTED
-    assert not decision.admitted
+    assert decision.admission_mode != ADMISSION_REJECTED
+    assert decision.admitted
     assert not decision.empirical_pass
 
 
