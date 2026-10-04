@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     if not preflight.passed:
         raise SystemExit("ACTIVATION_PREFLIGHT_FAILED:" + ",".join(preflight.findings))
 
-    _, engine = _production_canary_store()
+    canary_store, engine = _production_canary_store()
     sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     universe = SqlAlchemyTradingUniverseStore(sessions).active_universe()
     if universe.version_id != "trading-universe-v3":
@@ -68,17 +68,33 @@ def main(argv: list[str] | None = None) -> int:
     control = PaperProductionSafetyControl(resolve_production_control_root(), acl_checker=lambda _path: True)
     before = control.read_authoritative()
     if before.state is PersistentState.CONTINUOUS_ARMED:
-        # Recover only the exact host-side half of a previously interrupted
-        # activation; never mint another generation or broaden its scope.
-        if (
-            before.generation != args.expected_generation + 1
-            or before.arming_scope is None
-            or before.arming_scope.max_new_commands != 1
-            or before.arming_scope.max_open_positions != 1
-            or before.arming_scope.allowed_symbols != tuple(sorted(universe.symbols))
-        ):
+        expected_symbols = tuple(sorted(universe.symbols))
+        if before.arming_scope is None or before.arming_scope.allowed_symbols != expected_symbols:
             raise SystemExit("CONTINUOUS_ACTIVATION_RECOVERY_MISMATCH")
-        after = before
+        if (
+            before.generation == args.expected_generation
+            and before.arming_scope.max_new_commands == 1
+            and before.arming_scope.max_open_positions == 1
+        ):
+            if canary_store.active():
+                raise SystemExit("CONTINUOUS_CAPACITY_UPGRADE_REQUIRES_ZERO_ACTIVE_LIFECYCLES")
+            after = control.transition(
+                PersistentState.CONTINUOUS_ARMED,
+                expected_generation=before.generation,
+                reason=ReasonCode.CONTINUOUS_CAPACITY_UPGRADE,
+                acknowledge=True,
+                acknowledge_paper_arming=True,
+                preflight=preflight,
+                arming_scope=PaperProductionArmingScope(2, 2, expected_symbols),
+            )
+        elif (
+            before.generation == args.expected_generation + 1
+            and before.arming_scope.max_new_commands == 2
+            and before.arming_scope.max_open_positions == 2
+        ):
+            after = before
+        else:
+            raise SystemExit("CONTINUOUS_ACTIVATION_RECOVERY_MISMATCH")
     else:
         if before.state is not PersistentState.DISABLED or before.generation != args.expected_generation:
             raise SystemExit("CONTINUOUS_ACTIVATION_REQUIRES_MATCHING_DISABLED_GENERATION")
@@ -89,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             acknowledge=True,
             acknowledge_paper_arming=True,
             preflight=preflight,
-            arming_scope=PaperProductionArmingScope(1, 1, tuple(sorted(universe.symbols))),
+            arming_scope=PaperProductionArmingScope(2, 2, tuple(sorted(universe.symbols))),
         )
     snapshot = PaperContinuousAuthorityStore(sessions).activate(
         generation=after.generation, source=args.source, reason=args.reason,

@@ -89,7 +89,10 @@ PAGE_TABLE_COLUMNS = MappingProxyType({
     "Setups": ("symbol", "setup", "status", "quality", "direction", "updated"),
     "Trading Funnel": ("symbol", "stage", "status", "reason", "eligible", "rank", "updated"),
     "Incidents": ("id", "severity", "source", "title", "opened", "resolved"),
-    "PAPER Trading": ("close", "symbol", "side", "capital", "net", "roi", "reason"),
+    "PAPER Trading": (
+        "close", "cycle", "rank", "slot", "symbol", "side",
+        "capital", "net", "roi", "reason",
+    ),
     "Trade Control": (),
     "Settings": (),
 })

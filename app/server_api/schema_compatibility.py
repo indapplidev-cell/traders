@@ -46,8 +46,9 @@ READONLY_SCHEMA_0033: Final = "0033_net_pnl_protection"
 READONLY_SCHEMA_0034: Final = "0034_scalping_universe_v3"
 READONLY_SCHEMA_0035: Final = "0035_scalping_v2_ingestion_policy_contract"
 READONLY_SCHEMA_0036: Final = "0036_empirical_requalification_authority"
+READONLY_SCHEMA_0037: Final = "0037_continuous_two_lifecycle_slots"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0036
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0037
 REFINEMENT_COLUMNS: Final = frozenset({
     "refinement_identity", "refinement_mode", "refinement_state",
     "refinement_reason", "refinement_started_at", "refinement_finished_at",
@@ -132,7 +133,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     """Retain the legacy PAPER contract; runtime startup uses stricter capabilities."""
     revisions = tuple(
         READONLY_SCHEMA_0034
-        if value in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036}
+        if value in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036, READONLY_SCHEMA_0037}
         else value
         for value in revisions
     )
@@ -195,7 +196,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         reported_revision = revisions[0]
         revision = (
             READONLY_SCHEMA_0034
-            if reported_revision in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036}
+            if reported_revision in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036, READONLY_SCHEMA_0037}
             else reported_revision
         )
         if revision not in {
@@ -332,7 +333,7 @@ __all__ = [
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
     "READONLY_SCHEMA_0025", "READONLY_SCHEMA_0026", "READONLY_SCHEMA_0027",
     "READONLY_SCHEMA_0028", "READONLY_SCHEMA_0029", "READONLY_SCHEMA_0030",
-    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036",
+    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036", "READONLY_SCHEMA_0037",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

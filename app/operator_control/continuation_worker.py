@@ -130,17 +130,12 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
                 return f"SAFE_FAILURE:{error}"
             if budget.control_state != ACTIVE_STATE or not budget.enabled:
                 return f"PAUSED_BY_RISK:{budget.pause_reason or 'RISK_BUDGET_EXHAUSTED'}"
-            canary = self._canary_store.current()
-            if canary is not None:
-                if canary.authority_mode != "CONTINUOUS":
+            active_reader = getattr(self._canary_store, "active", None)
+            active = active_reader() if active_reader is not None else tuple(
+                value for value in (self._canary_store.current(),) if value is not None
+            )
+            if any(canary.authority_mode != "CONTINUOUS" for canary in active):
                     return "SAFE_FAILURE:LEGACY_CANARY_ACTIVE_DURING_CONTINUOUS_MODE"
-                if canary.command_id is not None:
-                    observe_blocked = getattr(
-                        self._executor, "observe_continuous_capacity_blocked", None
-                    )
-                    if observe_blocked is not None:
-                        observe_blocked("MAX_OPEN_POSITIONS_REACHED")
-                    return "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
             with self._lock.acquire(f"continuous-generation-{control.generation}") as acquired:
                 if not acquired:
                     return "CLAIMED_BY_ANOTHER_WORKER"

@@ -81,7 +81,17 @@ class PaperPlanExecutionOutcomeStore:
         now = self._utc(observed_at)
         ordered = rank_eligible_candidates(candidates)
         ranks = {value.candidate_id: index + 1 for index, value in enumerate(ordered)}
-        winner_id = selection.winner.candidate_id if selection.winner is not None else None
+        selected_values = selection.winners or (
+            (() if selection.winner is None else (selection.winner,))
+        )
+        selected_ids = {
+            value.candidate_id for value in selected_values
+        }
+        selection_slots = {
+            value.candidate_id: index + 1
+            for index, value in enumerate(selected_values)
+        }
+        rejected_top_rank_reasons = dict(selection.rejected_top_rank_reasons)
         with self._session_factory() as session, session.begin():
             identities = {
                 candidate.lineage.source_run_id: self._paper_identity(
@@ -98,12 +108,14 @@ class PaperPlanExecutionOutcomeStore:
                 run_id = candidate.lineage.source_run_id
                 row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
                 plan_id, created, _finished_at = identities[run_id]
-                selected = candidate.candidate_id == winner_id
+                selected = candidate.candidate_id in selected_ids
                 state = "PLAN_OBSERVED" if selected else "NOT_SELECTED"
-                reason = (
-                    None if selected else "LOWER_SELECTOR_RANK"
+                reason = None if selected else rejected_top_rank_reasons.get(
+                    candidate.candidate_id, "LOWER_SELECTOR_RANK"
                 )
                 selection_details = {
+                    "selection_slot": selection_slots.get(candidate.candidate_id),
+                    "selected_candidates_count": len(selected_values),
                     "cycle_complete_at": (
                         None if cycle_complete_at is None
                         else cycle_complete_at.isoformat().replace("+00:00", "Z")

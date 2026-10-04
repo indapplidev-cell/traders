@@ -450,8 +450,12 @@ class PaperReadonlyReportingService:
         )
 
     @staticmethod
-    def _position(value: PaperPositionRecordView) -> PaperPositionItem:
+    def _position(
+        value: PaperPositionRecordView,
+        lifecycle: dict[str, object] | None = None,
+    ) -> PaperPositionItem:
         item = value.position
+        lifecycle = lifecycle or {}
         closed = getattr(item.state, "value", item.state) == "CLOSED"
         return PaperPositionItem(
             position_id=item.position_id, command_id=value.command_id,
@@ -461,6 +465,9 @@ class PaperReadonlyReportingService:
             stop_price=decimal_text(item.stop_price), target_price=decimal_text(item.target_price),
             exit_reason=value.exit_reason, closed_at=utc_text(item.closed_at) if item.closed_at else None,
             realized_pnl=decimal_text(item.realized_pnl) if closed else None,
+            lifecycle_slot=lifecycle.get("lifecycle_slot"),
+            selector_rank=lifecycle.get("selector_rank"),
+            cycle_boundary_ms=lifecycle.get("cycle_boundary_ms"),
         )
 
     def positions(self, *, limit: int, cursor: str | None, state: str | None, symbol: str | None) -> PaperList[PaperPositionItem]:
@@ -468,25 +475,38 @@ class PaperReadonlyReportingService:
         self._require_schema()
         page = self._repo().list_paper_positions(PaperPositionQuery(limit, decode_cursor(cursor, "paper_positions"), state, symbol))
         records = tuple(item for item in page.items if isinstance(item, PaperPositionRecordView))[:limit]
+        context_source = getattr(self._repo(), "paper_position_lifecycle_context", None)
+        context = context_source(tuple(
+            item.position.position_id for item in records
+        )) if callable(context_source) else {}
         next_cursor = None
         if page.has_more and records:
             last = records[-1]
             next_cursor = encode_cursor("paper_positions", CursorPosition(last.updated_at, last.position.position_id))
-        return PaperList[PaperPositionItem](items=[self._position(item) for item in records], next_cursor=next_cursor, has_more=bool(next_cursor))
+        return PaperList[PaperPositionItem](items=[
+            self._position(item, context.get(item.position.position_id))
+            for item in records
+        ], next_cursor=next_cursor, has_more=bool(next_cursor))
 
     def position(self, position_id: str) -> PaperPositionDetail:
         self._require_schema()
         value = self._repo().get_paper_position(position_id)
         if value is None:
             raise ApiError(404, "POSITION_NOT_FOUND", "The PAPER position was not found.")
-        base = self._position(value).model_dump()
+        context_source = getattr(self._repo(), "paper_position_lifecycle_context", None)
+        context = context_source((position_id,)) if callable(context_source) else {}
+        base = self._position(value, context.get(position_id)).model_dump()
         return PaperPositionDetail(**base, entry_order_id=value.entry_order_id, entry_fill_id=value.entry_fill_id,
             close_order_id=value.close_order_id, close_fill_id=value.close_fill_id,
             exit_cursor_status=value.exit_cursor_status, exit_decision=value.exit_decision,
             lifecycle_events=list(value.lifecycle_events))
 
     @staticmethod
-    def _trade(report: PaperTradeFinancialReport) -> PaperTradeItem:
+    def _trade(
+        report: PaperTradeFinancialReport,
+        lifecycle: dict[str, object] | None = None,
+    ) -> PaperTradeItem:
+        lifecycle = lifecycle or {}
         return PaperTradeItem(
             position_id=report.position_id, trade_id=report.position_id, symbol=report.symbol,
             side=report.side.value, entry_time=utc_text(report.entry_time), exit_time=utc_text(report.exit_time),
@@ -495,6 +515,10 @@ class PaperReadonlyReportingService:
             total_fees=decimal_text(report.total_fees), net_pnl=decimal_text(report.net_pnl),
             roi_percent=decimal_text(report.roi_percent), balance_before=decimal_text(report.balance_before),
             balance_after=decimal_text(report.balance_after),
+            lifecycle_slot=lifecycle.get("lifecycle_slot"),
+            selector_rank=lifecycle.get("selector_rank"),
+            selector_status=lifecycle.get("selector_status"),
+            cycle_boundary_ms=lifecycle.get("cycle_boundary_ms"),
         )
 
     def trades(self, *, limit: int, cursor: str | None, symbol: str | None, side: str | None,
@@ -511,11 +535,17 @@ class PaperReadonlyReportingService:
         _, result = self._authoritative(schema_checked=True)
         selected_ids = {item.position.position_id for item in page.items}
         reports = [item for item in reversed(result.reports) if item.position_id in selected_ids][:limit]
+        context_source = getattr(self._repo(), "paper_position_lifecycle_context", None)
+        context = context_source(tuple(
+            item.position_id for item in reports
+        )) if callable(context_source) else {}
         next_cursor = None
         if page.has_more and reports:
             last = reports[-1]
             next_cursor = encode_cursor("paper_trades", CursorPosition(last.exit_time, last.position_id))
-        return PaperList[PaperTradeItem](items=[self._trade(item) for item in reports], next_cursor=next_cursor, has_more=bool(next_cursor))
+        return PaperList[PaperTradeItem](items=[
+            self._trade(item, context.get(item.position_id)) for item in reports
+        ], next_cursor=next_cursor, has_more=bool(next_cursor))
 
     def trade_report(self, position_id: str) -> PaperTradeReport:
         self._require_schema()
@@ -528,7 +558,9 @@ class PaperReadonlyReportingService:
         report = next((item for item in result.reports if item.position_id == position_id), None)
         if report is None:
             raise ApiError(409, "ACCOUNTING_NOT_AUTHORITATIVE", "PAPER accounting is not authoritative.")
-        return PaperTradeReport(**self._trade(report).model_dump(), accounting_session_id=report.accounting_session_id,
+        context_source = getattr(self._repo(), "paper_position_lifecycle_context", None)
+        context = context_source((position_id,)) if callable(context_source) else {}
+        return PaperTradeReport(**self._trade(report, context.get(position_id)).model_dump(), accounting_session_id=report.accounting_session_id,
             currency=report.currency, quantity=decimal_text(report.quantity), entry_price=decimal_text(report.entry_price),
             exit_price=decimal_text(report.exit_price), entry_fee=decimal_text(report.entry_fee),
             exit_fee=decimal_text(report.exit_fee), gross_pnl=decimal_text(report.gross_pnl),

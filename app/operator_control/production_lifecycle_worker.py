@@ -779,9 +779,10 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 source_closed_until_ms=eligible[-1].close_boundary_ms,
             )
 
-    def run_once(self) -> str:
-        supervised = getattr(self._canary_store, "supervised", None)
-        canary = supervised() if supervised is not None else self._canary_store.current()
+    def _run_one(self, canary=None) -> str:
+        if canary is None:
+            supervised = getattr(self._canary_store, "supervised", None)
+            canary = supervised() if supervised is not None else self._canary_store.current()
         if canary is None or canary.command_id is None:
             return "NO_COMMAND_READY"
         with self._lock.acquire(canary.canary_id) as claimed:
@@ -1048,6 +1049,19 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             child_reason = result.stage_trace[-1].child_reason_code if result.stage_trace else result.reason_code
             suffix = "" if result.stages_completed == 1 else f":{child_reason}"
             return f"{result.outcome.value}:{result.final_lifecycle_state.value}{suffix}"
+
+    def run_once(self) -> str:
+        supervised_all = getattr(self._canary_store, "supervised_all", None)
+        if supervised_all is None:
+            return self._run_one()
+        canaries = supervised_all()
+        if not canaries:
+            return "NO_COMMAND_READY"
+        results = tuple(self._run_one(canary) for canary in canaries)
+        return " | ".join(
+            f"slot={canary.lifecycle_slot}:{result}"
+            for canary, result in zip(canaries, results)
+        )
 
     def _run(self) -> None:
         while not self._stop.is_set():

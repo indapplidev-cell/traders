@@ -14,6 +14,7 @@ from typing import Any, Final
 
 from sqlalchemy import cast, func, select, text, tuple_
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, load_only
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
@@ -1482,6 +1483,7 @@ class TradingFunnelReadRepository:
                         ("0034_scalping_universe_v3",),
                         ("0035_scalping_v2_ingestion_policy_contract",),
                         ("0036_empirical_requalification_authority",),
+                        ("0037_continuous_two_lifecycle_slots",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1631,7 +1633,7 @@ class TradingFunnelReadRepository:
             self._load_lifecycle(tuple(row.run_id for row, _ in rows))
             if self._load_lifecycle_enabled else {}
         )
-        return build_projection(
+        projection = build_projection(
             rows,
             universe,
             now_ms,
@@ -1641,6 +1643,26 @@ class TradingFunnelReadRepository:
             lifecycle_by_run,
             rolling_summaries,
         )
+        try:
+            if not self._load_lifecycle_enabled:
+                raise AttributeError("lifecycle projection disabled")
+            with self._session_factory() as session:
+                scalar = getattr(session, "scalar")
+                open_positions_count = int(scalar(
+                    select(func.count()).select_from(PaperPositionRecord).where(
+                        PaperPositionRecord.state.in_(("OPEN", "CLOSING"))
+                    )
+                ) or 0)
+        except (AttributeError, SQLAlchemyError):
+            # Lightweight compatibility/test databases predating PAPER tables
+            # still receive a valid backward-compatible projection.
+            open_positions_count = 0
+        for cycle_key in ("current_cycle", "last_completed_cycle"):
+            cycle = projection.get(cycle_key)
+            if isinstance(cycle, dict):
+                cycle["open_positions_count"] = open_positions_count
+                cycle["max_open_positions"] = 2
+        return projection
 
     def _load_lifecycle(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, Any]]:
         """Load the complete bounded PAPER lifecycle in one aggregate query."""
@@ -1660,6 +1682,7 @@ class TradingFunnelReadRepository:
                 PaperFirstCanarySessionRecord.state,
                 PaperFirstCanarySessionRecord.terminal_reason,
                 PaperFirstCanarySessionRecord.completed_at,
+                PaperFirstCanarySessionRecord.lifecycle_slot,
                 ScalpingOutcomeDiagnosticRecord,
                 PaperPositionRecord.opened_at,
                 PaperPositionRecord.updated_at,
@@ -1749,26 +1772,27 @@ class TradingFunnelReadRepository:
                 "terminal_result": row[10] or row[8],
                 "canary_state": row[9],
                 "execution_observed_at": row[11],
-                "position_opened_at": row[13],
-                "position_updated_at": row[14],
-                "position_closed_at": row[15],
+                "lifecycle_slot": row[12],
+                "position_opened_at": row[14],
+                "position_updated_at": row[15],
+                "position_closed_at": row[16],
                 "outcome_diagnostics": (
                     {
                         "availability": "AVAILABLE",
-                        "mae": row[12].mae,
-                        "mfe": row[12].mfe,
-                        "time_to_mae_ms": row[12].time_to_mae_ms,
-                        "time_to_mfe_ms": row[12].time_to_mfe_ms,
-                        "planned_stop_distance": row[12].planned_stop_distance,
-                        "actual_stop_slippage": row[12].actual_stop_slippage,
-                        "planned_target_distance": row[12].planned_target_distance,
-                        "target_reached_after_stop": row[12].target_reached_after_stop,
-                        "max_favorable_before_stop": row[12].max_favorable_before_stop,
-                        "max_adverse_before_target": row[12].max_adverse_before_target,
-                        "holding_time_ms": row[12].holding_time_ms,
-                        "diagnostic_version": row[12].diagnostic_version,
+                        "mae": row[13].mae,
+                        "mfe": row[13].mfe,
+                        "time_to_mae_ms": row[13].time_to_mae_ms,
+                        "time_to_mfe_ms": row[13].time_to_mfe_ms,
+                        "planned_stop_distance": row[13].planned_stop_distance,
+                        "actual_stop_slippage": row[13].actual_stop_slippage,
+                        "planned_target_distance": row[13].planned_target_distance,
+                        "target_reached_after_stop": row[13].target_reached_after_stop,
+                        "max_favorable_before_stop": row[13].max_favorable_before_stop,
+                        "max_adverse_before_target": row[13].max_adverse_before_target,
+                        "holding_time_ms": row[13].holding_time_ms,
+                        "diagnostic_version": row[13].diagnostic_version,
                     }
-                    if row[12] is not None else {
+                    if row[13] is not None else {
                         "availability": (
                             "NOT_REACHED" if row[6] is None or row[7] != "CLOSED"
                             else "INSUFFICIENT_SAMPLE"
@@ -1850,6 +1874,8 @@ class TradingFunnelReadRepository:
                 "selector_reason": outcome.selector_reason,
                 "selector_rank": outcome.selector_rank,
                 "selected_winner": outcome.selected_winner,
+                "selection_slot": lifecycle.get("lifecycle_slot")
+                or execution_details.get("selection_slot"),
                 "candidate_id": outcome.candidate_id,
                 "approval_valid_until_ms": outcome.approval_valid_until_ms,
                 "command_id": lifecycle.get("command_id") or outcome.command_id,
@@ -2369,6 +2395,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     ),
                     "selector_reason": lifecycle.get("selector_reason"),
                     "selector_rank": lifecycle.get("selector_rank"),
+                    "selection_slot": lifecycle.get("selection_slot"),
                     "selected_winner": lifecycle.get("selected_winner"),
                     "execution_candidate_id": lifecycle.get("candidate_id"),
                     "command_id": lifecycle.get("command_id"),
@@ -2542,6 +2569,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 # never a decorative historical replay of the ranker.
                 item["selector_rank"] = lifecycle.get("selector_rank")
                 item["selected_winner"] = lifecycle.get("selected_winner") is True
+            item["selection_slot"] = lifecycle.get("selection_slot")
             if item["selected_winner"]:
                 projected_winner = item
                 item["stage_trace"]["SELECTOR_WINNER"] = "PASS"
@@ -2551,6 +2579,21 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             elif item["eligible"]:
                 item["current_stage"] = "ELIGIBLE"
                 item["stage_status"] = "PASS"
+        cycle_execution = tuple(
+            lifecycle_by_run.get(item["source_run_id"], {}) for item in items
+        )
+        selected_candidates_count = sum(
+            value.get("selected_winner") is True for value in cycle_execution
+        )
+        paper_commands_created_count = sum(
+            value.get("command_id") is not None for value in cycle_execution
+        )
+        positions_opened_this_cycle_count = sum(
+            value.get("position_id") is not None for value in cycle_execution
+        )
+        positions_closed_this_cycle_count = sum(
+            value.get("position_status") == "CLOSED" for value in cycle_execution
+        )
         seen = {row.symbol for row, _ in pairs}
         processed = {row.symbol for row, _ in pairs if row.status in TERMINAL_RUN_STATUSES}
         value = {
@@ -2593,6 +2636,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 if projected_winner else None
             ) or (projected_winner["candidate_id"] if projected_winner else None),
             "latest_pipeline_update_ms": latest_update,
+            "selected_candidates_count": selected_candidates_count,
+            "paper_commands_created_count": paper_commands_created_count,
+            "positions_opened_this_cycle_count": positions_opened_this_cycle_count,
+            "positions_closed_this_cycle_count": positions_closed_this_cycle_count,
+            "max_selected_candidates": 2,
+            "max_new_commands": 2,
+            "max_open_positions": 2,
         }
         cycle_cache[boundary] = value
         return value

@@ -66,6 +66,8 @@ class EligibleApprovalSelectionResult:
     winner: EligibleCandidate | None
     diagnostics: EligibleApprovalSelectionDiagnostics
     failure_code: str | None = None
+    winners: tuple[EligibleCandidate, ...] = ()
+    rejected_top_rank_reasons: tuple[tuple[str, str], ...] = ()
 
 
 def _descending_decimal(value: Decimal) -> Decimal:
@@ -131,7 +133,16 @@ class ProductionEligibleApprovalSelector:
         candidates: Sequence[EligibleCandidate],
         *,
         policy_version: str,
+        limit: int = 1,
+        reserved_positions: int = 0,
+        existing_open_risk_bps: Decimal = Decimal("0"),
+        risk_per_trade_bps: Decimal | None = None,
+        max_positions: int | None = None,
+        max_total_open_risk_bps: Decimal | None = None,
+        reserved_symbols: Sequence[str] = (),
     ) -> EligibleApprovalSelectionResult:
+        if limit not in (1, 2):
+            return self._failure(len(candidates), policy_version, "INVALID_SELECTION_LIMIT")
         by_identity: dict[str, EligibleCandidate] = {}
         try:
             for candidate in candidates:
@@ -160,6 +171,7 @@ class ProductionEligibleApprovalSelector:
                     winner.symbol if winner else None, policy_version, (),
                     "only_eligible_candidate" if winner else None, duplicate_count,
                 ),
+                winners=(() if winner is None else (winner,)),
             )
         if policy_version != MULTI_SYMBOL_SELECTION_POLICY_VERSION:
             return self._failure(len(unique), policy_version, "SELECTION_POLICY_NOT_SUPPORTED")
@@ -173,6 +185,7 @@ class ProductionEligibleApprovalSelector:
                 EligibleApprovalSelectionDiagnostics(
                     0, None, None, policy_version, RANKING_FIELDS, None, duplicate_count,
                 ),
+                winners=(),
             )
 
         ordered = sorted(unique, key=lambda item: keys[item.candidate_id])
@@ -184,12 +197,41 @@ class ProductionEligibleApprovalSelector:
                 field for field, left, right in zip(RANKING_FIELDS, winner_key, runner_up_key)
                 if left != right
             )
+        top_rank_scope = tuple(ordered[:limit])
+        winners: list[EligibleCandidate] = []
+        rejected: list[tuple[str, str]] = []
+        projected_positions = reserved_positions
+        projected_risk = existing_open_risk_bps
+        projected_symbols = {value.upper() for value in reserved_symbols}
+        for ranked in top_rank_scope:
+            reason = None
+            if ranked.symbol.upper() in projected_symbols:
+                reason = "PORTFOLIO_REJECT_DUPLICATE_OR_OPPOSING_SYMBOL"
+            elif max_positions is not None and projected_positions + 1 > max_positions:
+                reason = "PORTFOLIO_REJECT_MAX_CONCURRENT_POSITIONS"
+            elif (
+                risk_per_trade_bps is not None
+                and max_total_open_risk_bps is not None
+                and projected_risk + risk_per_trade_bps > max_total_open_risk_bps
+            ):
+                reason = "PORTFOLIO_REJECT_TOTAL_OPEN_RISK"
+            if reason is not None:
+                rejected.append((ranked.candidate_id, reason))
+                continue
+            winners.append(ranked)
+            projected_positions += 1
+            projected_symbols.add(ranked.symbol.upper())
+            if risk_per_trade_bps is not None:
+                projected_risk += risk_per_trade_bps
+        accepted_winner = winners[0] if winners else None
         return EligibleApprovalSelectionResult(
-            winner,
+            accepted_winner,
             EligibleApprovalSelectionDiagnostics(
                 len(unique), winner.candidate_id, winner.symbol, policy_version,
                 RANKING_FIELDS, criterion, duplicate_count,
             ),
+            winners=tuple(winners),
+            rejected_top_rank_reasons=tuple(rejected),
         )
 
     @staticmethod

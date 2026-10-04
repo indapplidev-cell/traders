@@ -32,7 +32,8 @@ from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper
 from app.db.paper_models import (
     PaperAccountBaselineRecord, PaperExitDecisionRecord, PaperExitEvaluationCursorRecord,
     PaperExecutionCommandRecord, PaperFillRecord, PaperJournalEntryRecord,
-    PaperOrderRecord, PaperPositionRecord,
+    PaperFirstCanarySessionRecord, PaperOrderRecord,
+    PaperPlanExecutionOutcomeRecord, PaperPositionRecord,
     TradingUniverseRuntimeStateRecord, TradingUniverseSymbolPreflightRecord,
 )
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
@@ -1013,6 +1014,56 @@ class SqlAlchemyReadAdapter:
                 "resolved_config_hash": (payload or {}).get("resolved_config_hash"),
             }
             for position_id, profile_id, entry, stop, quantity, payload in rows
+        }
+
+    def paper_position_lifecycle_context(
+        self, position_ids: tuple[str, ...]
+    ) -> dict[str, dict[str, object]]:
+        if not position_ids:
+            return {}
+        statement = (
+            select(
+                PaperPositionRecord.position_id,
+                PaperFirstCanarySessionRecord.lifecycle_slot,
+                PaperPlanExecutionOutcomeRecord.selector_rank,
+                PaperPlanExecutionOutcomeRecord.boundary_closed_at_ms,
+                PaperPlanExecutionOutcomeRecord.selector_state,
+            )
+            .join(
+                PaperOrderRecord,
+                PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id,
+            )
+            .join(
+                PaperExecutionCommandRecord,
+                PaperExecutionCommandRecord.command_id == PaperOrderRecord.command_id,
+            )
+            .outerjoin(
+                PaperFirstCanarySessionRecord,
+                PaperFirstCanarySessionRecord.position_id == PaperPositionRecord.position_id,
+            )
+            .outerjoin(
+                PaperPlanExecutionOutcomeRecord,
+                PaperPlanExecutionOutcomeRecord.pipeline_run_id
+                == PaperExecutionCommandRecord.pipeline_run_id,
+            )
+            .where(PaperPositionRecord.position_id.in_(position_ids))
+        )
+        with self._session() as session:
+            rows = tuple(session.execute(statement))
+        return {
+            position_id: {
+                "lifecycle_slot": lifecycle_slot,
+                "selector_rank": selector_rank,
+                "cycle_boundary_ms": cycle_boundary_ms,
+                "selector_status": selector_status,
+            }
+            for (
+                position_id,
+                lifecycle_slot,
+                selector_rank,
+                cycle_boundary_ms,
+                selector_status,
+            ) in rows
         }
 
     @staticmethod

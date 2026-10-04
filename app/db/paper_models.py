@@ -19,6 +19,7 @@ from sqlalchemy import (
     Numeric,
     PrimaryKeyConstraint,
     String,
+    SmallInteger,
     UniqueConstraint,
     text,
 )
@@ -188,6 +189,14 @@ class PaperFirstCanarySessionRecord(Base):
         CheckConstraint("command_count BETWEEN 0 AND 1", name="ck_paper_first_canary_command_count"),
         CheckConstraint("position_count BETWEEN 0 AND 1", name="ck_paper_first_canary_position_count"),
         CheckConstraint(
+            "lifecycle_slot IS NULL OR lifecycle_slot BETWEEN 1 AND 2",
+            name="ck_paper_canary_lifecycle_slot",
+        ),
+        CheckConstraint(
+            "state IN ('COMPLETED','STOPPED','FAILED_SAFE') OR lifecycle_slot IS NOT NULL",
+            name="ck_paper_canary_active_lifecycle_slot",
+        ),
+        CheckConstraint(
             "selection_policy_version IN ('exactly-one-eligible-v1','eligible-approval-ranking-v1')",
             name="ck_paper_first_canary_selection_policy",
         ),
@@ -205,8 +214,8 @@ class PaperFirstCanarySessionRecord(Base):
         ),
         CheckConstraint("version >= 0", name="ck_paper_first_canary_version"),
         Index(
-            "uq_paper_first_canary_one_active_environment",
-            "environment",
+            "uq_paper_canary_active_lifecycle_slot",
+            "environment", "lifecycle_slot",
             unique=True,
             postgresql_where=text(
                 "state NOT IN ('COMPLETED','STOPPED','FAILED_SAFE')"
@@ -256,6 +265,7 @@ class PaperFirstCanarySessionRecord(Base):
         String(32), nullable=False, default="FIRST_CANARY_HISTORICAL"
     )
     continuous_cycle_number: Mapped[int | None] = mapped_column(BigInteger)
+    lifecycle_slot: Mapped[int | None] = mapped_column(SmallInteger)
 
 
 class PaperContinuousControlRecord(Base):

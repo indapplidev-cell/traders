@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0036_empirical_requalification_authority"
-    ] = "0036_empirical_requalification_authority"
+        "0037_continuous_two_lifecycle_slots"
+    ] = "0037_continuous_two_lifecycle_slots"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -173,6 +173,9 @@ class PaperPositionItem(BaseModel):
     exit_reason: str | None
     closed_at: UtcTimestamp | None
     realized_pnl: DecimalString | None
+    lifecycle_slot: int | None = Field(default=None, ge=1, le=2)
+    selector_rank: int | None = Field(default=None, ge=1)
+    cycle_boundary_ms: int | None = Field(default=None, ge=0)
 
 
 class PaperPositionDetail(PaperPositionItem):
@@ -201,6 +204,10 @@ class PaperTradeItem(BaseModel):
     roi_percent: DecimalString
     balance_before: DecimalString
     balance_after: DecimalString
+    lifecycle_slot: int | None = Field(default=None, ge=1, le=2)
+    selector_rank: int | None = Field(default=None, ge=1)
+    selector_status: str | None = None
+    cycle_boundary_ms: int | None = Field(default=None, ge=0)
 
 
 class PaperTradeReport(PaperTradeItem):

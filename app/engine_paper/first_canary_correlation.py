@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.paper_models import (
+    PaperContinuousControlRecord,
     PaperExecutionCommandRecord,
     PaperFirstCanarySessionRecord,
     PaperPositionRecord,
@@ -92,6 +93,7 @@ class PaperFirstCanarySession:
     universe_version_id: str = "trading-universe-v1"
     authority_mode: str = "FIRST_CANARY_HISTORICAL"
     continuous_cycle_number: int | None = None
+    lifecycle_slot: int | None = None
 
 def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
     try:
@@ -109,6 +111,12 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         or (row.command_count == 1) != (row.command_id is not None)
         or (row.position_count == 1) != (row.position_id is not None)
         or row.version < 0
+        or row.lifecycle_slot not in {None, 1, 2}
+        or (
+            state not in {PaperFirstCanaryState.COMPLETED, PaperFirstCanaryState.STOPPED,
+                          PaperFirstCanaryState.FAILED_SAFE}
+            and row.lifecycle_slot is None
+        )
         or row.selection_policy_version not in {
             LEGACY_EXACTLY_ONE_POLICY_VERSION,
             MULTI_SYMBOL_SELECTION_POLICY_VERSION,
@@ -151,6 +159,7 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         universe_version_id=row.universe_version_id,
         authority_mode=row.authority_mode,
         continuous_cycle_number=row.continuous_cycle_number,
+        lifecycle_slot=row.lifecycle_slot,
     )
 
 
@@ -202,16 +211,24 @@ class PaperFirstCanaryRepository:
         )
         return self._validated(row) if row is not None else None
 
-    def current(self) -> PaperFirstCanarySession | None:
+    def active(self) -> tuple[PaperFirstCanarySession, ...]:
         rows = tuple(self.session.scalars(
             select(PaperFirstCanarySessionRecord)
             .where(PaperFirstCanarySessionRecord.state.not_in(tuple(TERMINAL_CANARY_STATES)))
-            .order_by(PaperFirstCanarySessionRecord.created_at, PaperFirstCanarySessionRecord.canary_id)
-            .limit(2)
+            .order_by(
+                PaperFirstCanarySessionRecord.lifecycle_slot,
+                PaperFirstCanarySessionRecord.created_at,
+                PaperFirstCanarySessionRecord.canary_id,
+            )
+            .limit(3)
         ))
-        if len(rows) > 1:
+        if len(rows) > 2:
             raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
-        return self._validated(rows[0]) if rows else None
+        return tuple(self._validated(row) for row in rows)
+
+    def current(self) -> PaperFirstCanarySession | None:
+        values = self.active()
+        return values[0] if values else None
 
     def supervised(self) -> PaperFirstCanarySession | None:
         """Return the active session or rehydrate its persisted open position."""
@@ -237,6 +254,31 @@ class PaperFirstCanaryRepository:
             raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
         return self._validated(rows[0]) if rows else None
 
+    def supervised_all(self) -> tuple[PaperFirstCanarySession, ...]:
+        """Return both independently supervised lifecycles in slot order."""
+
+        active = self.active()
+        if active:
+            return active
+        rows = tuple(self.session.scalars(
+            select(PaperFirstCanarySessionRecord)
+            .join(
+                PaperPositionRecord,
+                PaperPositionRecord.position_id
+                == PaperFirstCanarySessionRecord.position_id,
+            )
+            .where(PaperPositionRecord.state.in_(("OPEN", "CLOSING")))
+            .order_by(
+                PaperFirstCanarySessionRecord.lifecycle_slot,
+                PaperFirstCanarySessionRecord.created_at,
+                PaperFirstCanarySessionRecord.canary_id,
+            )
+            .limit(3)
+        ))
+        if len(rows) > 2:
+            raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
+        return tuple(self._validated(row) for row in rows)
+
     def reserve_arm(
         self,
         *,
@@ -255,8 +297,8 @@ class PaperFirstCanaryRepository:
             if row.arm_request_fingerprint != fingerprint:
                 raise CanaryCorrelationError("REQUEST_ID_CONFLICT")
             return replay
-        active = self.current()
-        if active is not None:
+        active = self.active()
+        if active:
             raise CanaryCorrelationError("CANARY_ALREADY_ACTIVE")
         row = PaperFirstCanarySessionRecord(
             canary_id=str(uuid4()), environment="PRODUCTION", mode="PAPER", state="RESERVED",
@@ -272,6 +314,7 @@ class PaperFirstCanaryRepository:
             accounting_reconciliation_status="NOT_STARTED", reconciliation_checked_at=None,
             terminal_reason=None, finding_codes=[], version=0,
             authority_mode="FIRST_CANARY_HISTORICAL", continuous_cycle_number=None,
+            lifecycle_slot=1,
         )
         self.session.add(row)
         try:
@@ -374,15 +417,24 @@ class PaperFirstCanaryRepository:
         if universe_version_id not in {"trading-universe-v2", "trading-universe-v3"}:
             raise CanaryCorrelationError("TRADING_UNIVERSE_VERSION_INVALID")
 
-        active = self.current()
         deterministic_id = continuous_cycle_id(generation, candidate_identity)
-        if active is not None:
-            if active.canary_id == deterministic_id and active.authority_mode == "CONTINUOUS":
-                return active
-            raise CanaryCorrelationError("CONTINUOUS_CYCLE_ALREADY_ACTIVE")
         existing = self.get(deterministic_id, for_update=True)
         if existing is not None:
             return existing
+        # Serialize slot assignment on the singleton continuous authority row.
+        # The partial unique index remains the final DB-level race barrier.
+        control = self.session.get(
+            PaperContinuousControlRecord, "PRODUCTION", with_for_update=True
+        )
+        if control is None or control.generation != generation:
+            raise CanaryCorrelationError("CONTINUOUS_CONTROL_NOT_CONFIGURED")
+        active = self.active()
+        if any(value.authority_mode != "CONTINUOUS" for value in active):
+            raise CanaryCorrelationError("LEGACY_CANARY_ACTIVE_DURING_CONTINUOUS_MODE")
+        occupied = {value.lifecycle_slot for value in active}
+        lifecycle_slot = next((slot for slot in (1, 2) if slot not in occupied), None)
+        if lifecycle_slot is None:
+            raise CanaryCorrelationError("CONTINUOUS_LIFECYCLE_CAPACITY_EXHAUSTED")
         cycle_number = int(self.session.scalar(
             select(func.coalesce(func.max(PaperFirstCanarySessionRecord.continuous_cycle_number), 0))
         ) or 0) + 1
@@ -405,6 +457,7 @@ class PaperFirstCanaryRepository:
             accounting_reconciliation_status="NOT_STARTED", reconciliation_checked_at=None,
             terminal_reason=None, finding_codes=[], version=0,
             authority_mode="CONTINUOUS", continuous_cycle_number=cycle_number,
+            lifecycle_slot=lifecycle_slot,
         )
         self.session.add(row)
         try:
@@ -588,9 +641,17 @@ class SqlAlchemyPaperFirstCanaryStore:
         with self._session_factory() as session:
             return PaperFirstCanaryRepository(session).current()
 
+    def active(self) -> tuple[PaperFirstCanarySession, ...]:
+        with self._session_factory() as session:
+            return PaperFirstCanaryRepository(session).active()
+
     def supervised(self) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:
             return PaperFirstCanaryRepository(session).supervised()
+
+    def supervised_all(self) -> tuple[PaperFirstCanarySession, ...]:
+        with self._session_factory() as session:
+            return PaperFirstCanaryRepository(session).supervised_all()
 
     def get_by_arm_request(self, request_id: str) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:

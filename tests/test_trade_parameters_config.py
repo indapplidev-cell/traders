@@ -67,7 +67,7 @@ def test_named_sets_inherit_exact_overrides_and_preserve_baseline():
     assert interim.parameters.exit_policy.stale_position.hard_timeout_seconds == 1200
     assert interim.parameters.costs == baseline.parameters.costs
     assert interim.parameters.risk.max_open_positions == baseline.parameters.risk.max_open_positions
-    assert interim.parameters.risk.max_new_commands_per_cycle == 1
+    assert interim.parameters.risk.max_new_commands_per_cycle == 2
     assert interim.parameters.risk.total_open_risk_limit_bps == 50
     assert interim.parameters.entry_refinement_1m.mode == "SHADOW"
     assert interim.parameters.exit_policy.stale_position.mode == "SHADOW"

@@ -181,6 +181,9 @@ def test_continuous_capacity_block_persists_observation_without_execution():
         def observe_continuous_capacity_blocked(self, blocker_code):
             self.observed.append(blocker_code)
 
+        def execute_continuous_once(self):
+            return ("NO_ELIGIBLE_APPROVAL",)
+
     executor = CapacityExecutor()
     subject = PaperFirstCanaryEligibleApprovalContinuationWorker(
         control=Control(PersistentState.CONTINUOUS_ARMED),
@@ -193,8 +196,8 @@ def test_continuous_capacity_block_persists_observation_without_execution():
         )),
     )
 
-    assert subject.run_once() == "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
-    assert executor.observed == ["MAX_OPEN_POSITIONS_REACHED"]
+    assert subject.run_once() == "WAITING_FOR_ELIGIBLE_APPROVAL"
+    assert executor.observed == []
 
 
 def test_real_production_approval_adapter_future_visibility_uses_existing_ingestion_boundary():

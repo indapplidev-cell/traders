@@ -18,7 +18,9 @@ from app.engine_paper.continuous_authority import (
     ACTIVE_STATE,
     ContinuousAuthorityError,
     PaperContinuousAuthorityStore,
+    SCALPING_V2_RISK_PER_TRADE_BPS,
 )
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_paper.fill_policy import (
     PaperFillPriceSource,
     PaperFillSimulationPolicy,
@@ -232,6 +234,8 @@ class ProductionPaperFirstCanaryExecutor:
 
     def _select_candidate(
         self, canary, results, *, exclude_executed: bool = False,
+        selection_limit: int = 1,
+        reserved_positions: int = 0,
     ) -> EligibleApprovalSelectionResult:
         candidates = tuple(
             value.candidate for result in results for value in result.symbol_results
@@ -240,8 +244,27 @@ class ProductionPaperFirstCanaryExecutor:
         if exclude_executed and self._outcome_store is not None:
             candidates = self._outcome_store.unconsumed_candidates(candidates)
         selector_started_at = self._clock().astimezone(timezone.utc)
+        selector_kwargs = {}
+        if selection_limit == 2:
+            parameters = resolve_runtime_parameters("trade-5m-v2")
+            selector_kwargs = {
+                "reserved_positions": reserved_positions,
+                # Continuous v2 reservations are all sized from the same
+                # frozen per-trade basis.  Applying each accepted rank to the
+                # projected book makes rank 2 observe rank 1's reservation.
+                "existing_open_risk_bps": (
+                    SCALPING_V2_RISK_PER_TRADE_BPS * reserved_positions
+                ),
+                "risk_per_trade_bps": SCALPING_V2_RISK_PER_TRADE_BPS,
+                "max_positions": parameters.portfolio_max_concurrent_positions,
+                "max_total_open_risk_bps": Decimal(str(
+                    parameters.portfolio_max_total_open_risk_bps
+                )),
+            }
         selection = self._selector.select(
-            candidates, policy_version=canary.selection_policy_version
+            candidates, policy_version=canary.selection_policy_version,
+            limit=selection_limit,
+            **selector_kwargs,
         )
         self.last_selection_diagnostics = selection.diagnostics
         if self._outcome_store is not None and selection.failure_code is None and candidates:
@@ -406,13 +429,18 @@ class ProductionPaperFirstCanaryExecutor:
         )
 
     def execute_continuous_once(self) -> tuple[str, ...]:
-        """Select and dispatch at most one fresh v2 winner for this poll cycle."""
+        """Dispatch one durable winner per call from a two-slot 5m selection."""
 
         if self._continuous_store is None:
             return ("CONTINUOUS_CONTROL_NOT_CONFIGURED",)
         state = self._control.read_authoritative()
         if state.state is not PersistentState.CONTINUOUS_ARMED or state.arming_scope is None:
             return (f"MUTATION_DENIED_{state.state.value}",)
+        if (
+            state.arming_scope.max_new_commands != 2
+            or state.arming_scope.max_open_positions != 2
+        ):
+            return ("CONTINUOUS_CAPACITY_SCOPE_MISMATCH",)
         try:
             budget = self._continuous_store.reconcile(generation=state.generation)
         except ContinuousAuthorityError as error:
@@ -433,7 +461,10 @@ class ProductionPaperFirstCanaryExecutor:
         # it first instead of putting its strict entry window behind the
         # twenty-symbol approval scan and unrelated shadow-refinement work on
         # every retry while the causal 1m candle is closing.
-        active_cycle = self._canary_store.current()
+        active_reader = getattr(self._canary_store, "active", None)
+        active_cycles = active_reader() if active_reader is not None else tuple(
+            value for value in (self._canary_store.current(),) if value is not None
+        )
         if self._outcome_store is not None:
             expired_run_ids = self._outcome_store.terminalize_missed_entry_windows(
                 state.generation,
@@ -441,22 +472,19 @@ class ProductionPaperFirstCanaryExecutor:
             )
             if expired_run_ids:
                 if (
-                    active_cycle is not None
-                    and active_cycle.authority_mode == "CONTINUOUS"
-                    and active_cycle.command_id is None
+                    active_cycles
                 ):
-                    self._canary_store.fail_safe(
-                        active_cycle.canary_id,
-                        "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED",
-                    )
+                    for active_cycle in active_cycles:
+                        if active_cycle.authority_mode == "CONTINUOUS" and active_cycle.command_id is None:
+                            self._canary_store.fail_safe(
+                                active_cycle.canary_id,
+                                "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED",
+                            )
                 return ("ENTRY_FILL_WINDOW_MISSED",)
         pending_run_id = None
         durable_candidate = None
         if (
-            active_cycle is not None
-            and active_cycle.authority_mode == "CONTINUOUS"
-            and active_cycle.command_id is None
-            and self._outcome_store is not None
+            self._outcome_store is not None
         ):
             pending_run_id = self._outcome_store.pending_selected_run_id(state.generation)
             read_by_run_id = getattr(self._approval_source, "read_by_run_id", None)
@@ -509,10 +537,11 @@ class ProductionPaperFirstCanaryExecutor:
                     self._outcome_store.record_refinement(
                         candidate.lineage.source_run_id, shadow
                     )
-        if budget.open_positions >= 1:
+        reserved_capacity = budget.open_positions + budget.in_flight_commands
+        if budget.open_positions >= 2 or reserved_capacity >= 2:
             self.observe_continuous_capacity_blocked("MAX_OPEN_POSITIONS_REACHED")
             return ("MAX_OPEN_POSITIONS_REACHED",)
-        if budget.in_flight_commands >= 1:
+        if budget.in_flight_commands >= 2:
             self.observe_continuous_capacity_blocked(
                 "MAX_NEW_COMMANDS_PER_CYCLE_REACHED"
             )
@@ -540,63 +569,35 @@ class ProductionPaperFirstCanaryExecutor:
         if errors:
             if (
                 errors == ("NO_ELIGIBLE_APPROVAL",)
-                and active_cycle is not None
-                and active_cycle.authority_mode == "CONTINUOUS"
-                and active_cycle.command_id is None
+                and any(
+                    value.authority_mode == "CONTINUOUS" and value.command_id is None
+                    for value in active_cycles
+                )
             ):
                 if self._outcome_store is not None and pending_run_id is not None:
                     self._outcome_store.record_attempt(
                         pending_run_id,
                         failure_code="SELECTED_PLAN_NOT_CLAIMABLE",
                     )
-                self._canary_store.fail_safe(
-                    active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_EXPIRED"
-                )
+                for active_cycle in active_cycles:
+                    if active_cycle.authority_mode == "CONTINUOUS" and active_cycle.command_id is None:
+                        self._canary_store.fail_safe(
+                            active_cycle.canary_id,
+                            "CONTINUOUS_RESERVED_APPROVAL_EXPIRED",
+                        )
             return errors
-        if (
-            active_cycle is not None
-            and active_cycle.authority_mode == "CONTINUOUS"
-            and active_cycle.command_id is None
-        ):
-            if durable_candidate is not None:
-                candidate = durable_candidate
-                self.last_selection_diagnostics = None
-            else:
-                candidates = tuple(
-                    value.candidate for result in results for value in result.symbol_results
-                    if value.candidate is not None
-                    and continuous_cycle_id(state.generation, value.candidate.candidate_id)
-                    == active_cycle.canary_id
-                )
-            if durable_candidate is None and len(candidates) != 1:
-                if self._outcome_store is not None and pending_run_id is not None:
-                    self._outcome_store.record_attempt(
-                        pending_run_id,
-                        failure_code="SELECTED_PLAN_NOT_CLAIMABLE",
-                    )
-                self._canary_store.fail_safe(
-                    active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT"
-                )
-                return ("CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
-            if durable_candidate is None:
-                selector_started_at = self._clock().astimezone(timezone.utc)
-                selection = self._selector.select(
-                    candidates, policy_version=authority.selection_policy_version
-                )
-                self.last_selection_diagnostics = selection.diagnostics
-                if selection.failure_code is not None or selection.winner is None:
-                    return (selection.failure_code or "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
-                if self._outcome_store is not None:
-                    self._outcome_store.observe_selection(
-                        candidates,
-                        selection,
-                        universe_id=authority.universe_version_id,
-                        control_generation=authority.current_control_generation,
-                        selector_started_at=selector_started_at,
-                    )
-                candidate = selection.winner
+        if durable_candidate is not None:
+            candidate = durable_candidate
+            self.last_selection_diagnostics = None
         else:
-            selection = self._select_candidate(authority, results, exclude_executed=True)
+            available_slots = max(0, 2 - reserved_capacity)
+            selection = self._select_candidate(
+                authority,
+                results,
+                exclude_executed=True,
+                selection_limit=min(2, available_slots),
+                reserved_positions=reserved_capacity,
+            )
             if selection.failure_code is not None or selection.winner is None:
                 return (selection.failure_code or "NO_ELIGIBLE_APPROVAL",)
             candidate = selection.winner
@@ -625,13 +626,18 @@ class ProductionPaperFirstCanaryExecutor:
                     observed_at=claim_attempted_at,
                 )
                 if (
-                    active_cycle is not None
-                    and active_cycle.authority_mode == "CONTINUOUS"
-                    and active_cycle.command_id is None
+                    any(
+                        value.canary_id == continuous_cycle_id(
+                            state.generation, candidate.candidate_id
+                        )
+                        and value.authority_mode == "CONTINUOUS"
+                        and value.command_id is None
+                        for value in active_cycles
+                    )
                 ):
+                    cycle_id = continuous_cycle_id(state.generation, candidate.candidate_id)
                     self._canary_store.fail_safe(
-                        active_cycle.canary_id,
-                        "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED",
+                        cycle_id, "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED"
                     )
                 return ("ENTRY_FILL_WINDOW_MISSED",)
         authoritative_refinement_ready = False
@@ -670,10 +676,10 @@ class ProductionPaperFirstCanaryExecutor:
                     failure_code="ENTRY_FILL_WINDOW_MISSED",
                 )
             return ("ENTRY_FILL_WINDOW_MISSED",)
-        if active_cycle is not None and active_cycle.canary_id == continuous_cycle_id(
-            state.generation, candidate.candidate_id
-        ):
-            canary = active_cycle
+        cycle_id = continuous_cycle_id(state.generation, candidate.candidate_id)
+        existing_cycle = self._canary_store.get(cycle_id)
+        if existing_cycle is not None:
+            canary = existing_cycle
         else:
             try:
                 canary = self._canary_store.reserve_continuous_cycle(
