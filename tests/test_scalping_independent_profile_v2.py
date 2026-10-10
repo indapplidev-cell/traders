@@ -2,6 +2,7 @@ import hashlib
 import json
 from dataclasses import asdict
 
+from app.engine_analysis.analysis_snapshot import AnalysisSnapshot
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_orchestrator.trade_profile import resolve_trade_profile
 from app.engine_paper.scalping_policy_v2 import (
@@ -92,7 +93,71 @@ def test_v2_micro_setup_does_not_promote_unknown_no_impulse_indicator_fallback()
     promoted = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))._scalping_v2_micro_setup(
         legacy, context,
     )
-    assert promoted == legacy
+    assert promoted.status == legacy.status == "NO_SETUP"
+    assert promoted.setup_type == legacy.setup_type
+    assert promoted.reason_codes == legacy.reason_codes
+    assert promoted.diagnostics.diagnostic_reasons[-1] == "SCALPING_V2_NO_MOMENTUM_CONTEXT"
+
+
+def test_v2_no_setup_reports_first_failed_micro_gate_without_changing_admission():
+    detector = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))
+    base = {
+        "market_regime": "EXPANSION", "base_regime": "UNKNOWN",
+        "entry_evidence_strength": "NOT_EVALUATED",
+        "volatility_state": {"recent_to_baseline_range_ratio": 1.5},
+    }
+    cases = (
+        (0, 0, 0.5, "NOT_EVALUATED", "SCALPING_V2_NO_DIRECTIONAL_CONTEXT"),
+        (3, 0, 0.2, "NOT_EVALUATED", "SCALPING_V2_ENTRY_EVIDENCE_NOT_CONFIRMED"),
+        (3, 0, 0.5, "INVALID", "SCALPING_V2_ENTRY_EVIDENCE_NOT_CONFIRMED"),
+    )
+    for bullish, bearish, move, evidence, expected in cases:
+        context = SetupContext(
+            regime="UNKNOWN", confidence=0.25, action=None,
+            impulse_phase="NO_IMPULSE", entry_quality="NOT_EVALUATED",
+            analysis_context={
+                "scalping": {**base, "entry_evidence_strength": evidence},
+                "technical_indicators": {"bullish_votes": bullish, "bearish_votes": bearish},
+                "quality_basis": {"impulse_context": {"impulse_move_pct": move}},
+            },
+        )
+        legacy = evaluate_setup_rules(context)
+        result = detector._scalping_v2_micro_setup(legacy, context)
+        assert result.status == "NO_SETUP"
+        assert result.reason_codes == legacy.reason_codes
+        assert result.diagnostics.diagnostic_reasons[-1] == expected
+
+    poor_context = SetupContext(
+        regime="UNKNOWN", confidence=0.25, action=None,
+        impulse_phase="NO_IMPULSE", entry_quality="INVALID",
+        analysis_context={
+            "scalping": {**base, "entry_evidence_strength": "STRONG"},
+            "technical_indicators": {"bullish_votes": 3, "bearish_votes": 0},
+            "quality_basis": {"impulse_context": {"impulse_move_pct": 0.5}},
+        },
+    )
+    poor_legacy = evaluate_setup_rules(poor_context)
+    poor_result = detector._scalping_v2_micro_setup(poor_legacy, poor_context)
+    assert poor_result.status == "NO_SETUP"
+    assert poor_result.reason_codes == poor_legacy.reason_codes
+    assert poor_result.diagnostics.diagnostic_reasons[-1] == "SCALPING_V2_ENTRY_QUALITY_REJECTED"
+
+
+def test_v2_no_setup_diagnostic_is_serialized_without_changing_terminal_reason():
+    snapshot = AnalysisSnapshot.for_window(
+        symbol="BTCUSDT", timeframe="5m", closed_until_ms=1_700_000_000_000,
+        created_at_ms=1_700_000_000_001, market_data_health="OK",
+        degraded=False, enough_data=True, regime="UNKNOWN", confidence=0.25,
+        action="NO_ACTION", impulse_phase="NO_IMPULSE",
+        entry_quality="NOT_EVALUATED", reason_codes=[],
+        analysis_context={"scalping": {"market_regime": "UNKNOWN"}},
+        status="ANALYZED",
+    )
+    candidate = SetupDetector(resolve_runtime_parameters("trade-5m-v2")).detect(snapshot)
+    payload = asdict(candidate)
+    assert candidate.status == "NO_SETUP"
+    assert candidate.reason_codes[0] == "NO_STRUCTURAL_SETUP"
+    assert payload["diagnostics"]["diagnostic_reasons"][-1] == "SCALPING_V2_NO_MOMENTUM_CONTEXT"
 
 
 def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():

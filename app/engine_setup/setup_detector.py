@@ -282,6 +282,29 @@ class SetupDetector:
                     diagnostic_reasons=["SCALPING_V2_MICRO_MOMENTUM_TRIGGER"],
                 ),
             )
+        if (
+            result.status == SetupStatus.NO_SETUP.value
+            and SetupReasonCode.NO_STRUCTURAL_SETUP.value in result.reason_codes
+            and not set(result.invalidation_reasons).intersection({
+                InvalidationReason.ANALYSIS_NOT_ANALYZED.value,
+                InvalidationReason.NOT_ENOUGH_DATA.value,
+            })
+        ):
+            if not momentum:
+                reason = "SCALPING_V2_NO_MOMENTUM_CONTEXT"
+            elif direction is None:
+                reason = "SCALPING_V2_NO_DIRECTIONAL_CONTEXT"
+            elif not entry_evidence:
+                reason = "SCALPING_V2_ENTRY_EVIDENCE_NOT_CONFIRMED"
+            else:
+                reason = "SCALPING_V2_ENTRY_QUALITY_REJECTED"
+            return replace(
+                result,
+                diagnostics=replace(
+                    result.diagnostics,
+                    diagnostic_reasons=[*result.diagnostics.diagnostic_reasons, reason],
+                ),
+            )
         return result
 
 
