@@ -160,6 +160,60 @@ def test_v2_no_setup_diagnostic_is_serialized_without_changing_terminal_reason()
     assert payload["diagnostics"]["diagnostic_reasons"][-1] == "SCALPING_V2_NO_MOMENTUM_CONTEXT"
 
 
+def test_v2_family_trace_is_diagnostic_only_and_exposes_retest_code_mismatch():
+    snapshot = AnalysisSnapshot.for_window(
+        symbol="ETHUSDT", timeframe="5m", closed_until_ms=1_700_000_300_000,
+        created_at_ms=1_700_000_300_001, market_data_health="OK",
+        degraded=False, enough_data=True, regime="UNKNOWN", confidence=0.25,
+        action="NO_ACTION", impulse_phase="NO_IMPULSE",
+        entry_quality="NOT_EVALUATED", reason_codes=["SCHWAGER_BREAKOUT_RETEST_HELD"],
+        analysis_context={"scalping": {"market_regime": "UNKNOWN"}},
+        status="ANALYZED",
+    )
+    detector = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))
+    candidate = detector.detect(snapshot)
+    legacy = evaluate_setup_rules(SetupContext.from_analysis_snapshot(snapshot))
+    payload = asdict(candidate)
+
+    assert candidate.status == legacy.status == "NO_SETUP"
+    assert candidate.setup_type == legacy.setup_type == "NO_SETUP"
+    assert candidate.reason_codes == legacy.reason_codes
+    trace = payload["diagnostics"]["family_first_unmet_condition"]
+    assert len(trace) == 7
+    assert trace["SCALP_BREAKOUT_RETEST"] == "NO_RECOGNIZED_RETEST_EVIDENCE"
+    assert trace["SCALP_MOMENTUM_CONTINUATION"] == "SCALPING_V2_NO_MOMENTUM_CONTEXT"
+    assert payload["diagnostics"]["producer_consumer_mismatches"] == [
+        "SCHWAGER_BREAKOUT_RETEST_HELD_NOT_RECOGNIZED_BY_SETUP_RETEST_RULE",
+    ]
+
+
+def test_v2_family_trace_does_not_change_momentum_admission():
+    snapshot = AnalysisSnapshot.for_window(
+        symbol="BTCUSDT", timeframe="5m", closed_until_ms=1_700_000_600_000,
+        created_at_ms=1_700_000_600_001, market_data_health="OK",
+        degraded=False, enough_data=True, regime="UP", confidence=0.8,
+        action="NO_ACTION", impulse_phase="IMPULSE_EXTENSION",
+        entry_quality="GOOD", reason_codes=[],
+        analysis_context={"scalping": {
+            "market_regime": "EXPANSION", "base_regime": "UP",
+            "entry_evidence_strength": "STRONG",
+        }},
+        status="ANALYZED",
+    )
+    context = SetupContext.from_analysis_snapshot(snapshot)
+    detector = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))
+    expected = detector._scalping_family(
+        detector._scalping_v2_micro_setup(evaluate_setup_rules(context), context), context,
+    )
+    candidate = detector.detect(snapshot)
+    assert (candidate.status, candidate.setup_type, candidate.reason_codes) == (
+        expected.status, expected.setup_type, expected.reason_codes,
+    )
+    assert candidate.diagnostics.family_first_unmet_condition[
+        "SCALP_MOMENTUM_CONTINUATION"
+    ] == "CONDITIONS_MET_NOT_SELECTION"
+
+
 def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():
     positive = evaluate_expectancy(
         net_win_bps=60, net_loss_bps=40,

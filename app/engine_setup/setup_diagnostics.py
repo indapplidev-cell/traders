@@ -48,6 +48,9 @@ class SetupDiagnostics:
     pullback_quality: str | None = None
     liquidity_presence: bool | None = None
     volatility_suitability: str | None = None
+    # Descriptive only: never consumed by setup admission or downstream gates.
+    family_first_unmet_condition: dict[str, str] = field(default_factory=dict)
+    producer_consumer_mismatches: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         bucket = SetupSemanticBucket(self.semantic_bucket).value

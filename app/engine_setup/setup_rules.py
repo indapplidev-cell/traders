@@ -472,3 +472,76 @@ def _reversal_direction(flat: str) -> str:
 
 def _is_choppy(tokens: set[str], flat: str) -> bool:
     return any("CHOP" in token for token in tokens) or "HIGH_OVERLAP" in flat or "CHOPPY" in flat
+
+
+def diagnose_legacy_family_gates(context: SetupContext) -> tuple[dict[str, str], list[str]]:
+    """Describe existing family predicates without participating in selection.
+
+    A fully met predicate is not an admission promise: earlier rules can take
+    precedence and later strategy/risk/execution gates still apply.
+    """
+    tokens = set(context.reason_codes)
+    flat = _flatten(context.analysis_context)
+    phase = context.impulse_phase or ""
+    directional = context.regime in {"UP", "DOWN"}
+    invalidations = collect_invalidation_reasons(context)
+    blocked = _blocked(invalidations)
+    confirmation = _confirmed(flat, tokens)
+    breakout_confirmation = bool(tokens.intersection(_BREAKOUT_CONFIRMATION)) or _breakout_held(flat)
+    continuation = bool(tokens.intersection(_CONTINUATION_TRIGGER)) or phase in {
+        "CONTROLLED_PULLBACK", "CONTROLLED_PULLBACK_CONTINUATION",
+    }
+    breakout = phase == "IMPULSE_EXTENSION" or any(
+        "BREAKOUT_REQUIRES_CONFIRMATION" in token for token in tokens
+    )
+    scalping_regime = str(
+        ((context.analysis_context.get("scalping") or {}).get("market_regime")) or ""
+    ).upper()
+
+    def first_unmet(*conditions: tuple[bool, str]) -> str:
+        return next((code for passed, code in conditions if not passed), "CONDITIONS_MET_NOT_SELECTION")
+
+    breakout_conditions = (
+        (directional, "NO_DIRECTIONAL_REGIME"),
+        (breakout, "NO_BREAKOUT_TRIGGER"),
+        (not blocked, "EXISTING_SETUP_BLOCKED"),
+        (breakout_confirmation, "BREAKOUT_NOT_CONFIRMED"),
+    )
+    trace = {
+        SetupType.SCALP_TREND_PULLBACK.value: first_unmet(
+            (directional, "NO_DIRECTIONAL_REGIME"),
+            (continuation, "NO_PULLBACK_TRIGGER"),
+            (context.entry_quality not in {"POOR", "INVALID"}, "ENTRY_QUALITY_REJECTED"),
+            (not blocked, "EXISTING_SETUP_BLOCKED"),
+            (breakout_confirmation or confirmation, "PULLBACK_NOT_CONFIRMED"),
+        ),
+        SetupType.SCALP_BREAKOUT.value: first_unmet(
+            *breakout_conditions,
+            (scalping_regime != "COMPRESSION", "MAPPED_TO_COMPRESSION_BREAK"),
+        ),
+        SetupType.SCALP_COMPRESSION_BREAK.value: first_unmet(
+            *breakout_conditions,
+            (scalping_regime == "COMPRESSION", "NO_COMPRESSION_REGIME"),
+        ),
+        SetupType.SCALP_BREAKOUT_RETEST.value: first_unmet(
+            (_is_breakout_retest(tokens, flat), "NO_RECOGNIZED_RETEST_EVIDENCE"),
+            (not blocked, "EXISTING_SETUP_BLOCKED"),
+        ),
+        SetupType.SCALP_RANGE_BOUNCE.value: first_unmet(
+            (context.regime in {"FLAT", "UNKNOWN"}, "NO_RANGE_REGIME"),
+            (_range_rejection(flat, tokens), "NO_RANGE_EDGE_REJECTION"),
+            (context.entry_quality != "INVALID", "ENTRY_QUALITY_INVALID"),
+            (confirmation, "RANGE_REJECTION_NOT_CONFIRMED"),
+            (_acceptable(context), "ENTRY_QUALITY_NOT_ACCEPTABLE"),
+        ),
+        SetupType.SCALP_LIQUIDITY_SWEEP.value: first_unmet(
+            (bool(tokens.intersection(_FALSE_BREAKOUT)), "NO_FALSE_BREAKOUT_EVIDENCE"),
+            (context.entry_quality != "INVALID", "ENTRY_QUALITY_INVALID"),
+            (_reversal_confirmed(tokens, flat), "REVERSAL_NOT_CONFIRMED"),
+            (_acceptable(context), "ENTRY_QUALITY_NOT_ACCEPTABLE"),
+        ),
+    }
+    mismatches = []
+    if "SCHWAGER_BREAKOUT_RETEST_HELD" in tokens and not _is_breakout_retest(tokens, flat):
+        mismatches.append("SCHWAGER_BREAKOUT_RETEST_HELD_NOT_RECOGNIZED_BY_SETUP_RETEST_RULE")
+    return trace, mismatches

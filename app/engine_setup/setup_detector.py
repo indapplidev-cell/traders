@@ -13,7 +13,9 @@ from app.engine_setup.setup_context import SetupContext
 from app.engine_setup.setup_diagnostics import SetupDiagnostics, SetupSemanticBucket
 from app.engine_setup.setup_invalidation import InvalidationReason
 from app.engine_setup.setup_reason_codes import SetupReasonCode
-from app.engine_setup.setup_rules import SetupRuleResult, evaluate_setup_rules
+from app.engine_setup.setup_rules import (
+    SetupRuleResult, diagnose_legacy_family_gates, evaluate_setup_rules,
+)
 from app.engine_setup.setup_status import ConfirmationState, DirectionHint, SetupQuality, SetupStatus
 from app.engine_setup.setup_type import SetupType
 from app.engine_setup.setup_quality_diagnostics import diagnose_setup_quality
@@ -47,6 +49,28 @@ class SetupDetector:
                result: SetupRuleResult) -> SetupCandidate:
         result = self._scalping_v2_micro_setup(result, context)
         result = self._scalping_family(result, context)
+        if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v2":
+            if snapshot.status == AnalysisSnapshotStatus.ANALYZED.value and snapshot.enough_data and not snapshot.degraded:
+                family_trace, mismatches = diagnose_legacy_family_gates(context)
+                family_trace[SetupType.SCALP_MOMENTUM_CONTINUATION.value] = (
+                    _micro_family_first_unmet_condition(context)
+                )
+            else:
+                family_trace = {
+                    family.value: "ANALYSIS_PRECONDITION_FAILED"
+                    for family in (
+                        SetupType.SCALP_TREND_PULLBACK, SetupType.SCALP_BREAKOUT,
+                        SetupType.SCALP_COMPRESSION_BREAK, SetupType.SCALP_BREAKOUT_RETEST,
+                        SetupType.SCALP_RANGE_BOUNCE, SetupType.SCALP_LIQUIDITY_SWEEP,
+                        SetupType.SCALP_MOMENTUM_CONTINUATION,
+                    )
+                }
+                mismatches = []
+            result = replace(result, diagnostics=replace(
+                result.diagnostics,
+                family_first_unmet_condition=family_trace,
+                producer_consumer_mismatches=mismatches,
+            ))
         missing = []
         for present, name in (
             (result.diagnostics.has_structural_trigger, "STRUCTURAL_TRIGGER"),
@@ -306,6 +330,45 @@ class SetupDetector:
                 ),
             )
         return result
+
+
+def _micro_family_first_unmet_condition(context: SetupContext) -> str:
+    """Mirror the v2 micro predicates for observability, never for admission."""
+    scalping = context.analysis_context.get("scalping") or {}
+    indicators = context.analysis_context.get("technical_indicators") or {}
+    quality_basis = context.analysis_context.get("quality_basis") or {}
+    impulse_context = quality_basis.get("impulse_context") or {}
+    evidence = str(
+        ((scalping.get("entry_evidence_evaluation") or {}).get("status"))
+        or scalping.get("entry_evidence_strength") or ""
+    ).upper()
+    regime = str(scalping.get("market_regime") or context.regime or "").upper()
+    direction_regime = str(scalping.get("base_regime") or context.regime or "").upper()
+    bullish_votes = int(indicators.get("bullish_votes") or 0)
+    bearish_votes = int(indicators.get("bearish_votes") or 0)
+    direction_present = direction_regime in {"UP", "DOWN"} or (
+        bullish_votes >= bearish_votes + 2 or bearish_votes >= bullish_votes + 2
+    )
+    momentum = regime == "EXPANSION" or context.impulse_phase in {
+        "IMPULSE_EXTENSION", "CONTROLLED_PULLBACK", "CONTROLLED_PULLBACK_CONTINUATION",
+    }
+    impulse_move_pct = float(impulse_context.get("impulse_move_pct") or 0.0)
+    volatility_ratio = float(
+        ((scalping.get("volatility_state") or {}).get("recent_to_baseline_range_ratio")) or 0.0
+    )
+    entry_evidence = evidence in {"STRONG", "NORMAL"} or (
+        evidence == "NOT_EVALUATED" and momentum
+        and impulse_move_pct >= 0.25 and volatility_ratio >= 0.9
+    )
+    if not momentum:
+        return "SCALPING_V2_NO_MOMENTUM_CONTEXT"
+    if not direction_present:
+        return "SCALPING_V2_NO_DIRECTIONAL_CONTEXT"
+    if not entry_evidence:
+        return "SCALPING_V2_ENTRY_EVIDENCE_NOT_CONFIRMED"
+    if context.entry_quality in {"POOR", "INVALID"}:
+        return "SCALPING_V2_ENTRY_QUALITY_REJECTED"
+    return "CONDITIONS_MET_NOT_SELECTION"
 
 
 def _no_setup(reason: InvalidationReason) -> SetupRuleResult:
