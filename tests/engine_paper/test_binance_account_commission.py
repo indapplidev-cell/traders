@@ -14,6 +14,7 @@ from app.engine_paper.binance_account_commission import (
     BinanceAccountCommissionClient,
     BinanceAccountCommissionManager,
     BinanceCredentials,
+    CommissionRefreshError,
     PROVIDER_VERSION,
     commission_runtime_status,
     parse_commission_response,
@@ -49,10 +50,9 @@ def response(symbol="BTCUSDT", *, special="0", tax="0", discount="0.75"):
 
 
 class Result:
-    status_code = 200
-
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self._payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self):
         return None
@@ -72,6 +72,24 @@ class SignedTransport:
             return Result({"serverTime": 1_700_000_000_250})
         if self.failed:
             raise OSError("private failure without credential text")
+        return Result(response(str(params["symbol"])))
+
+
+class ClockSkewTransport:
+    def __init__(self, *, always_reject=False):
+        self.calls = []
+        self.always_reject = always_reject
+        self.time_reads = 0
+        self.commission_reads = 0
+
+    def get(self, url, *, params, headers):
+        self.calls.append((url, dict(params), dict(headers)))
+        if url.endswith("/api/v3/time"):
+            self.time_reads += 1
+            return Result({"serverTime": 1_700_000_000_000 + self.time_reads * 10_000})
+        self.commission_reads += 1
+        if self.always_reject or self.commission_reads == 1:
+            return Result({"code": -1021, "msg": "timestamp rejected"}, status_code=400)
         return Result(response(str(params["symbol"])))
 
 
@@ -119,6 +137,79 @@ def test_signed_user_data_adapter_uses_exact_endpoint_header_and_hmac():
     ).hexdigest()
     assert params["signature"] == expected
     assert credentials.secret_key not in json.dumps((url, params, headers))
+
+
+def test_timestamp_rejection_resynchronizes_and_resigns_exactly_once():
+    transport = ClockSkewTransport()
+    credentials = BinanceCredentials("api-key-123456789", "secret-key-123456789")
+    client = BinanceAccountCommissionClient(
+        credentials, transport=transport, clock_ms=lambda: 1_700_000_000_000,
+    )
+    assert client.fetch("BTCUSDT")["symbol"] == "BTCUSDT"
+    assert transport.time_reads == 2
+    assert transport.commission_reads == 2
+    requests = [call for call in transport.calls if call[0].endswith("/api/v3/account/commission")]
+    assert requests[0][1]["timestamp"] != requests[1][1]["timestamp"]
+    for _, params, headers in requests:
+        unsigned = {key: value for key, value in params.items() if key != "signature"}
+        assert params["signature"] == hmac.new(
+            credentials.secret_key.encode(), urlencode(unsigned).encode(), hashlib.sha256
+        ).hexdigest()
+        assert headers == {"X-MBX-APIKEY": credentials.api_key}
+
+
+def test_repeated_timestamp_rejection_fails_closed_with_numeric_diagnostic():
+    transport = ClockSkewTransport(always_reject=True)
+    client = BinanceAccountCommissionClient(
+        BinanceCredentials("api-key-123456789", "secret-key-123456789"),
+        transport=transport, clock_ms=lambda: 1_700_000_000_000,
+    )
+    with pytest.raises(CommissionRefreshError) as error:
+        client.fetch("BTCUSDT")
+    assert error.value.code == "TIMESTAMP_OUT_OF_RANGE"
+    assert error.value.provider_error_code == -1021
+    assert transport.time_reads == transport.commission_reads == 2
+
+
+def test_failed_refresh_persists_only_symbol_and_numeric_provider_code(tmp_path):
+    current = [datetime(2026, 9, 6, tzinfo=timezone.utc)]
+    transport = ClockSkewTransport(always_reject=True)
+    value = manager(tmp_path, current, transport, ("BTCUSDT", "ETHUSDT"))
+    assert value.ensure_fresh(force=True).status == "FEE_SOURCE_NOT_READY"
+    status = json.loads(value.status_path.read_text(encoding="utf-8"))
+    assert status["last_error_code"] == "TIMESTAMP_OUT_OF_RANGE"
+    assert status["last_provider_error_code"] == -1021
+    assert status["last_failed_symbol"] == "BTCUSDT"
+    assert "signature" not in json.dumps(status)
+    assert "api-key" not in json.dumps(status)
+    runtime = commission_runtime_status(value.snapshot_path)
+    assert runtime["last_provider_error_code"] == -1021
+    assert runtime["last_failed_symbol"] == "BTCUSDT"
+    restarted = manager(tmp_path, current, transport, ("BTCUSDT", "ETHUSDT"))
+    assert restarted._last_provider_error_code == -1021
+    assert restarted._last_failed_symbol == "BTCUSDT"
+    assert restarted.ensure_fresh().status == "FEE_SOURCE_NOT_READY"
+    assert transport.commission_reads == 2
+
+
+def test_non_timestamp_client_error_is_not_retried():
+    class InvalidSymbolTransport(ClockSkewTransport):
+        def get(self, url, *, params, headers):
+            if url.endswith("/api/v3/time"):
+                return super().get(url, params=params, headers=headers)
+            self.commission_reads += 1
+            return Result({"code": -1121, "msg": "invalid symbol"}, status_code=400)
+
+    transport = InvalidSymbolTransport()
+    client = BinanceAccountCommissionClient(
+        BinanceCredentials("api-key-123456789", "secret-key-123456789"),
+        transport=transport, clock_ms=lambda: 1_700_000_000_000,
+    )
+    with pytest.raises(CommissionRefreshError) as error:
+        client.fetch("BTCUSDT")
+    assert error.value.code == "INVALID_RESPONSE"
+    assert error.value.provider_error_code == -1121
+    assert transport.time_reads == transport.commission_reads == 1
 
 
 def test_parser_preserves_standard_special_tax_discount_and_effective_rates():

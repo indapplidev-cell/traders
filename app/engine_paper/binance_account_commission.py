@@ -58,9 +58,13 @@ class RefreshResult:
 class CommissionRefreshError(RuntimeError):
     """Sanitized refresh failure; never contains credentials or signed data."""
 
-    def __init__(self, code: str, message: str = "commission refresh failed") -> None:
+    def __init__(
+        self, code: str, message: str = "commission refresh failed",
+        *, provider_error_code: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
+        self.provider_error_code = provider_error_code
 
 
 def _credential_pair(payload: Mapping[str, object]) -> BinanceCredentials | None:
@@ -243,43 +247,52 @@ class BinanceAccountCommissionClient:
 
     def fetch(self, symbol: str) -> object:
         symbol = normalize_market_symbol(symbol)
-        params: dict[str, object] = {
-            "symbol": symbol,
-            "recvWindow": self._recv_window_ms,
-            "timestamp": self._timestamp_ms(),
-        }
-        query = urlencode(params)
-        params["signature"] = hmac.new(
-            self._credentials.secret_key.encode("utf-8"),
-            query.encode("utf-8"),
-            "sha256",
-        ).hexdigest()
-        try:
-            response = self._transport.get(
-                f"{self._base_url}/api/v3/account/commission",
-                params=params,
-                headers={"X-MBX-APIKEY": self._credentials.api_key},
-            )
-            status_code = getattr(response, "status_code", 200)
-            if status_code in (418, 429):
-                raise CommissionRefreshError("RATE_LIMITED")
-            if status_code >= 500:
-                raise CommissionRefreshError("TRANSIENT_REFRESH_FAILURE")
-            if status_code >= 400:
-                payload = response.json() if hasattr(response, "json") else {}
-                code = payload.get("code") if isinstance(payload, Mapping) else None
-                raise CommissionRefreshError(
-                    "AUTHENTICATION_FAILURE" if code in {-1002, -2014, -2015} else "INVALID_RESPONSE"
+        for attempt in range(2):
+            params: dict[str, object] = {
+                "symbol": symbol,
+                "recvWindow": self._recv_window_ms,
+                "timestamp": self._timestamp_ms(),
+            }
+            query = urlencode(params)
+            params["signature"] = hmac.new(
+                self._credentials.secret_key.encode("utf-8"),
+                query.encode("utf-8"),
+                "sha256",
+            ).hexdigest()
+            try:
+                response = self._transport.get(
+                    f"{self._base_url}/api/v3/account/commission",
+                    params=params,
+                    headers={"X-MBX-APIKEY": self._credentials.api_key},
                 )
-            if hasattr(response, "raise_for_status"):
-                response.raise_for_status()
-            return response.json()
-        except CommissionRefreshError:
-            raise
-        except (httpx.HTTPError, OSError) as exc:
-            raise CommissionRefreshError("NETWORK_ERROR") from exc
-        except (ValueError, TypeError) as exc:
-            raise CommissionRefreshError("INVALID_RESPONSE") from exc
+                status_code = getattr(response, "status_code", 200)
+                if status_code in (418, 429):
+                    raise CommissionRefreshError("RATE_LIMITED")
+                if status_code >= 500:
+                    raise CommissionRefreshError("TRANSIENT_REFRESH_FAILURE")
+                if status_code >= 400:
+                    payload = response.json() if hasattr(response, "json") else {}
+                    raw_code = payload.get("code") if isinstance(payload, Mapping) else None
+                    provider_code = raw_code if type(raw_code) is int else None
+                    if provider_code == -1021 and attempt == 0:
+                        self._server_offset_ms = None
+                        continue
+                    raise CommissionRefreshError(
+                        "AUTHENTICATION_FAILURE" if provider_code in {-1002, -2014, -2015}
+                        else "TIMESTAMP_OUT_OF_RANGE" if provider_code == -1021
+                        else "INVALID_RESPONSE",
+                        provider_error_code=provider_code,
+                    )
+                if hasattr(response, "raise_for_status"):
+                    response.raise_for_status()
+                return response.json()
+            except CommissionRefreshError:
+                raise
+            except (httpx.HTTPError, OSError) as exc:
+                raise CommissionRefreshError("NETWORK_ERROR") from exc
+            except (ValueError, TypeError) as exc:
+                raise CommissionRefreshError("INVALID_RESPONSE") from exc
+        raise AssertionError("unreachable commission retry state")
 
 
 class BinanceAccountCommissionManager:
@@ -305,6 +318,8 @@ class BinanceAccountCommissionManager:
         self._last_success: datetime | None = None
         self._failure_count = 0
         self._last_error_code: str | None = None
+        self._last_provider_error_code: int | None = None
+        self._last_failed_symbol: str | None = None
         self._hydrate_status()
 
     @property
@@ -331,6 +346,8 @@ class BinanceAccountCommissionManager:
                 None if self._last_success is None else self._last_success.isoformat().replace("+00:00", "Z")
             ),
             "last_error_code": error_code,
+            "last_provider_error_code": self._last_provider_error_code,
+            "last_failed_symbol": self._last_failed_symbol,
             "refresh_failure_count": self._failure_count,
             "next_retry_at": (
                 None if next_retry is None else next_retry.isoformat().replace("+00:00", "Z")
@@ -372,6 +389,12 @@ class BinanceAccountCommissionManager:
         self._last_success = self._parse_time(raw.get("last_success_at"))
         self._failure_count = max(0, int(raw.get("refresh_failure_count", 0) or 0))
         self._last_error_code = str(raw["last_error_code"]) if raw.get("last_error_code") else None
+        provider_code = raw.get("last_provider_error_code")
+        self._last_provider_error_code = provider_code if type(provider_code) is int else None
+        failed_symbol = raw.get("last_failed_symbol")
+        self._last_failed_symbol = (
+            str(failed_symbol) if failed_symbol in self.symbols else None
+        )
         retry_at = self._parse_time(raw.get("next_retry_at"))
         self._last_failed = bool(self._failure_count and retry_at and self._last_attempt)
 
@@ -453,17 +476,25 @@ class BinanceAccountCommissionManager:
             return RefreshResult("FEE_SOURCE_NOT_READY", len(self.symbols), 0, None, None, False,
                                  error_code=self._last_error_code)
         self._last_attempt = now
+        current_symbol: str | None = None
         try:
             rows = {}
             queried_symbols = 0
             for symbol in self.symbols:
+                current_symbol = symbol
                 queried_symbols += 1
-                rows[symbol] = parse_commission_response(
-                    symbol,
-                    self._client.fetch(symbol),
-                    entry_role=policy.entry_liquidity_role,
-                    exit_role=policy.exit_liquidity_role,
-                )
+                try:
+                    rows[symbol] = parse_commission_response(
+                        symbol,
+                        self._client.fetch(symbol),
+                        entry_role=policy.entry_liquidity_role,
+                        exit_role=policy.exit_liquidity_role,
+                    )
+                except RuntimeError as exc:
+                    if isinstance(exc, CommissionRefreshError):
+                        raise
+                    raise CommissionRefreshError("INVALID_RESPONSE") from exc
+            current_symbol = None
             fetched_at = now.isoformat().replace("+00:00", "Z")
             material = {
                 "snapshot_type": SNAPSHOT_TYPE,
@@ -499,12 +530,16 @@ class BinanceAccountCommissionManager:
             self._last_success = now
             self._failure_count = 0
             self._last_error_code = None
+            self._last_provider_error_code = None
+            self._last_failed_symbol = None
             self._write_status(status="READY", now=now, snapshot=material)
             return self._result(material, "READY", queried_symbols=queried_symbols)
         except Exception as exc:
             self._last_failed = True
             self._failure_count += 1
             self._last_error_code = getattr(exc, "code", "TRANSIENT_REFRESH_FAILURE")
+            self._last_provider_error_code = getattr(exc, "provider_error_code", None)
+            self._last_failed_symbol = current_symbol
             cached, age = self._cached()
             if cached is not None and age is not None and age <= policy.max_snapshot_age_seconds:
                 self._hydrate_success(cached)
@@ -567,6 +602,8 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "commission_ttl_seconds": commission.max_snapshot_age_seconds,
             "commission_refresh_failure_count": metadata.get("refresh_failure_count", 0),
             "last_error_code": metadata.get("last_error_code"),
+            "last_provider_error_code": metadata.get("last_provider_error_code"),
+            "last_failed_symbol": metadata.get("last_failed_symbol"),
             "next_retry_at": metadata.get("next_retry_at"),
         }
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
@@ -587,6 +624,8 @@ def commission_runtime_status(path: Path | None = None) -> dict[str, object]:
             "commission_ttl_seconds": commission.max_snapshot_age_seconds,
             "commission_refresh_failure_count": metadata.get("refresh_failure_count", 0),
             "last_error_code": metadata.get("last_error_code", "NO_INITIAL_SNAPSHOT"),
+            "last_provider_error_code": metadata.get("last_provider_error_code"),
+            "last_failed_symbol": metadata.get("last_failed_symbol"),
             "next_retry_at": metadata.get("next_retry_at"),
         }
 
