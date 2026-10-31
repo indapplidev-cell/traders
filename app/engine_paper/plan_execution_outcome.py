@@ -194,8 +194,9 @@ class PaperPlanExecutionOutcomeStore:
         The final-approval materializer can make a durable negative decision
         before a candidate/final-approval identity exists.  Older schema
         semantics silently omitted those plans from the outcome projection.
-        This bounded reconciliation locks source runs, uses the already
-        established five-minute validity boundary, and never creates a
+        This bounded reconciliation serializes each source run with a
+        transaction-scoped advisory lock, uses the already established
+        five-minute validity boundary, and never creates a
         candidate, approval, command, fill, or position.
         """
 
@@ -231,7 +232,6 @@ class PaperPlanExecutionOutcomeStore:
                     OnlinePipelineRun.run_id.asc(),
                 )
                 .limit(limit)
-                .with_for_update(of=OnlinePipelineRun, skip_locked=True)
             ))
             for run, result in source_rows:
                 counts["scanned"] += 1
