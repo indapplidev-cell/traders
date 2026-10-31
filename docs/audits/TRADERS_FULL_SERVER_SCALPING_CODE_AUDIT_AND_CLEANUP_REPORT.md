@@ -1,7 +1,7 @@
 # TRADERS — полный аудит server Scalping v2 и evidence-first cleanup
 
 REPORT_STATUS = FINAL
-GENERATED_AT_UTC = 2026-10-31T15:25:00Z
+GENERATED_AT_UTC = 2026-10-31T15:41:32Z
 WORKSPACE = D:\disk_E\game_projects\traders
 SERVER_REPO = D:\disk_E\game_projects\traders\traders-ml
 LOCAL_HEAD = 3487534fe7ba7adddef0602f3c982f14981c2b00
@@ -48,8 +48,9 @@ PRODUCTION_DEPLOY_PERFORMED = NO
 | E10 | [RUNTIME_PROVEN] | latest complete 20-symbol DB boundaries | 2026-10-31 15:00, 15:05, 15:10, 15:15 and 15:20 UTC all completed 20/20; uninterrupted 4h/12h/24h not yet available after downtime |
 | E11 | [RUNTIME_PROVEN] | 24h persisted cohort ending E10 | 1679 runs, 1632 analyzed, 125 setup/strategy/risk pass, 22 plan ready |
 | E12 | [RUNTIME_PROVEN] | natural PAPER history | 193 closed, 47 wins, 146 losses, PF 0.3059, net -17.10577658 USDT |
-| E13 | [RUNTIME_PROVEN] | cleanup inventory and exact manifest execution | 1,949 unique generated files / 40,063,426 bytes targeted outside .venv; 14 files / 276,335 bytes regenerated and retained; reports 80.8 GB retained |
+| E13 | [RUNTIME_PROVEN] | initial cleanup inventory and exact manifest execution | 1,949 unique generated files / 40,063,426 bytes targeted outside .venv; 14 files / 276,335 bytes regenerated and retained |
 | E14 | [HISTORICAL_ONLY] | prior 4h/12h/24h forensic report | detailed 2026-10-09 cohort and pure replay; not promoted to current runtime truth |
+| E15 | [RUNTIME_PROVEN] | explicit follow-up calibration-history cleanup | optional collector removed; 1,410 ignored files / 80,741,132,947 bytes deleted from reports/calibration; operational reports retained; subsequent 15:30/15:35/15:40 UTC boundaries completed 20/20 |
 
 # 1. Executive technical verdict
 
@@ -64,7 +65,7 @@ PRODUCTION_DEPLOY_PERFORMED = NO
 [STATIC_PROVEN] Seven setup families are configured, but runtime output is concentrated in SCALP_MOMENTUM_CONTINUATION. The family diagnostic contract also exposes a recognized breakout-retest producer/consumer mismatch when it occurs.
 
 FINAL_TECHNICAL_VERDICT = PASS_STATIC_ARCHITECTURE; CURRENT_20_SYMBOL_PROCESSING_RECOVERED; FRESH_24H_CONTINUITY_UNPROVEN; FAIL_TRADING_OUTCOME_AND_DEADLINE_ACCEPTANCE
-CLEANUP_STATUS = DONE_PROVEN_SAFE_GENERATED_ARTIFACTS; ACTIVE_REGENERATED_CACHES_REVIEW_REQUIRED
+CLEANUP_STATUS = DONE_PROVEN_SAFE_GENERATED_ARTIFACTS_AND_USER_AUTHORIZED_HISTORICAL_CALIBRATION_DATA; ACTIVE_REGENERATED_CACHES_REVIEW_REQUIRED
 
 # 2. Repository/root inventory
 
@@ -453,6 +454,8 @@ No test was edited or deleted.
 
 All 92 pre-existing tracked deletions remain PREEXISTING_USER_CHANGE and are excluded from audit-owned cleanup and commits.
 
+This table is the immutable pre-delete manifest. In a later follow-up, after the report established that `reports/calibration` was research/calibration history rather than production decision input, the user explicitly authorized its deletion. That later action is recorded in section 38 and does not rewrite this original safety decision.
+
 # 38. Deleted files
 
 [RUNTIME_PROVEN] The frozen manifest was executed by exact path, without wildcard cleanup or `git clean`. The unique initial candidates comprised 1,949 generated files totaling 40,063,426 bytes: 1,938 Python bytecode files, 5 pytest-cache files and 6 egg-info files. `pytest_tmp` was empty.
@@ -461,9 +464,17 @@ After validation activity, 14 Python bytecode files totaling 276,335 bytes regen
 
 Deleted generated roots: `.pytest_cache`, `pytest_tmp` and `traders_ml.egg-info`. No tracked file, source, configuration, migration, test, client/mobile file, virtual environment, report, artifact or recovery datum was deleted by the audit.
 
+### User-authorized follow-up cleanup
+
+[RUNTIME_PROVEN] `reports/calibration` contained 1,410 ignored files totaling 80,741,132,947 bytes, dated 2026-08-26 through 2026-10-06. The overwhelming majority were JSONL calibration observations/outcomes/diagnostics/lineage rather than human-authored reports. The data was not consumed by the current PAPER decision path; it was referenced only by the optional calibration collector and offline research/replay scripts.
+
+Before deletion, the exact resolved target was verified inside `traders-ml/reports`, confirmed not to be a reparse point, and the optional `scalping-calibration-collector` container was stopped and removed. The 1,410 files and now-empty `reports/calibration` tree were then deleted by exact target. The collector image, source/configuration, production database, operational reports and all trading containers were retained.
+
+After deletion, `reports` contains 39 operational/audit files totaling 59,029,944 bytes. Read-only DB validation showed the 2026-10-31 15:30, 15:35 and 15:40 UTC boundaries completed 20/20. The deletion therefore did not interrupt the active trading pipeline.
+
 # 39. Kept ambiguous files
 
-Reports, calibration captures, prior forensic reports, artifacts not already deleted by the user, remote attachments, recovery data and every client/mobile file are retained. Five actively regenerated cache directories (`app`, `app/config`, `app/db`, `app/engine_safety`, `scripts`) containing 14 files / 276,335 bytes are retained as `REVIEW_REQUIRED` because validation/runtime tooling recreated them.
+Operational health/diagnostic reports, runtime recovery captures, prior forensic reports, artifacts not already deleted by the user, remote attachments, recovery data and every client/mobile file are retained. Historical calibration captures were deleted only after the explicit follow-up authorization recorded above. Five actively regenerated cache directories (`app`, `app/config`, `app/db`, `app/engine_safety`, `scripts`) containing 14 files / 276,335 bytes are retained as `REVIEW_REQUIRED` because validation/runtime tooling recreated them.
 
 # 40. Post-cleanup validation
 
@@ -474,6 +485,7 @@ Reports, calibration captures, prior forensic reports, artifacts not already del
 - [TEST_PROVEN] Broader selected baseline remains 162 passed, 53 failed, 5 skipped; all failures are classified in section 35 and were not introduced by cleanup.
 - [TEST_PROVEN] Docker build-only validation of target `production-base` succeeded for local HEAD; no service was recreated or deployed.
 - [RUNTIME_PROVEN] Read-only production observation after cleanup shows five consecutive 20/20 completed boundaries through 2026-10-31 15:20 UTC. Production services were not restarted by the audit.
+- [RUNTIME_PROVEN] After the follow-up calibration-history deletion, three additional boundaries through 15:40 UTC completed 20/20; the optional calibration collector alone was stopped and removed.
 - [STATIC_PROVEN] `.pytest_cache`, `pytest_tmp` and `traders_ml.egg-info` are absent; `.venv`, Alembic, configuration, source, tests, reports, artifacts and recovery data remain present.
 - [STATIC_PROVEN] Git reconciliation shows no audit-owned tracked cleanup diff. The 92 deleted tracked artifacts, one modified test and two pre-existing untracked forensic reports remain user-owned and unstaged.
 
@@ -536,18 +548,18 @@ ROOT_CAUSE_6
 ## Cleanup result summary
 
 ```text
-TOTAL_FILES_BEFORE = 1,949 frozen cleanup candidates
-TOTAL_SIZE_BEFORE = 40,063,426 candidate bytes
-FILES_DELETED = 1,935 net absent; 1,963 physical deletion events including regenerated bytecode
-SIZE_DELETED = 39,787,091 net bytes; 40,339,761 physical deletion-event bytes
+TOTAL_FILES_BEFORE = 1,949 frozen initial candidates plus 1,410 later user-authorized calibration-history files
+TOTAL_SIZE_BEFORE = 40,063,426 initial candidate bytes plus 80,741,132,947 calibration-history bytes
+FILES_DELETED = 3,345 net absent; 3,373 physical deletion events including regenerated bytecode
+SIZE_DELETED = 80,780,920,038 net bytes; 80,781,472,708 physical deletion-event bytes
 TRACKED_FILES_DELETED = 0 audit-owned
-UNTRACKED_FILES_DELETED = 1,935 net generated files
+UNTRACKED_FILES_DELETED = 3,345 net generated/research files
 OLD_TESTS_DELETED = 0
 OLD_TESTS_MIGRATED = 0
 OLD_TESTS_KEPT = 3 LEGACY_V1 modules plus all shared/current test modules
 ARCHIVES_DELETED = 0
 OLD_REPORTS_DELETED = 0
-RESEARCH_ARTIFACTS_DELETED = 0 audit-owned
+RESEARCH_ARTIFACTS_DELETED = 1,410 user-authorized calibration-history files / 80,741,132,947 bytes
 CACHES_DELETED = .pytest_cache plus 1,938 initial non-venv bytecode files; 14 bytecode files regenerated and retained
 REVIEW_REQUIRED_FILES = 924 present files across artifacts, remote attachments and regenerated caches
 PREEXISTING_USER_CHANGES_PRESERVED = YES
