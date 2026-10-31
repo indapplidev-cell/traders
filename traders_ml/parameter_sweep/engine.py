@@ -2007,12 +2007,27 @@ def _evaluate_frozen_holdout(
     trades = list(metrics.get("trades") or [])
     wins = sum(float(row.get("net_pnl", 0)) > 0 for row in trades)
     losses = sum(float(row.get("net_pnl", 0)) < 0 for row in trades)
+    decided = wins + losses
+    win_rate = wins / decided if decided else 0.0
     adequate = int(metrics.get("trade_count") or 0) >= minimum_sample
     expectancy = metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade"))
+    period_coverage = len({
+        datetime.fromtimestamp(
+            int(row.get("opened_at_ms", row.get("boundary_ms"))) / 1000,
+            timezone.utc,
+        ).date().isoformat()
+        for row in trades
+        if row.get("opened_at_ms", row.get("boundary_ms")) is not None
+    })
     positive = (
         expectancy is not None
         and float(expectancy) > 0
-        and float(metrics.get("profit_factor") or 0) >= 1
+        and float(metrics.get("profit_factor") or 0)
+        >= RESEARCH_PARAMETERS.ranking.promotion_min_profit_factor
+        and win_rate > RESEARCH_PARAMETERS.ranking.promotion_min_win_rate_exclusive
+        and float(metrics.get("net_pnl") or 0) > 0
+        and period_coverage
+        >= RESEARCH_PARAMETERS.ranking.promotion_min_independent_periods
     )
     return {
         "finalist_id": finalist_id,
@@ -2023,12 +2038,21 @@ def _evaluate_frozen_holdout(
         "holdout_trade_count": int(metrics.get("trade_count") or 0),
         "win_count": wins,
         "loss_count": losses,
+        "win_rate": win_rate,
         "expectancy": metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade")),
         "profit_factor": metrics.get("profit_factor"),
         "net_pnl": metrics.get("net_pnl"),
         "max_drawdown": metrics.get("max_drawdown"),
         "symbol_coverage": len({str(row.get("symbol")) for row in trades if row.get("symbol")}),
-        "period_coverage": len({datetime.fromtimestamp(int(row.get("opened_at_ms", row.get("boundary_ms"))) / 1000, timezone.utc).date().isoformat() for row in trades if row.get("opened_at_ms", row.get("boundary_ms")) is not None}),
+        "period_coverage": period_coverage,
+        "promotion_gates": {
+            "minimum_trades": minimum_sample,
+            "minimum_periods": RESEARCH_PARAMETERS.ranking.promotion_min_independent_periods,
+            "minimum_win_rate_exclusive": RESEARCH_PARAMETERS.ranking.promotion_min_win_rate_exclusive,
+            "minimum_profit_factor": RESEARCH_PARAMETERS.ranking.promotion_min_profit_factor,
+            "positive_expectancy": True,
+            "positive_net_pnl": True,
+        },
         "verdict": (
             "PASS" if adequate and positive
             else "INSUFFICIENT_SAMPLE" if not adequate else "FAIL"

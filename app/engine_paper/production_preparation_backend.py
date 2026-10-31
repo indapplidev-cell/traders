@@ -644,7 +644,8 @@ class PostgresPaperProductionPreparationBackend:
 
     def ensure_baseline(self, identity: PaperProductionAccountIdentityBinding,
                         initial_balance: Decimal) -> PaperPreparationOperationResult:
-        if initial_balance != Decimal("100.00"):
+        baseline_id, expected_balance = identity.baseline_contract()
+        if initial_balance != expected_balance:
             raise PaperPreparationAdapterError("BASELINE_BUDGET_MISMATCH")
         account = identity.account_identity()
         factory = sessionmaker(bind=self._engine, autoflush=False, expire_on_commit=False)
@@ -652,7 +653,7 @@ class PostgresPaperProductionPreparationBackend:
             repository = PaperAccountBaselineRepository(session)
             existed = repository.exists(account.account_id, account.accounting_session_id)
             PaperAccountBaselineService(repository).initialize(
-                baseline_id="baseline:production-paper-v1", identity=account,
+                baseline_id=baseline_id, identity=account,
                 initial_balance=initial_balance, initialized_at=datetime.now(timezone.utc))
         return PaperPreparationOperationResult(not existed, True)
 
@@ -803,14 +804,18 @@ class PostgresPaperProductionPreparationBackend:
 
     def baseline_ready(self, identity: PaperProductionAccountIdentityBinding) -> bool:
         try:
+            baseline_id, expected_balance = identity.baseline_contract()
             with self._engine.connect() as connection:
                 rows = connection.execute(text(
-                    "SELECT account_id,accounting_session_id,currency,initial_balance "
-                    "FROM paper_account_baselines"
-                )).all()
+                    "SELECT baseline_id,account_id,accounting_session_id,currency,initial_balance "
+                    "FROM paper_account_baselines WHERE account_id=:account_id "
+                    "AND accounting_session_id=:accounting_session_id"
+                ), {"account_id": identity.paper_account_id,
+                    "accounting_session_id": identity.accounting_session_id}).all()
             return len(rows) == 1 and tuple(rows[0]) == (
+                baseline_id,
                 identity.paper_account_id, identity.accounting_session_id,
-                identity.currency, Decimal("100.00"),
+                identity.currency, expected_balance,
             )
         except Exception:
             return False

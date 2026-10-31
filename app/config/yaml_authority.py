@@ -308,6 +308,9 @@ class ResearchRankingPolicy(StrictModel):
     promising_min_expectancy_r: float
     promising_min_profit_factor: float = Field(gt=0)
     validation_candidate_min_stability: float = Field(ge=0, le=1)
+    promotion_min_win_rate_exclusive: float = Field(ge=0, lt=1)
+    promotion_min_profit_factor: float = Field(gt=0)
+    promotion_min_independent_periods: StrictInt = Field(gt=0)
 
 
 class DataDrivenRangeGenerationPolicy(StrictModel):

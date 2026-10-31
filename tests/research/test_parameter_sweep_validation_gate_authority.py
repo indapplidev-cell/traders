@@ -51,8 +51,8 @@ def test_canonical_values_and_provenance_are_resolved_once():
     policy = load_validation_sample_policy(
         Path("config/research/research_parameters.yaml"),
     )
-    assert policy.minimum_validation_trades == 20
-    assert policy.minimum_independent_periods == 3
+    assert policy.minimum_validation_trades == 100
+    assert policy.minimum_independent_periods == 5
     assert policy.independent_period_unit == "UTC_CALENDAR_DAY"
     assert policy.source("minimum_validation_trades").endswith(
         ":ranking.validation_minimum_trades"

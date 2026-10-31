@@ -100,6 +100,26 @@ def test_identity_is_explicit_canonical_and_stable_across_restart():
     assert first.account_identity().account_id == "PAPER-PROD-PRIMARY"
     assert first.account_identity().accounting_session_id == "PAPER-PROD-LIFECYCLE-01"
     assert first.currency == "USDT"
+    assert first.baseline_contract() == (
+        "baseline:production-paper-v1", Decimal("100.00")
+    )
+
+
+def test_second_accounting_session_owns_immutable_1000_usdt_baseline():
+    values = dict(VALID)
+    values["PAPER_PRODUCTION_ACCOUNTING_SESSION_ID"] = "PAPER-PROD-LIFECYCLE-02"
+    binding = PaperProductionAccountIdentityBinding.from_configuration(values)
+    assert binding.baseline_contract() == (
+        "baseline:production-paper-v2", Decimal("1000.00")
+    )
+
+
+def test_unknown_accounting_session_has_no_implicit_budget():
+    values = dict(VALID)
+    values["PAPER_PRODUCTION_ACCOUNTING_SESSION_ID"] = "PAPER-PROD-LIFECYCLE-03"
+    binding = PaperProductionAccountIdentityBinding.from_configuration(values)
+    with pytest.raises(PaperProductionIdentityError, match="BASELINE_UNSUPPORTED"):
+        binding.baseline_contract()
 
 
 @pytest.mark.parametrize("mutation", (

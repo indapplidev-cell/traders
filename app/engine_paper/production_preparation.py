@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import StrEnum
 from typing import Final, Mapping, Protocol
 
@@ -46,6 +47,10 @@ IDENTITY_KEYS: Final = (
     "PAPER_PRODUCTION_ACCOUNTING_SESSION_ID",
     "PAPER_PRODUCTION_CURRENCY",
 )
+PRODUCTION_PAPER_BASELINE_CONTRACTS: Final = {
+    "LIFECYCLE-01": ("baseline:production-paper-v1", Decimal("100.00")),
+    "LIFECYCLE-02": ("baseline:production-paper-v2", Decimal("1000.00")),
+}
 _IDENTIFIER = re.compile(r"^[A-Z0-9][A-Z0-9_-]{2,127}$")
 _TARGET_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")
 _FIXTURE_MARKERS = ("TEST", "FIXTURE", "EXAMPLE", "DEMO", "PYTEST")
@@ -87,6 +92,20 @@ class PaperProductionAccountIdentityBinding:
 
     def account_identity(self) -> PaperAccountIdentity:
         return PaperAccountIdentity(self.paper_account_id, self.accounting_session_id, self.currency)
+
+    def baseline_contract(self) -> tuple[str, Decimal]:
+        """Return the immutable budget owned by this explicit accounting session."""
+
+        matches = [
+            contract
+            for suffix, contract in PRODUCTION_PAPER_BASELINE_CONTRACTS.items()
+            if self.accounting_session_id.endswith(suffix)
+        ]
+        if len(matches) != 1:
+            raise PaperProductionIdentityError(
+                "PRODUCTION_ACCOUNTING_SESSION_BASELINE_UNSUPPORTED"
+            )
+        return matches[0]
 
 
 class PaperPreparationAction(StrEnum):

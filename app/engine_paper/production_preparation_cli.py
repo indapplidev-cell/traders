@@ -84,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("--actions", required=True,
                          help="comma-separated exact preparation action names")
     execute.add_argument("--orchestrate-schema-and-baseline", action="store_true")
-    execute.add_argument("--initial-balance-usdt", choices=("100.00",))
+    execute.add_argument("--initial-balance-usdt", choices=("100.00", "1000.00"))
     return parser
 
 
@@ -119,8 +119,9 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
         )
         authorization = PaperProductionExecutionAuthorization(ACKNOWLEDGEMENT, actions)
         return composition.executor.execute(composition.identity, current_target, budget, authorization)
-    if balance != "100.00":
-        raise PaperPreparationAdapterError("EXPLICIT_100_USDT_BASELINE_REQUIRED")
+    _baseline_id, expected_balance = composition.identity.baseline_contract()
+    if balance is None or Decimal(balance) != expected_balance:
+        raise PaperPreparationAdapterError("EXPLICIT_SESSION_BASELINE_REQUIRED")
     current_revision = composition.backend.current_revision()
     if current_revision not in SUPPORTED_PREPARATION_REVISIONS:
         raise PaperPreparationAdapterError("TARGET_MISMATCH")

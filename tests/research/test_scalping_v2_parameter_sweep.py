@@ -755,7 +755,7 @@ def test_expanded_runtime_space_is_bounded_without_materialization(tmp_path):
     output = run(config, run_id="incident", max_configs=5)
     preflight = json.loads((output / "PREFLIGHT.json").read_text())
     checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
-    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 2_972_033_482_752
+    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 7_430_083_706_880
     assert preflight["EFFECTIVE_SEARCH_SPACE_SIZE"] < preflight["RAW_SEARCH_SPACE_SIZE"]
     assert preflight["INVALID_COMBINATIONS_GENERATED"] == 0
     assert preflight["SEARCH_STRATEGY"] == "AUTO_BOUNDED"
@@ -1166,7 +1166,7 @@ def test_planning_pass_replay_fail_before_config_has_exact_state_and_events(tmp_
     assert EventType.RESULT_WRITE_STARTED not in event_types
     assert EventType.RESULT_WRITE_COMPLETED not in event_types
     search_event = next(event for event in events if event.type == EventType.SEARCH_PLANNED)
-    assert search_event.payload["raw_search_space_size"] == 2_972_033_482_752
+    assert search_event.payload["raw_search_space_size"] == 7_430_083_706_880
     assert search_event.payload["planned_configs"] == 5_000
     assert len(search_event.payload["search_dimensions"]) == 29
     output = tmp_path / "artifacts" / "failed-before-first"
