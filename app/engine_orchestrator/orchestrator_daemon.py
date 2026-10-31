@@ -26,7 +26,12 @@ from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 
 
 LOGGER = logging.getLogger(__name__)
-SCALPING_SYMBOL_WORKERS = 4
+# Production evidence showed that four workers let a 20-symbol boundary spill
+# into the next poll and made otherwise valid PAPER plans stale.  Ten keeps the
+# work bounded below the configured SQLAlchemy pool+overflow ceiling while
+# reducing the universe to at most two compute waves.  Authoritative writes
+# remain serialized by ``_result_store_lock``.
+SCALPING_SYMBOL_WORKERS = 10
 
 
 def utc_now() -> datetime:

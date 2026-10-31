@@ -924,9 +924,9 @@ class SqlAlchemyReadAdapter:
 
     def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]:
         statement = select(PaperAccountBaselineRecord).order_by(
-            PaperAccountBaselineRecord.initialized_at,
-            PaperAccountBaselineRecord.baseline_id,
-        ).limit(limit)
+            PaperAccountBaselineRecord.initialized_at.desc(),
+            PaperAccountBaselineRecord.baseline_id.desc(),
+        ).limit(1 if limit > 0 else 0)
         with self._session() as session:
             rows = tuple(session.scalars(statement))
         return tuple(PaperAccountBaseline(
@@ -976,7 +976,16 @@ class SqlAlchemyReadAdapter:
         ) for row in rows)
 
     def list_closed_trade_facts(self, limit: int) -> tuple[PaperClosedTradeFacts, ...]:
-        statement = select(PaperPositionRecord).where(PaperPositionRecord.state == "CLOSED").order_by(
+        active_session = select(
+            PaperAccountBaselineRecord.accounting_session_id
+        ).order_by(
+            PaperAccountBaselineRecord.initialized_at.desc(),
+            PaperAccountBaselineRecord.baseline_id.desc(),
+        ).limit(1).scalar_subquery()
+        statement = select(PaperPositionRecord).where(
+            PaperPositionRecord.state == "CLOSED",
+            PaperPositionRecord.accounting_session_id == active_session,
+        ).order_by(
             PaperPositionRecord.closed_at, PaperPositionRecord.position_id
         ).limit(limit)
         with self._session() as session:

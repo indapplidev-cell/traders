@@ -1484,6 +1484,8 @@ class TradingFunnelReadRepository:
                         ("0035_scalping_v2_ingestion_policy_contract",),
                         ("0036_empirical_requalification_authority",),
                         ("0037_continuous_two_lifecycle_slots",),
+                        ("0038_plan_outcome_pre_selector_terminal",),
+                        ("0039_paper_accounting_session_v2",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(

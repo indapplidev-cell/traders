@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0037_continuous_two_lifecycle_slots"
-    ] = "0037_continuous_two_lifecycle_slots"
+        "0039_paper_accounting_session_v2"
+    ] = "0039_paper_accounting_session_v2"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -245,8 +245,8 @@ class PaperExecutionLifecycle(BaseModel):
     symbol: Symbol
     trade_profile_id: str
     boundary_closed_at_ms: int = Field(ge=0)
-    candidate_id: SafeIdentifier
-    approval_id: SafeIdentifier
+    candidate_id: SafeIdentifier | None = None
+    approval_id: SafeIdentifier | None = None
     plan_id: str = Field(min_length=1, max_length=512)
     approval_valid_until_ms: int = Field(ge=0)
     selector_state: str

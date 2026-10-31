@@ -4,7 +4,10 @@ from time import sleep
 from types import SimpleNamespace
 
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
-from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
+from app.engine_orchestrator.orchestrator_daemon import (
+    SCALPING_SYMBOL_WORKERS,
+    OrchestratorDaemon,
+)
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult
 from app.engine_orchestrator.pipeline_result_store import ClaimedWindow
@@ -217,3 +220,54 @@ def test_parallel_symbol_compute_serializes_authoritative_store_session(tmp_path
 
     assert runner.max_active > 1
     assert store.max_active == 1
+
+
+def test_exact_20_symbol_compute_is_bounded_to_two_ten_worker_waves(tmp_path):
+    detector = Detector()
+
+    class ReadyGate(Gate):
+        def check(self, symbol, *_args, **_kwargs):
+            self.preflight_calls[symbol] += 1
+            return SimpleNamespace(
+                status="READY",
+                classification=FreshnessClassification.READY.value,
+                reasons=(), reason_code=None, waiting_timeframes=(),
+                payload=lambda: {},
+            )
+
+    class WaveRunner(Runner):
+        def __init__(self):
+            self.guard = Lock()
+            self.active = 0
+            self.max_active = 0
+
+        def run(self, symbol, closed_until_ms):
+            with self.guard:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            sleep(0.04)
+            try:
+                return super().run(symbol, closed_until_ms)
+            finally:
+                with self.guard:
+                    self.active -= 1
+
+    store = Store(detector)
+    runner = WaveRunner()
+    daemon = OrchestratorDaemon(
+        OrchestratorConfig(
+            symbols=SCALPING_TRADING_UNIVERSE.symbols,
+            trade_profile_id="trade-5m-v2", primary_timeframe="5m",
+            required_timeframes=("5m",), minimum_windows={"5m": 1},
+            health_report_path=tmp_path / "health.json",
+        ),
+        detector, ReadyGate(), runner, store,
+        health_reporter=Health(), clock=lambda: NOW,
+    )
+
+    daemon.run_cycle()
+
+    assert SCALPING_SYMBOL_WORKERS == 10
+    assert runner.max_active == SCALPING_SYMBOL_WORKERS
+    assert len(store.finished) == 20
+    assert len(set(store.finished)) == 20

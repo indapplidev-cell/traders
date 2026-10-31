@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from sqlalchemy import select
+from sqlalchemy import exists, select, text
 from sqlalchemy.orm import Session
 
 from app.db.paper_models import PaperPlanExecutionOutcomeRecord, PaperPositionRecord
@@ -179,6 +179,168 @@ class PaperPlanExecutionOutcomeStore:
                     details.update(selection_details)
                     row.refinement_details = details
                     row.updated_at = now
+
+    def reconcile_terminal_plans(
+        self,
+        *,
+        symbols: Sequence[str],
+        universe_id: str,
+        control_generation: int,
+        observed_at: datetime | None = None,
+        limit: int = 100,
+    ) -> dict[str, int]:
+        """Project expired plans that never entered the selector candidate set.
+
+        The final-approval materializer can make a durable negative decision
+        before a candidate/final-approval identity exists.  Older schema
+        semantics silently omitted those plans from the outcome projection.
+        This bounded reconciliation locks source runs, uses the already
+        established five-minute validity boundary, and never creates a
+        candidate, approval, command, fill, or position.
+        """
+
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        normalized_symbols = tuple(dict.fromkeys(str(value).upper() for value in symbols))
+        if not normalized_symbols:
+            return {"scanned": 0, "projected": 0, "unresolved": 0}
+        now = self._utc(observed_at)
+        now_ms = int(now.timestamp() * 1_000)
+        counts = {"scanned": 0, "projected": 0, "unresolved": 0}
+        missing_outcome = ~exists().where(
+            PaperPlanExecutionOutcomeRecord.pipeline_run_id == OnlinePipelineRun.run_id
+        )
+        with self._session_factory() as session, session.begin():
+            source_rows = tuple(session.execute(
+                select(OnlinePipelineRun, OnlinePipelineResultRow)
+                .join(
+                    OnlinePipelineResultRow,
+                    OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                )
+                .where(
+                    OnlinePipelineRun.trade_profile_id == "trade-5m-v2",
+                    OnlinePipelineRun.primary_timeframe == "5m",
+                    OnlinePipelineRun.symbol.in_(normalized_symbols),
+                    OnlinePipelineRun.status == "COMPLETED",
+                    OnlinePipelineRun.paper_status == "PAPER_PLAN_READY",
+                    OnlinePipelineRun.finished_at.is_not(None),
+                    missing_outcome,
+                )
+                .order_by(
+                    OnlinePipelineRun.closed_until_ms.asc(),
+                    OnlinePipelineRun.run_id.asc(),
+                )
+                .limit(limit)
+                .with_for_update(of=OnlinePipelineRun, skip_locked=True)
+            ))
+            for run, result in source_rows:
+                counts["scanned"] += 1
+                if session.get_bind().dialect.name == "postgresql":
+                    session.execute(
+                        text(
+                            "SELECT pg_advisory_xact_lock("
+                            "hashtextextended(:run_id, 0))"
+                        ),
+                        {"run_id": run.run_id},
+                    )
+                # A concurrent worker may have committed the projection while
+                # this transaction waited for the per-run advisory lock.
+                if session.get(PaperPlanExecutionOutcomeRecord, run.run_id) is not None:
+                    continue
+                paper = result.paper_payload_json
+                if not isinstance(paper, Mapping):
+                    counts["unresolved"] += 1
+                    continue
+                generation = paper.get("final_approval_generation")
+                generation = generation if isinstance(generation, Mapping) else {}
+                final_status = str(generation.get("status") or "")
+                reason = str(generation.get("reason_code") or "")
+                plan_id = str(paper.get("paper_plan_id") or "")
+                try:
+                    created_at_ms = int(paper.get("created_at_ms", -1))
+                except (TypeError, ValueError):
+                    created_at_ms = -1
+                final_approval_id = generation.get("final_approval_id")
+                candidate_id = generation.get("candidate_id")
+                if final_approval_id is not None:
+                    final_approval_id = str(final_approval_id) or None
+                if candidate_id is not None:
+                    candidate_id = str(candidate_id) or None
+                try:
+                    valid_until_ms = int(generation.get("final_valid_until_ms"))
+                except (TypeError, ValueError):
+                    # Controlled 5m validity ends one millisecond before the
+                    # next boundary.  This is the existing authority policy,
+                    # not a retry extension.
+                    valid_until_ms = int(run.closed_until_ms) + 300_000 - 1
+                identities_consistent = (
+                    (final_status == "PASS" and final_approval_id and candidate_id)
+                    or (
+                        final_status == "REJECTED"
+                        and final_approval_id is None
+                        and candidate_id is None
+                    )
+                )
+                if (
+                    not plan_id
+                    or created_at_ms < int(run.closed_until_ms)
+                    or valid_until_ms < int(run.closed_until_ms)
+                    or now_ms <= valid_until_ms
+                    or not identities_consistent
+                ):
+                    counts["unresolved"] += 1
+                    continue
+                pre_selector_terminal = final_status == "REJECTED"
+                classification = (
+                    "PROCESSED_PROJECTION_MISSING"
+                    if pre_selector_terminal else "EXPIRED_UNHANDLED"
+                )
+                terminal_reason = (
+                    reason or "FINAL_APPROVAL_NOT_CREATED"
+                    if pre_selector_terminal
+                    else "EXPIRED_WITHOUT_SELECTOR_OUTCOME"
+                )
+                session.add(PaperPlanExecutionOutcomeRecord(
+                    pipeline_run_id=run.run_id,
+                    paper_plan_id=plan_id,
+                    final_approval_id=final_approval_id,
+                    candidate_id=candidate_id,
+                    symbol=run.symbol,
+                    trade_profile_id=run.trade_profile_id,
+                    universe_id=universe_id,
+                    boundary_closed_at_ms=run.closed_until_ms,
+                    plan_created_at_ms=created_at_ms,
+                    approval_valid_until_ms=valid_until_ms,
+                    selector_state=(
+                        "NOT_ELIGIBLE" if pre_selector_terminal else "EXPIRED_UNCLAIMED"
+                    ),
+                    selector_reason=terminal_reason,
+                    selector_rank=None,
+                    selected_winner=False,
+                    lifecycle_state="EXPIRED_BEFORE_EXECUTION",
+                    terminal_reason=terminal_reason,
+                    command_id=None,
+                    control_generation=control_generation,
+                    runtime_enabled=True,
+                    daemon_enabled=True,
+                    scheduler_enabled=True,
+                    mutation_enabled=True,
+                    live_enabled=False,
+                    attempt_count=0,
+                    refinement_details={
+                        "reconciliation_classification": classification,
+                        "final_approval_status": final_status,
+                        "final_approval_reason": reason or None,
+                        "reconciliation_source": "PERSISTED_PIPELINE_TERMINAL_DECISION",
+                        "command_created": False,
+                        "fill_created": False,
+                    },
+                    first_observed_at=now,
+                    updated_at=now,
+                    terminal_at=now,
+                ))
+                counts["projected"] += 1
+        return counts
 
     def unconsumed_candidates(self, candidates: Sequence[Any]) -> tuple[Any, ...]:
         """Exclude approvals that already produced a durable command."""

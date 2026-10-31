@@ -50,6 +50,8 @@ IDENTITY_KEYS: Final = (
 PRODUCTION_PAPER_BASELINE_CONTRACTS: Final = {
     "LIFECYCLE-01": ("baseline:production-paper-v1", Decimal("100.00")),
     "LIFECYCLE-02": ("baseline:production-paper-v2", Decimal("1000.00")),
+    "SESSION_01": ("baseline:production-paper-v1", Decimal("100.00")),
+    "SESSION_02": ("baseline:production-paper-v2", Decimal("1000.00")),
 }
 _IDENTIFIER = re.compile(r"^[A-Z0-9][A-Z0-9_-]{2,127}$")
 _TARGET_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")

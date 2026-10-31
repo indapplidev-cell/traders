@@ -78,6 +78,7 @@ INTRABAR_CONFLICT_POLICIES = ("STOP_FIRST_CONSERVATIVE",)
 ORDER_ROLES = ("ENTRY", "EXIT")
 FILL_ROLES = ("ENTRY", "EXIT")
 PROCESSING_STATUSES = ("PENDING", "PROCESSING", "COMPLETED", "FAILED")
+ACTIVE_ACCOUNTING_SESSION = "TRADERS_PAPER_SESSION_02"
 PLAN_EXECUTION_STATES = (
     "PLAN_OBSERVED",
     "NOT_SELECTED",
@@ -224,6 +225,10 @@ class PaperFirstCanarySessionRecord(Base):
     )
 
     canary_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     environment: Mapped[str] = mapped_column(String(32), nullable=False)
     mode: Mapped[str] = mapped_column(String(8), nullable=False)
     state: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -340,6 +345,10 @@ class PaperContinuousControlEventRecord(Base):
     )
 
     event_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     generation: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -549,6 +558,10 @@ class PaperExecutionCommandRecord(Base):
     )
 
     command_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     idempotency_key: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
     mode: Mapped[str] = mapped_column(String(8), nullable=False)
     symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
@@ -592,8 +605,14 @@ class PaperPlanExecutionOutcomeRecord(Base):
         UniqueConstraint("paper_plan_id", name="uq_paper_plan_execution_outcome_plan"),
         CheckConstraint("length(trim(pipeline_run_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_run"),
         CheckConstraint("length(trim(paper_plan_id)) BETWEEN 1 AND 512", name="ck_plan_outcome_plan"),
-        CheckConstraint("length(trim(final_approval_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_approval"),
-        CheckConstraint("length(trim(candidate_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_candidate"),
+        CheckConstraint(
+            "final_approval_id IS NULL OR length(trim(final_approval_id)) BETWEEN 1 AND 128",
+            name="ck_plan_outcome_approval",
+        ),
+        CheckConstraint(
+            "candidate_id IS NULL OR length(trim(candidate_id)) BETWEEN 1 AND 128",
+            name="ck_plan_outcome_candidate",
+        ),
         CheckConstraint("length(trim(symbol)) BETWEEN 2 AND 32", name="ck_plan_outcome_symbol"),
         CheckConstraint("boundary_closed_at_ms >= 0", name="ck_plan_outcome_boundary"),
         CheckConstraint("plan_created_at_ms >= boundary_closed_at_ms", name="ck_plan_outcome_created"),
@@ -625,9 +644,17 @@ class PaperPlanExecutionOutcomeRecord(Base):
     )
 
     pipeline_run_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     paper_plan_id: Mapped[str] = mapped_column(String(512), nullable=False)
-    final_approval_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
-    candidate_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    # A plan can reach a durable terminal decision before a final approval or
+    # selector candidate exists (for example, stale at materialization).  Null
+    # is the truthful identity in that state; synthetic identities would make
+    # the execution lineage look selectable when it never was.
+    final_approval_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    candidate_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
     symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
     trade_profile_id: Mapped[str] = mapped_column(String(64), nullable=False)
     universe_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
@@ -1002,6 +1029,10 @@ class PaperOrderRecord(Base):
     )
 
     order_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     command_id: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH),
         ForeignKey("paper_execution_commands.command_id", ondelete="RESTRICT"),
@@ -1064,6 +1095,10 @@ class PaperOrderEventRecord(Base):
     )
 
     order_event_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     order_id: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH),
         ForeignKey("paper_orders.order_id", ondelete="RESTRICT"),
@@ -1113,6 +1148,10 @@ class PaperFillRecord(Base):
     )
 
     fill_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     order_id: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH),
         ForeignKey("paper_orders.order_id", ondelete="RESTRICT"),
@@ -1210,6 +1249,10 @@ class PaperPositionRecord(Base):
     )
 
     position_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     mode: Mapped[str] = mapped_column(String(8), nullable=False)
     symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
     side: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -1309,6 +1352,10 @@ class PaperExitEvaluationCursorRecord(Base):
     )
 
     cursor_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     contract_version: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
     position_id: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH),
@@ -1372,6 +1419,10 @@ class PaperExitDecisionRecord(Base):
     )
 
     exit_decision_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     idempotency_key: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
     position_id: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH),
@@ -1423,6 +1474,10 @@ class PaperJournalEntryRecord(Base):
     )
 
     journal_entry_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False,
+        server_default=text(f"'{ACTIVE_ACCOUNTING_SESSION}'"),
+    )
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     aggregate_type: Mapped[str] = mapped_column(String(24), nullable=False)

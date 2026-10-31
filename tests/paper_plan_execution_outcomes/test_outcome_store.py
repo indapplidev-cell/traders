@@ -9,7 +9,10 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.db.paper_models import PaperPlanExecutionOutcomeRecord
-from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow
+from app.engine_orchestrator.orchestrator_models import (
+    OnlinePipelineResultRow,
+    OnlinePipelineRun,
+)
 from app.engine_paper.eligible_approval_ranking import ProductionEligibleApprovalSelector
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
 
@@ -56,6 +59,109 @@ def sessions():
                 profile_mode="PRODUCTION_SEARCH",
             ))
     return engine, factory
+
+
+def reconciliation_sessions(*, final_status="REJECTED"):
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    run_id = "run:terminal-without-selector"
+    final_generation = {
+        "status": final_status,
+        "reason_code": (
+            "PAPER_SAFETY_SOURCE_STALE"
+            if final_status == "REJECTED" else "FINAL_APPROVAL_CREATED"
+        ),
+    }
+    if final_status == "PASS":
+        final_generation.update({
+            "final_approval_id": "approval:terminal",
+            "candidate_id": "candidate:terminal",
+            "final_valid_until_ms": BOUNDARY + 299_999,
+        })
+    with factory() as session, session.begin():
+        session.add(OnlinePipelineRun(
+            run_id=run_id,
+            trade_profile_id="trade-5m-v2",
+            profile_mode="PRODUCTION_SEARCH",
+            symbol="SOLUSDT",
+            primary_timeframe="5m",
+            closed_until_ms=BOUNDARY,
+            closed_until_utc=datetime.fromtimestamp(BOUNDARY / 1000, timezone.utc),
+            status="COMPLETED",
+            started_at=datetime.fromtimestamp((BOUNDARY + 310_000) / 1000, timezone.utc),
+            finished_at=datetime.fromtimestamp((BOUNDARY + 350_000) / 1000, timezone.utc),
+            duration_ms=40_000,
+            trigger_source="postgres_closed_candle",
+            daemon_instance_id="test-daemon",
+            paper_status="PAPER_PLAN_READY",
+            final_result="PAPER_PLAN_READY",
+        ))
+        session.add(OnlinePipelineResultRow(
+            run_id=run_id, symbol="SOLUSDT", primary_timeframe="5m",
+            closed_until_ms=BOUNDARY,
+            market_data_payload_json={}, analysis_payload_json={},
+            setup_payload_json={}, strategy_payload_json={}, risk_payload_json={},
+            paper_payload_json={
+                "paper_plan_id": "paper:terminal-without-selector",
+                "created_at_ms": BOUNDARY + 350_000,
+                "final_approval_generation": final_generation,
+            },
+            module_reasons_json={}, module_warnings_json={}, safety_counters_json={},
+            created_at=datetime.fromtimestamp((BOUNDARY + 350_000) / 1000, timezone.utc),
+            trade_profile_id="trade-5m-v2", profile_mode="PRODUCTION_SEARCH",
+        ))
+    return engine, factory, run_id
+
+
+def test_reconciliation_projects_pre_selector_rejection_without_fake_identity():
+    engine, factory, run_id = reconciliation_sessions(final_status="REJECTED")
+    store = PaperPlanExecutionOutcomeStore(factory)
+    observed = datetime.fromtimestamp((BOUNDARY + 400_000) / 1000, timezone.utc)
+
+    assert store.reconcile_terminal_plans(
+        symbols=("SOLUSDT",), universe_id="trading-universe-v3",
+        control_generation=21, observed_at=observed,
+    ) == {"scanned": 1, "projected": 1, "unresolved": 0}
+    # A restart/retry sees the existing primary key and remains idempotent.
+    assert PaperPlanExecutionOutcomeStore(factory).reconcile_terminal_plans(
+        symbols=("SOLUSDT",), universe_id="trading-universe-v3",
+        control_generation=21, observed_at=observed,
+    ) == {"scanned": 0, "projected": 0, "unresolved": 0}
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+        assert row.final_approval_id is None and row.candidate_id is None
+        assert row.selector_state == "NOT_ELIGIBLE"
+        assert row.lifecycle_state == "EXPIRED_BEFORE_EXECUTION"
+        assert row.terminal_reason == "PAPER_SAFETY_SOURCE_STALE"
+        assert row.command_id is None and row.attempt_count == 0
+        assert row.refinement_details["reconciliation_classification"] == (
+            "PROCESSED_PROJECTION_MISSING"
+        )
+        assert row.refinement_details["fill_created"] is False
+    engine.dispose()
+
+
+def test_reconciliation_expires_real_unclaimed_candidate_without_selection():
+    engine, factory, run_id = reconciliation_sessions(final_status="PASS")
+    observed = datetime.fromtimestamp((BOUNDARY + 400_000) / 1000, timezone.utc)
+    store = PaperPlanExecutionOutcomeStore(factory)
+
+    assert store.reconcile_terminal_plans(
+        symbols=("SOLUSDT",), universe_id="trading-universe-v3",
+        control_generation=22, observed_at=observed,
+    )["projected"] == 1
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+        assert row.final_approval_id == "approval:terminal"
+        assert row.candidate_id == "candidate:terminal"
+        assert row.selected_winner is False and row.selector_rank is None
+        assert row.selector_state == "EXPIRED_UNCLAIMED"
+        assert row.terminal_reason == "EXPIRED_WITHOUT_SELECTOR_OUTCOME"
+        assert row.refinement_details["reconciliation_classification"] == (
+            "EXPIRED_UNHANDLED"
+        )
+    engine.dispose()
 
 
 def test_selection_policy_block_and_expiry_are_durable_and_idempotent():

@@ -457,6 +457,13 @@ class ProductionPaperFirstCanaryExecutor:
             ),
             current_control_generation=state.generation,
         )
+        if self._outcome_store is not None:
+            self._outcome_store.reconcile_terminal_plans(
+                symbols=state.arming_scope.allowed_symbols,
+                universe_id=authority.universe_version_id,
+                control_generation=state.generation,
+                observed_at=self._clock().astimezone(timezone.utc),
+            )
         # A selected plan is already a durable selector decision.  Rehydrate
         # it first instead of putting its strict entry window behind the
         # twenty-symbol approval scan and unrelated shadow-refinement work on

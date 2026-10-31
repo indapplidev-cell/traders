@@ -47,8 +47,10 @@ READONLY_SCHEMA_0034: Final = "0034_scalping_universe_v3"
 READONLY_SCHEMA_0035: Final = "0035_scalping_v2_ingestion_policy_contract"
 READONLY_SCHEMA_0036: Final = "0036_empirical_requalification_authority"
 READONLY_SCHEMA_0037: Final = "0037_continuous_two_lifecycle_slots"
+READONLY_SCHEMA_0038: Final = "0038_plan_outcome_pre_selector_terminal"
+READONLY_SCHEMA_0039: Final = "0039_paper_accounting_session_v2"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0037
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0039
 REFINEMENT_COLUMNS: Final = frozenset({
     "refinement_identity", "refinement_mode", "refinement_state",
     "refinement_reason", "refinement_started_at", "refinement_finished_at",
@@ -133,7 +135,10 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     """Retain the legacy PAPER contract; runtime startup uses stricter capabilities."""
     revisions = tuple(
         READONLY_SCHEMA_0034
-        if value in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036, READONLY_SCHEMA_0037}
+        if value in {
+            READONLY_SCHEMA_0035, READONLY_SCHEMA_0036,
+            READONLY_SCHEMA_0037, READONLY_SCHEMA_0038, READONLY_SCHEMA_0039,
+        }
         else value
         for value in revisions
     )
@@ -158,7 +163,10 @@ def _type_signature(value: object) -> tuple[object, ...]:
     return (type(value).__name__.casefold(),)
 
 
-def _validate_model(inspector, tables: set[str], model, issues: list[str], *, excluded=frozenset()) -> None:
+def _validate_model(
+    inspector, tables: set[str], model, issues: list[str], *,
+    excluded=frozenset(), ignored_nullability=frozenset(),
+) -> None:
     table = model.__table__
     if table.name not in tables:
         issues.append(f"MISSING_TABLE:{table.name}")
@@ -172,7 +180,10 @@ def _validate_model(inspector, tables: set[str], model, issues: list[str], *, ex
             continue
         if _type_signature(actual["type"]) != _type_signature(expected.type):
             issues.append(f"INCOMPATIBLE_TYPE:{table.name}.{expected.name}")
-        if bool(actual["nullable"]) != bool(expected.nullable):
+        if (
+            expected.name not in ignored_nullability
+            and bool(actual["nullable"]) != bool(expected.nullable)
+        ):
             issues.append(f"INCOMPATIBLE_NULLABILITY:{table.name}.{expected.name}")
     actual_pk = tuple(inspector.get_pk_constraint(table.name, schema="public").get("constrained_columns") or ())
     expected_pk = tuple(column.name for column in table.primary_key.columns)
@@ -196,7 +207,10 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         reported_revision = revisions[0]
         revision = (
             READONLY_SCHEMA_0034
-            if reported_revision in {READONLY_SCHEMA_0035, READONLY_SCHEMA_0036, READONLY_SCHEMA_0037}
+            if reported_revision in {
+                READONLY_SCHEMA_0035, READONLY_SCHEMA_0036,
+                READONLY_SCHEMA_0037, READONLY_SCHEMA_0038, READONLY_SCHEMA_0039,
+            }
             else reported_revision
         )
         if revision not in {
@@ -222,6 +236,11 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
                     if revision in {
                         READONLY_SCHEMA_0026, READONLY_SCHEMA_0027, READONLY_SCHEMA_0028, READONLY_SCHEMA_0029, READONLY_SCHEMA_0030, READONLY_SCHEMA_0031, READONLY_SCHEMA_0032, READONLY_SCHEMA_0033, READONLY_SCHEMA_0034,
                     } else REFINEMENT_COLUMNS
+                ),
+                ignored_nullability=(
+                    frozenset({"final_approval_id", "candidate_id"})
+                    if reported_revision not in {READONLY_SCHEMA_0038, READONLY_SCHEMA_0039}
+                    else frozenset()
                 ),
             )
         if revision in {
@@ -333,7 +352,7 @@ __all__ = [
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
     "READONLY_SCHEMA_0025", "READONLY_SCHEMA_0026", "READONLY_SCHEMA_0027",
     "READONLY_SCHEMA_0028", "READONLY_SCHEMA_0029", "READONLY_SCHEMA_0030",
-    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036", "READONLY_SCHEMA_0037",
+    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036", "READONLY_SCHEMA_0037", "READONLY_SCHEMA_0038", "READONLY_SCHEMA_0039",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",
