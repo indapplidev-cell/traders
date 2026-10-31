@@ -1,7 +1,9 @@
 # PAPER accounting session v2 activation
 
-Recorded at: `2026-10-31T17:14:00Z`  
-Environment: production PAPER  
+Recorded at: `2026-10-31T17:14:00Z`
+
+Environment: production PAPER
+
 Result: `PASS`
 
 ## Outcome
@@ -67,4 +69,3 @@ without the former permission error and mutation readiness returned to `true`.
 
 - `6281051629baed5ae1fe0e8731f5f6df4ff2fdd9` — session split, baseline rotation, schema/API/runtime implementation.
 - `2559a4c36adeb64cfcb44d55dfe633fef6116445` — read-only source locking correction.
-
