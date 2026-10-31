@@ -8,7 +8,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.paper_models import PaperPlanExecutionOutcomeRecord
+from app.db.paper_models import (
+    PaperAccountBaselineRecord,
+    PaperPlanExecutionOutcomeRecord,
+)
 from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
@@ -139,6 +142,37 @@ def test_reconciliation_projects_pre_selector_rejection_without_fake_identity():
             "PROCESSED_PROJECTION_MISSING"
         )
         assert row.refinement_details["fill_created"] is False
+    engine.dispose()
+
+
+def test_reconciliation_does_not_import_runs_from_before_active_session():
+    engine, factory, run_id = reconciliation_sessions(final_status="REJECTED")
+    session_start = datetime.fromtimestamp(
+        (BOUNDARY + 360_000) / 1000, timezone.utc
+    )
+    with factory() as session, session.begin():
+        session.add(PaperAccountBaselineRecord(
+            baseline_id="baseline:session-v2",
+            account_id="TRADERS_PAPER_MAIN",
+            accounting_session_id="TRADERS_PAPER_SESSION_02",
+            currency="USDT",
+            initial_balance=Decimal("1000"),
+            initialized_at=session_start,
+            semantic_version="PAPER_ACCOUNTING/1.0",
+        ))
+
+    result = PaperPlanExecutionOutcomeStore(factory).reconcile_terminal_plans(
+        symbols=("SOLUSDT",),
+        universe_id="trading-universe-v3",
+        control_generation=21,
+        observed_at=datetime.fromtimestamp(
+            (BOUNDARY + 400_000) / 1000, timezone.utc
+        ),
+    )
+
+    assert result == {"scanned": 0, "projected": 0, "unresolved": 0}
+    with factory() as session:
+        assert session.get(PaperPlanExecutionOutcomeRecord, run_id) is None
     engine.dispose()
 
 

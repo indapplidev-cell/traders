@@ -49,8 +49,9 @@ READONLY_SCHEMA_0036: Final = "0036_empirical_requalification_authority"
 READONLY_SCHEMA_0037: Final = "0037_continuous_two_lifecycle_slots"
 READONLY_SCHEMA_0038: Final = "0038_plan_outcome_pre_selector_terminal"
 READONLY_SCHEMA_0039: Final = "0039_paper_accounting_session_v2"
+READONLY_SCHEMA_0040: Final = "0040_plan_outcome_session_boundary"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0039
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0040
 REFINEMENT_COLUMNS: Final = frozenset({
     "refinement_identity", "refinement_mode", "refinement_state",
     "refinement_reason", "refinement_started_at", "refinement_finished_at",
@@ -138,6 +139,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
         if value in {
             READONLY_SCHEMA_0035, READONLY_SCHEMA_0036,
             READONLY_SCHEMA_0037, READONLY_SCHEMA_0038, READONLY_SCHEMA_0039,
+            READONLY_SCHEMA_0040,
         }
         else value
         for value in revisions
@@ -210,6 +212,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
             if reported_revision in {
                 READONLY_SCHEMA_0035, READONLY_SCHEMA_0036,
                 READONLY_SCHEMA_0037, READONLY_SCHEMA_0038, READONLY_SCHEMA_0039,
+                READONLY_SCHEMA_0040,
             }
             else reported_revision
         )
@@ -239,7 +242,10 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
                 ),
                 ignored_nullability=(
                     frozenset({"final_approval_id", "candidate_id"})
-                    if reported_revision not in {READONLY_SCHEMA_0038, READONLY_SCHEMA_0039}
+                    if reported_revision not in {
+                        READONLY_SCHEMA_0038, READONLY_SCHEMA_0039,
+                        READONLY_SCHEMA_0040,
+                    }
                     else frozenset()
                 ),
             )
@@ -352,7 +358,7 @@ __all__ = [
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
     "READONLY_SCHEMA_0025", "READONLY_SCHEMA_0026", "READONLY_SCHEMA_0027",
     "READONLY_SCHEMA_0028", "READONLY_SCHEMA_0029", "READONLY_SCHEMA_0030",
-    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036", "READONLY_SCHEMA_0037", "READONLY_SCHEMA_0038", "READONLY_SCHEMA_0039",
+    "READONLY_SCHEMA_0031", "READONLY_SCHEMA_0032", "READONLY_SCHEMA_0033", "READONLY_SCHEMA_0034", "READONLY_SCHEMA_0035", "READONLY_SCHEMA_0036", "READONLY_SCHEMA_0037", "READONLY_SCHEMA_0038", "READONLY_SCHEMA_0039", "READONLY_SCHEMA_0040",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

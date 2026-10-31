@@ -9,7 +9,11 @@ from typing import Any, Mapping
 from sqlalchemy import exists, select, text
 from sqlalchemy.orm import Session
 
-from app.db.paper_models import PaperPlanExecutionOutcomeRecord, PaperPositionRecord
+from app.db.paper_models import (
+    PaperAccountBaselineRecord,
+    PaperPlanExecutionOutcomeRecord,
+    PaperPositionRecord,
+)
 from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
@@ -212,7 +216,12 @@ class PaperPlanExecutionOutcomeStore:
             PaperPlanExecutionOutcomeRecord.pipeline_run_id == OnlinePipelineRun.run_id
         )
         with self._session_factory() as session, session.begin():
-            source_rows = tuple(session.execute(
+            active_baseline = session.scalar(
+                select(PaperAccountBaselineRecord)
+                .order_by(PaperAccountBaselineRecord.initialized_at.desc())
+                .limit(1)
+            )
+            source_query = (
                 select(OnlinePipelineRun, OnlinePipelineResultRow)
                 .join(
                     OnlinePipelineResultRow,
@@ -227,6 +236,17 @@ class PaperPlanExecutionOutcomeStore:
                     OnlinePipelineRun.finished_at.is_not(None),
                     missing_outcome,
                 )
+            )
+            if active_baseline is not None:
+                # A rotated accounting session owns only decisions completed
+                # after its immutable baseline.  Without this boundary the
+                # bounded reconciler can spend hours draining historical runs
+                # and mislabel them as current-session economic outcomes.
+                source_query = source_query.where(
+                    OnlinePipelineRun.finished_at >= active_baseline.initialized_at
+                )
+            source_rows = tuple(session.execute(
+                source_query
                 .order_by(
                     OnlinePipelineRun.closed_until_ms.asc(),
                     OnlinePipelineRun.run_id.asc(),
@@ -327,6 +347,10 @@ class PaperPlanExecutionOutcomeStore:
                     mutation_enabled=True,
                     live_enabled=False,
                     attempt_count=0,
+                    accounting_session_id=(
+                        active_baseline.accounting_session_id
+                        if active_baseline is not None else None
+                    ),
                     refinement_details={
                         "reconciliation_classification": classification,
                         "final_approval_status": final_status,

@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0039_paper_accounting_session_v2"
-    ] = "0039_paper_accounting_session_v2"
+        "0040_plan_outcome_session_boundary"
+    ] = "0040_plan_outcome_session_boundary"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool

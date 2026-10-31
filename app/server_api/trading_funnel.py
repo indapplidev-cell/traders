@@ -1486,6 +1486,7 @@ class TradingFunnelReadRepository:
                         ("0037_continuous_two_lifecycle_slots",),
                         ("0038_plan_outcome_pre_selector_terminal",),
                         ("0039_paper_accounting_session_v2",),
+                        ("0040_plan_outcome_session_boundary",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(

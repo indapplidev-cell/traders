@@ -37,6 +37,20 @@ def test_0039_is_linear_and_covers_every_session_owned_economic_table():
     assert set(migration.SESSION_TABLES) == expected
 
 
+def test_0040_is_linear_and_repairs_only_unlinked_pre_session_outcomes():
+    path = ROOT / "alembic/versions/0040_plan_outcome_session_boundary.py"
+    spec = importlib.util.spec_from_file_location("migration_0040", path)
+    assert spec is not None and spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    assert migration.revision == "0040_plan_outcome_session_boundary"
+    assert migration.down_revision == "0039_paper_accounting_session_v2"
+    source = path.read_text(encoding="utf-8")
+    assert "SESSION_BOUNDARY_REPAIR_REQUIRES_ZERO_LINKED_COMMANDS" in source
+    assert "o.command_id IS NOT NULL" in source
+    assert "r.finished_at < b.initialized_at" in source
+
+
 def test_all_session_owned_models_expose_non_nullable_session_identity():
     models = (
         paper_models.PaperFirstCanarySessionRecord,
