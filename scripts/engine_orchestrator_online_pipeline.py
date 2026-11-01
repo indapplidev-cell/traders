@@ -124,9 +124,10 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0037_continuous_two_lifecycle_slots",
             "0038_plan_outcome_pre_selector_terminal",
             "0039_paper_accounting_session_v2",
+            "0040_plan_outcome_session_boundary",
         }:
             raise RuntimeError(
-                "online runtime requires schema 0020 through 0039"
+                "online runtime requires schema 0020 through 0040"
             )
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
