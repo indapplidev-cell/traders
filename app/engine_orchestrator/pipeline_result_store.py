@@ -446,6 +446,33 @@ class PipelineResultStore:
         with self._session() as session:
             return session.scalar(query)
 
+    def existing_window_keys(
+        self, windows: list[tuple[str, str, int]], *,
+        trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
+    ) -> set[tuple[str, str, int]]:
+        """Return existing universe-window identities with one database round trip."""
+        if not windows:
+            return set()
+        profile_id = resolve_trade_profile(trade_profile_id).trade_profile_id
+        symbols = {symbol.upper() for symbol, _, _ in windows}
+        timeframes = {timeframe for _, timeframe, _ in windows}
+        boundaries = {int(boundary) for _, _, boundary in windows}
+        query = select(
+            OnlinePipelineRun.symbol,
+            OnlinePipelineRun.primary_timeframe,
+            OnlinePipelineRun.closed_until_ms,
+        ).where(
+            OnlinePipelineRun.trade_profile_id == profile_id,
+            OnlinePipelineRun.symbol.in_(symbols),
+            OnlinePipelineRun.primary_timeframe.in_(timeframes),
+            OnlinePipelineRun.closed_until_ms.in_(boundaries),
+        )
+        with self._session() as session:
+            return {
+                (str(symbol), str(timeframe), int(boundary))
+                for symbol, timeframe, boundary in session.execute(query)
+            }
+
     def count(self, symbol: str | None = None, *,
               trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> int:
         query = select(OnlinePipelineRun).where(

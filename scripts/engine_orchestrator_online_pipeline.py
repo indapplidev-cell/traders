@@ -14,7 +14,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.engine_market_data.db.candle_repository import CandleRepository
-from app.engine_market_data.db.session import create_market_data_session_factory
+from app.engine_market_data.db.session import (
+    create_market_data_engine,
+    create_market_data_session_factory,
+)
 from app.engine_market_data.sync_state_repository import SyncStateRepository
 from app.engine_orchestrator.closed_window_detector import ClosedWindowDetector
 from app.engine_orchestrator.freshness_gate import FreshnessGate
@@ -163,7 +166,12 @@ def main(argv: list[str] | None = None) -> int:
         BinanceAccountCommissionManager.from_environment(args.symbols)
         if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
     )
-    sessions = create_market_data_session_factory()
+    # The 20-symbol Scalping batch may have one independent read session per
+    # worker while the profile owner keeps its dedicated pinned connection.
+    # Size the pool explicitly instead of falling back to SQLAlchemy's 5+10
+    # default, which turned the final symbols into a connection-wait wave.
+    engine = create_market_data_engine(pool_size=24, max_overflow=4, pool_timeout=5)
+    sessions = create_market_data_session_factory(engine=engine)
     if profile.trade_profile_id == "trade-5m-v2" and args.continuous:
         preflight = run_symbol_preflight(
             args.symbols,

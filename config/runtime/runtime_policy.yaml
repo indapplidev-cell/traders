@@ -100,7 +100,7 @@ analysis_algorithms:
   schwager_retest_departure_ratio: 0.003
 orchestrator:
   symbols: [BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, LINKUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, SUIUSDT]
-  poll_interval_seconds: 10.0
+  poll_interval_seconds: 0.5
   health_report_interval_seconds: 60.0
   health_report_path: reports/engine_orchestrator/latest_health_trade_5m.json
   max_catchup_windows: 4
@@ -110,7 +110,7 @@ orchestrator:
   trigger_source: postgres_closed_candle
   initial_backoff_seconds: 2.0
   max_backoff_seconds: 60.0
-  freshness_retry_interval_seconds: 5.0
+  freshness_retry_interval_seconds: 0.5
   freshness_grace_seconds: 180.0
   freshness_max_attempts: 60
   waiting_batch_size: 100

@@ -11,7 +11,10 @@ SUPPORTED_SYNC_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
 DEFAULT_SYMBOLS = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 DEFAULT_WARMUP_DEPTHS = {"1m": 1440, "5m": 2016, "15m": 2016, "1h": 720, "4h": 720, "1d": 365}
 DEFAULT_GAP_CHECK_WINDOWS = {"1m": 360, "5m": 288, "15m": 192, "1h": 168, "4h": 180, "1d": 365}
-FRESHNESS_ALLOWANCE_MS = {"1m": 10_000, "5m": 15_000, "15m": 20_000, "1h": 60_000, "4h": 90_000, "1d": 120_000}
+# REST remains a closed-candle fallback, but it no longer sleeps for fifteen
+# seconds before even asking Binance for the authoritative 5m close.  The
+# repository rejects open candles and the retry path remains fail-closed.
+FRESHNESS_ALLOWANCE_MS = {"1m": 2_000, "5m": 2_000, "15m": 20_000, "1h": 60_000, "4h": 90_000, "1d": 120_000}
 GAP_CHECK_INTERVAL_MS = {"1m": 300_000, "5m": 300_000, "15m": 300_000,
                          "1h": 3_600_000, "4h": 3_600_000, "1d": 86_400_000}
 

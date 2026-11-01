@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 # work bounded below the configured SQLAlchemy pool+overflow ceiling while
 # reducing the universe to at most two compute waves.  Authoritative writes
 # remain serialized by ``_result_store_lock``.
-SCALPING_SYMBOL_WORKERS = 10
+SCALPING_SYMBOL_WORKERS = 20
 
 
 def utc_now() -> datetime:
@@ -308,10 +308,20 @@ class OrchestratorDaemon:
             observations.extend(self._process_claims(due_claims))
 
         new_claims: list[ClaimedWindow] = []
+        batch_detector = getattr(self.detector, "get_unprocessed_closed_windows_many", None)
+        detected_by_symbol = (
+            batch_detector(tuple(self.config.symbols))
+            if callable(batch_detector)
+            else None
+        )
         for symbol in self.config.symbols:
             if self._stop.is_set():
                 break
-            windows = self.detector.get_unprocessed_closed_windows(symbol)
+            windows = (
+                detected_by_symbol.get(symbol, [])
+                if detected_by_symbol is not None
+                else self.detector.get_unprocessed_closed_windows(symbol)
+            )
             self.state.detected_windows += len(windows)
             for window in windows:
                 if self._stop.is_set():

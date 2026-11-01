@@ -48,6 +48,21 @@ services:
     volumes:
       - ./reports:/service/reports
 
+  market-data-websocket:
+    build: .
+    profiles: ["fast-market-data"]
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c 'export DATABASE_URL="postgresql+psycopg://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
+      exec python scripts/engine_market_data_websocket_sync.py
+      --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT,ZECUSDT,NEARUSDT,UNIUSDT,ENAUSDT,XLMUSDT,TRXUSDT,WLDUSDT,LTCUSDT,FETUSDT,FILUSDT
+      --timeframes 1m,5m,15m,1h'
+    secrets:
+      - traders_shared_db_password
+
   online-orchestrator:
     build: .
     profiles: ["disabled-trade-15m"]

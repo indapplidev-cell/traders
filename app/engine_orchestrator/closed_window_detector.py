@@ -41,6 +41,41 @@ class ClosedWindowDetector:
             return [windows[-1]]
         return windows[-self.max_catchup_windows:]
 
+    def get_unprocessed_closed_windows_many(
+        self, symbols: tuple[str, ...],
+    ) -> dict[str, list[ClosedWindow]]:
+        """Detect a complete universe with two bounded database queries."""
+        loader = getattr(self.candle_repository, "get_recent_candles_for_symbols", None)
+        existing_reader = getattr(self.result_store, "existing_window_keys", None)
+        if not callable(loader) or not callable(existing_reader):
+            return {symbol: self.get_unprocessed_closed_windows(symbol) for symbol in symbols}
+        candles = loader(
+            symbols, self.primary_timeframe, limit_per_symbol=self.max_catchup_windows,
+        )
+        candidates = {
+            symbol: [
+                ClosedWindow(symbol, self.primary_timeframe, int(candle.close_time_ms) + 1)
+                for candle in candles.get(symbol, ())
+                if bool(getattr(candle, "is_closed", False))
+            ]
+            for symbol in symbols
+        }
+        identities = [
+            (window.symbol, window.timeframe, window.closed_until_ms)
+            for windows in candidates.values() for window in windows
+        ]
+        existing = existing_reader(identities, trade_profile_id=self.trade_profile_id)
+        result: dict[str, list[ClosedWindow]] = {}
+        for symbol, windows in candidates.items():
+            pending = [
+                window for window in windows
+                if (window.symbol, window.timeframe, window.closed_until_ms) not in existing
+            ]
+            if self.process_latest_only and pending:
+                pending = [pending[-1]]
+            result[symbol] = pending[-self.max_catchup_windows:]
+        return result
+
     def latest_closed_boundary(self, symbol: str) -> int | None:
         candle = self.candle_repository.get_latest_closed_candle(symbol, self.primary_timeframe)
         return int(candle.close_time_ms) + 1 if candle is not None else None

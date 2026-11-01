@@ -3,6 +3,7 @@
 import asyncio
 import inspect
 import json
+import logging
 import time
 from collections.abc import AsyncIterator, Callable, Iterable
 from dataclasses import dataclass
@@ -13,6 +14,9 @@ from app.engine_market_data.errors import WebSocketDisconnectedError
 from app.engine_market_data.market_data_health import MarketDataHealth
 from app.engine_market_data.market_symbol import normalize_market_symbol
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +91,10 @@ class BinanceKlineWebSocketClient:
                 raise
             except Exception as exc:
                 self.health.disconnected()
+                LOGGER.warning(
+                    "Binance kline WebSocket disconnected; retrying",
+                    exc_info=exc,
+                )
                 attempts += 1
                 maximum = self.reconnect_policy.maximum_attempts
                 if maximum is not None and attempts > maximum:
@@ -101,14 +109,17 @@ class BinanceKlineWebSocketClient:
 
     @staticmethod
     async def _iterate_connection(connection: Any) -> AsyncIterator[Any]:
+        # Modern ``websockets`` ClientConnection is both an async iterator and
+        # an async context manager whose __aenter__ returns itself.  Iterating
+        # first avoids recursively re-entering the same connection.
+        if hasattr(connection, "__aiter__"):
+            async for message in connection:
+                yield message
+            return
         if hasattr(connection, "__aenter__"):
             async with connection as websocket:
                 async for message in BinanceKlineWebSocketClient._iterate_connection(websocket):
                     yield message
-            return
-        if hasattr(connection, "__aiter__"):
-            async for message in connection:
-                yield message
             return
         while True:
             yield await connection.recv()

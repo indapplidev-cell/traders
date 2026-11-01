@@ -7,6 +7,7 @@ import hashlib
 from typing import Iterator
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -119,6 +120,39 @@ class CandleRepository:
             rows = list(session.scalars(query))
         if limit is not None: rows.reverse()
         return [self._to_candle(row, timeframe) for row in rows]
+
+    def get_recent_candles_for_symbols(
+        self, symbols: Sequence[str], timeframe: str, *, limit_per_symbol: int,
+    ) -> dict[str, list[Candle]]:
+        """Load a bounded latest window for an entire universe in one query."""
+        if limit_per_symbol <= 0:
+            raise ValueError("limit_per_symbol must be positive")
+        normalized = tuple(dict.fromkeys(normalize_market_symbol(value) for value in symbols))
+        if not normalized:
+            return {}
+        model = self._model(timeframe)
+        ranked = select(
+            model.id.label("id"),
+            func.row_number().over(
+                partition_by=model.symbol,
+                order_by=model.open_time_ms.desc(),
+            ).label("row_number"),
+        ).where(
+            model.symbol.in_(normalized), model.is_closed.is_(True),
+        ).subquery()
+        selected = aliased(model)
+        query = (
+            select(selected)
+            .join(ranked, selected.id == ranked.c.id)
+            .where(ranked.c.row_number <= limit_per_symbol)
+            .order_by(selected.symbol, selected.open_time_ms)
+        )
+        with self._session() as session:
+            rows = list(session.scalars(query))
+        result = {symbol: [] for symbol in normalized}
+        for row in rows:
+            result[row.symbol].append(self._to_candle(row, timeframe))
+        return result
 
     @staticmethod
     def _to_candle(row: CandleTableMixin, timeframe: str) -> Candle:
