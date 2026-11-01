@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -487,14 +487,39 @@ class PipelineResultStore:
                         trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
         observed_at = aware_utc(now) if now else self._now()
         profile_id = resolve_trade_profile(trade_profile_id).trade_profile_id
+        waiting_condition = and_(
+            OnlinePipelineRun.trade_profile_id == profile_id,
+            OnlinePipelineRun.status == PipelineStatus.WAITING_FOR_REQUIRED_BOUNDARY.value,
+        )
+        timeout_condition = or_(
+            OnlinePipelineRun.status == PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value,
+            and_(
+                OnlinePipelineRun.status == PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
+                OnlinePipelineRun.final_reason == "FRESHNESS_DEADLINE_EXCEEDED",
+            ),
+        )
         with self._session() as session:
-            waiting = list(session.scalars(select(OnlinePipelineRun).where(
-                OnlinePipelineRun.trade_profile_id == profile_id,
-                OnlinePipelineRun.status == PipelineStatus.WAITING_FOR_REQUIRED_BOUNDARY.value
-            )))
-            all_rows = list(session.scalars(select(OnlinePipelineRun).where(
+            waiting = list(session.execute(select(
+                OnlinePipelineRun.symbol,
+                OnlinePipelineRun.waiting_timeframes,
+                OnlinePipelineRun.first_wait_at,
+                OnlinePipelineRun.next_retry_at,
+            ).where(waiting_condition)))
+            aggregate = session.execute(select(
+                func.coalesce(func.sum(case(
+                    (OnlinePipelineRun.freshness_attempt_count > 1,
+                     OnlinePipelineRun.freshness_attempt_count - 1),
+                    else_=0,
+                )), 0),
+                func.count().filter(OnlinePipelineRun.freshness_recovered_at.is_not(None)),
+                func.count().filter(timeout_condition),
+                func.max(OnlinePipelineRun.freshness_recovered_at),
+                func.max(case(
+                    (timeout_condition, OnlinePipelineRun.finished_at), else_=None,
+                )),
+            ).where(
                 OnlinePipelineRun.trade_profile_id == profile_id
-            )))
+            )).one()
         by_timeframe: dict[str, int] = {}
         by_symbol: dict[str, int] = {}
         for row in waiting:
@@ -503,27 +528,18 @@ class PipelineResultStore:
                 by_timeframe[timeframe] = by_timeframe.get(timeframe, 0) + 1
         first_waits = [persisted_utc(row.first_wait_at) for row in waiting if row.first_wait_at]
         next_retries = [persisted_utc(row.next_retry_at) for row in waiting if row.next_retry_at]
-        recovered = [row for row in all_rows if row.freshness_recovered_at is not None]
-        timeouts = [
-            row for row in all_rows
-            if row.status == PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value
-            or (
-                row.status == PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value
-                and row.final_reason == "FRESHNESS_DEADLINE_EXCEEDED"
-            )
-        ]
-        retry_total = sum(max(0, int(row.freshness_attempt_count or 0) - 1) for row in all_rows)
+        retry_total, recovered_total, timeout_total, last_recovery, last_timeout = aggregate
         return {
             "waiting_windows": len(waiting),
             "waiting_by_timeframe": by_timeframe,
             "waiting_by_symbol": by_symbol,
             "oldest_wait_age_seconds": max((observed_at - min(first_waits)).total_seconds(), 0) if first_waits else 0,
             "next_retry_at": min(next_retries).isoformat().replace("+00:00", "Z") if next_retries else None,
-            "freshness_retry_attempts_total": retry_total,
-            "freshness_recovered_total": len(recovered),
-            "freshness_timeouts_total": len(timeouts),
-            "last_freshness_recovery_at": max((persisted_utc(row.freshness_recovered_at) for row in recovered), default=None),
-            "last_freshness_timeout_at": max((persisted_utc(row.finished_at) for row in timeouts if row.finished_at), default=None),
+            "freshness_retry_attempts_total": int(retry_total or 0),
+            "freshness_recovered_total": int(recovered_total or 0),
+            "freshness_timeouts_total": int(timeout_total or 0),
+            "last_freshness_recovery_at": persisted_utc(last_recovery) if last_recovery else None,
+            "last_freshness_timeout_at": persisted_utc(last_timeout) if last_timeout else None,
         }
 
     def safety_totals(self, *, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, int]:
