@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
+import time
 from typing import Iterator
 
 from sqlalchemy import func, select
@@ -131,6 +132,9 @@ class CandleRepository:
         if not normalized:
             return {}
         model = self._model(timeframe)
+        duration = timeframe_to_milliseconds(timeframe)
+        latest_possible_open = ((int(time.time() * 1000) - 1) // duration) * duration
+        earliest_needed_open = latest_possible_open - (limit_per_symbol - 1) * duration
         ranked = select(
             model.id.label("id"),
             func.row_number().over(
@@ -139,6 +143,7 @@ class CandleRepository:
             ).label("row_number"),
         ).where(
             model.symbol.in_(normalized), model.is_closed.is_(True),
+            model.open_time_ms >= earliest_needed_open,
         ).subquery()
         selected = aliased(model)
         query = (
