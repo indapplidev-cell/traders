@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from collections.abc import Callable
 
@@ -10,6 +11,7 @@ from sqlalchemy.engine import Engine
 
 
 CLOSED_1M_CHANNEL = "traders_closed_candle_1m"
+LOGGER = logging.getLogger("uvicorn.error")
 
 
 class PostgresClosedCandleListener:
@@ -52,6 +54,10 @@ class PostgresClosedCandleListener:
                     except (TypeError, ValueError):
                         continue
                     if payload.get("timeframe") == "1m":
+                        LOGGER.info(
+                            "closed_candle_wakeup symbol=%s closed_until_ms=%s",
+                            payload.get("symbol"), payload.get("closed_until_ms"),
+                        )
                         self.callback()
         finally:
             raw.close()

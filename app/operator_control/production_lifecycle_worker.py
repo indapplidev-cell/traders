@@ -78,7 +78,7 @@ from .schemas import PaperOperatorRecoveryCloseDecision
 # Uvicorn owns the production stderr handler; using its error logger keeps the
 # structured canary trail in ``docker logs`` without adding a second handler.
 LOGGER = logging.getLogger("uvicorn.error")
-DEFAULT_POLL_SECONDS = 0.5
+DEFAULT_POLL_SECONDS = 5.0
 MIN_POLL_SECONDS = 0.1
 MAX_POLL_SECONDS = 60.0
 MAX_CANDLES = 512
