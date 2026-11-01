@@ -6,6 +6,7 @@ from app.engine_paper.analytical_exit import (
     analyze_position_exit,
     classify_analytical_exit,
 )
+from app.config.trade_parameters import AnalyticalExitParameters
 
 
 BOUNDARY = 1_800_000_000_000
@@ -87,3 +88,9 @@ def test_single_indicator_cannot_reach_exit_threshold():
     result = evaluate()
     assert result.component_scores["technical_indicators"] <= 35
     assert result.component_scores["technical_indicators"] < 70
+
+
+def test_analytical_exit_is_authoritative_for_paper_by_default():
+    policy = AnalyticalExitParameters()
+    assert policy.enabled is True
+    assert policy.mode == "PAPER"

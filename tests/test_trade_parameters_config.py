@@ -71,6 +71,7 @@ def test_named_sets_inherit_exact_overrides_and_preserve_baseline():
     assert interim.parameters.risk.total_open_risk_limit_bps == 50
     assert interim.parameters.entry_refinement_1m.mode == "SHADOW"
     assert interim.parameters.exit_policy.stale_position.mode == "SHADOW"
+    assert interim.parameters.exit_policy.analytical_exit.mode == "PAPER"
 
 
 def test_selector_switch_rollback_cutoff_and_fail_closed(tmp_path: Path):

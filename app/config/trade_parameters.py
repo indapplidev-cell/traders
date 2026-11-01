@@ -188,7 +188,11 @@ class AnalyticalExitWeights(StrictModel):
 
 class AnalyticalExitParameters(StrictModel):
     enabled: Literal[True] = True
-    mode: Literal["SHADOW", "PAPER"] = "SHADOW"
+    # Analytical exits are authoritative for the simulated PAPER lifecycle.
+    # The consumer is the PAPER-only lifecycle worker and its downstream
+    # directive contract rejects every execution mode except PAPER, so this
+    # cannot enable LIVE exchange execution.
+    mode: Literal["SHADOW", "PAPER"] = "PAPER"
     contract_version: Literal["exit-evidence-v2"] = "exit-evidence-v2"
     weights: AnalyticalExitWeights = Field(default_factory=AnalyticalExitWeights)
     at_risk_threshold: float = Field(default=55.0, ge=0, le=100)
