@@ -35,7 +35,7 @@ LOGGER = logging.getLogger(__name__)
 # CPU contention and >1.5 GiB transient memory without reducing boundary
 # latency.  Queue all symbols immediately but execute on the hardware-sized
 # bounded pool.
-SCALPING_SYMBOL_WORKERS = 8
+SCALPING_SYMBOL_WORKERS = 20
 
 
 def utc_now() -> datetime:
