@@ -27,15 +27,14 @@ from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 
 LOGGER = logging.getLogger(__name__)
 # Production evidence showed that four workers let a 20-symbol boundary spill
-# into the next poll and made otherwise valid PAPER plans stale.  Ten keeps the
-# work bounded below the configured SQLAlchemy pool+overflow ceiling while
-# reducing the universe to at most two compute waves.  Authoritative writes
-# remain serialized by ``_result_store_lock``.
+# into the next poll and made otherwise valid PAPER plans stale. Authoritative
+# writes use independent store sessions while the pool remains bounded below
+# the database/CPU saturation point.
 # The production host exposes eight logical CPUs.  More Python workers caused
 # CPU contention and >1.5 GiB transient memory without reducing boundary
 # latency.  Queue all symbols immediately but execute on the hardware-sized
 # bounded pool.
-SCALPING_SYMBOL_WORKERS = 20
+SCALPING_SYMBOL_WORKERS = 8
 
 
 def utc_now() -> datetime:
