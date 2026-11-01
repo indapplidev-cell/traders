@@ -318,6 +318,34 @@ class OrchestratorDaemon:
             if callable(batch_detector)
             else None
         )
+        batch_freshness: dict[tuple[str, int], object] = {}
+        batch_freshness_checker = getattr(self.freshness_gate, "check_many", None)
+        if detected_by_symbol is not None and callable(batch_freshness_checker):
+            boundaries = sorted({
+                window.closed_until_ms
+                for windows in detected_by_symbol.values()
+                for window in windows
+            })
+            checked_at = self._now()
+            for boundary in boundaries:
+                boundary_symbols = tuple(
+                    symbol for symbol in self.config.symbols
+                    if any(
+                        window.closed_until_ms == boundary
+                        for window in detected_by_symbol.get(symbol, [])
+                    )
+                )
+                deadline = utc_from_ms(boundary) + timedelta(
+                    seconds=self.config.freshness_grace_seconds
+                )
+                decisions = batch_freshness_checker(
+                    boundary_symbols, boundary,
+                    deadline_at=deadline, now=checked_at,
+                )
+                batch_freshness.update({
+                    (symbol, boundary): decision
+                    for symbol, decision in decisions.items()
+                })
         for symbol in self.config.symbols:
             if self._stop.is_set():
                 break
@@ -331,7 +359,9 @@ class OrchestratorDaemon:
                 if self._stop.is_set():
                     break
                 if dry_run:
-                    freshness = self.freshness_gate.check(symbol, window.closed_until_ms)
+                    freshness = batch_freshness.get(
+                        (symbol, window.closed_until_ms)
+                    ) or self.freshness_gate.check(symbol, window.closed_until_ms)
                     observations.append({
                         "symbol": symbol, "timeframe": window.timeframe,
                         "closed_until_ms": window.closed_until_ms,
@@ -349,7 +379,9 @@ class OrchestratorDaemon:
                 # This keeps 5m ownership exclusive without changing or
                 # restarting the production 15m worker.
                 if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
-                    preflight = self.freshness_gate.check(
+                    preflight = batch_freshness.get(
+                        (symbol, window.closed_until_ms)
+                    ) or self.freshness_gate.check(
                         symbol, window.closed_until_ms,
                         deadline_at=deadline, now=self._now(),
                     )

@@ -119,13 +119,48 @@ class FreshnessGate:
     def check(self, symbol: str, closed_until_ms: int, *,
               deadline_at: datetime | None = None,
               now: datetime | None = None) -> FreshnessDecision:
+        rows = self.repository.list_for([symbol], list(self.required_timeframes))
+        return self._check_rows(
+            closed_until_ms, rows, deadline_at=deadline_at, now=now,
+        )
+
+    def check_many(self, symbols: tuple[str, ...] | list[str], closed_until_ms: int, *,
+                   deadline_at: datetime | None = None,
+                   now: datetime | None = None) -> dict[str, FreshnessDecision]:
+        """Classify one causal boundary for many symbols with one DB read."""
+        canonical_symbols = tuple(dict.fromkeys(symbols))
+        if not canonical_symbols:
+            return {}
+        rows = self.repository.list_for(
+            list(canonical_symbols), list(self.required_timeframes),
+        )
+        rows_by_symbol: dict[str, list[object]] = {
+            symbol: [] for symbol in canonical_symbols
+        }
+        for row in rows:
+            symbol = str(getattr(row, "symbol", ""))
+            if symbol in rows_by_symbol:
+                rows_by_symbol[symbol].append(row)
+        checked_at = now or self.clock()
+        return {
+            symbol: self._check_rows(
+                closed_until_ms,
+                rows_by_symbol[symbol],
+                deadline_at=deadline_at,
+                now=checked_at,
+            )
+            for symbol in canonical_symbols
+        }
+
+    def _check_rows(self, closed_until_ms: int, rows: list[object], *,
+                    deadline_at: datetime | None = None,
+                    now: datetime | None = None) -> FreshnessDecision:
         checked_at = self._aware_utc(now or self.clock())
         if deadline_at is not None:
             deadline_at = self._aware_utc(deadline_at)
         if int(closed_until_ms) <= 0:
             return self._terminal_contract_error("INVALID_BOUNDARY", "INVALID_BOUNDARY")
 
-        rows = self.repository.list_for([symbol], list(self.required_timeframes))
         by_timeframe = {row.timeframe: row for row in rows}
         blockers: list[FreshnessBlockingReason] = []
         statuses: dict[str, str] = {}

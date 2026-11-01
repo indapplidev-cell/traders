@@ -122,3 +122,37 @@ def test_invalid_boundary_is_terminal_and_naive_clock_rejected():
     assert gate.check("BTCUSDT", 0).reason_code == "INVALID_BOUNDARY"
     with pytest.raises(ValueError, match="timezone-aware"):
         gate.check("BTCUSDT", BOUNDARY, now=datetime(2026, 1, 1))
+
+
+def test_check_many_loads_all_symbol_states_with_one_repository_call():
+    class BatchRepo:
+        def __init__(self):
+            self.calls = []
+
+        def list_for(self, symbols, timeframes):
+            self.calls.append((symbols, timeframes))
+            return [
+                SimpleNamespace(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    status="OK",
+                    last_stored_open_time_ms=(
+                        BOUNDARY - timeframe_to_milliseconds(timeframe)
+                    ),
+                    last_stored_close_boundary_ms=BOUNDARY,
+                )
+                for symbol in symbols
+                for timeframe in timeframes
+            ]
+
+    repo = BatchRepo()
+    values = FreshnessGate(
+        repo, ("15m", "1h"), clock=lambda: NOW,
+    ).check_many(
+        ("BTCUSDT", "ETHUSDT"), BOUNDARY,
+        deadline_at=NOW + timedelta(seconds=150),
+    )
+
+    assert repo.calls == [(["BTCUSDT", "ETHUSDT"], ["15m", "1h"])]
+    assert set(values) == {"BTCUSDT", "ETHUSDT"}
+    assert all(value.allowed for value in values.values())
