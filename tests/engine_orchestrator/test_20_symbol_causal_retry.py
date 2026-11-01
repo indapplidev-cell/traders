@@ -222,7 +222,7 @@ def test_parallel_symbol_compute_serializes_authoritative_store_session(tmp_path
     assert store.max_active == 1
 
 
-def test_exact_20_symbol_compute_can_exceed_old_ten_worker_ceiling(tmp_path):
+def test_exact_20_symbol_compute_is_bounded_to_hardware_sized_pool(tmp_path):
     detector = Detector()
 
     class ReadyGate(Gate):
@@ -267,7 +267,7 @@ def test_exact_20_symbol_compute_can_exceed_old_ten_worker_ceiling(tmp_path):
 
     daemon.run_cycle()
 
-    assert SCALPING_SYMBOL_WORKERS == 20
-    assert 10 < runner.max_active <= SCALPING_SYMBOL_WORKERS
+    assert SCALPING_SYMBOL_WORKERS == 8
+    assert runner.max_active == SCALPING_SYMBOL_WORKERS
     assert len(store.finished) == 20
     assert len(set(store.finished)) == 20

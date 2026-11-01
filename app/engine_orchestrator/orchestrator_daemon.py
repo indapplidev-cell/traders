@@ -31,7 +31,11 @@ LOGGER = logging.getLogger(__name__)
 # work bounded below the configured SQLAlchemy pool+overflow ceiling while
 # reducing the universe to at most two compute waves.  Authoritative writes
 # remain serialized by ``_result_store_lock``.
-SCALPING_SYMBOL_WORKERS = 20
+# The production host exposes eight logical CPUs.  More Python workers caused
+# CPU contention and >1.5 GiB transient memory without reducing boundary
+# latency.  Queue all symbols immediately but execute on the hardware-sized
+# bounded pool.
+SCALPING_SYMBOL_WORKERS = 8
 
 
 def utc_now() -> datetime:
