@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.orchestrator_status import PipelineStatus
-from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
+from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
 from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, TradeProfileMode, resolve_trade_profile
 from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
@@ -543,12 +543,15 @@ class PipelineResultStore:
         }
 
     def safety_totals(self, *, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, int]:
-        totals: dict[str, int] = {}
+        names = tuple(SafetyCounters.__dataclass_fields__)
+        aggregates = [
+            func.coalesce(func.sum(
+                OnlinePipelineResultRow.safety_counters_json[name].as_integer()
+            ), 0)
+            for name in names
+        ]
         with self._session() as session:
-            payloads = list(session.scalars(select(OnlinePipelineResultRow.safety_counters_json).where(
+            values = session.execute(select(*aggregates).where(
                 OnlinePipelineResultRow.trade_profile_id == resolve_trade_profile(trade_profile_id).trade_profile_id
-            )))
-        for payload in payloads:
-            for name, value in dict(payload or {}).items():
-                totals[name] = totals.get(name, 0) + int(value or 0)
-        return totals
+            )).one()
+        return {name: int(value or 0) for name, value in zip(names, values, strict=True)}
