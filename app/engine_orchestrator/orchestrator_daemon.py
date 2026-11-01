@@ -28,8 +28,8 @@ from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 LOGGER = logging.getLogger(__name__)
 # Production evidence showed that four workers let a 20-symbol boundary spill
 # into the next poll and made otherwise valid PAPER plans stale. Authoritative
-# writes use independent store sessions while the pool remains bounded below
-# the database/CPU saturation point.
+# writes share the pinned profile-owner session and therefore remain serialized
+# while compute stays parallel below the database/CPU saturation point.
 # The production host exposes eight logical CPUs.  More Python workers caused
 # CPU contention and >1.5 GiB transient memory without reducing boundary
 # latency.  Queue all symbols immediately but execute on the hardware-sized
@@ -250,10 +250,11 @@ class OrchestratorDaemon:
             observation.update({"pipeline_status": status, "final_result": result.final_result})
             return observation
 
-        marked_running = self.result_store.mark_running(
-            claim, daemon_instance_id=self.daemon_instance_id,
-            checked_at=now, payload=payload,
-        )
+        with self._result_store_lock:
+            marked_running = self.result_store.mark_running(
+                claim, daemon_instance_id=self.daemon_instance_id,
+                checked_at=now, payload=payload,
+            )
         if not marked_running:
             observation["pipeline_status"] = PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value
             return observation
@@ -262,11 +263,11 @@ class OrchestratorDaemon:
                         closed_until_ms=claim.closed_until_ms,
                         attempts=claim.freshness_attempt_count + 1)
         result = self.pipeline_runner.run(claim.symbol, claim.closed_until_ms)
-        persisted = self.result_store.finish(
-            claim.run_id, result, freshness_status="READY"
-        )
-        if persisted:
-            with self._result_store_lock:
+        with self._result_store_lock:
+            persisted = self.result_store.finish(
+                claim.run_id, result, freshness_status="READY"
+            )
+            if persisted:
                 self._record(result)
         observation.update({"pipeline_status": result.status, "final_result": result.final_result})
         return observation
