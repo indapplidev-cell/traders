@@ -251,11 +251,10 @@ class OrchestratorDaemon:
             observation.update({"pipeline_status": status, "final_result": result.final_result})
             return observation
 
-        with self._result_store_lock:
-            marked_running = self.result_store.mark_running(
-                claim, daemon_instance_id=self.daemon_instance_id,
-                checked_at=now, payload=payload,
-            )
+        marked_running = self.result_store.mark_running(
+            claim, daemon_instance_id=self.daemon_instance_id,
+            checked_at=now, payload=payload,
+        )
         if not marked_running:
             observation["pipeline_status"] = PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value
             return observation
@@ -264,11 +263,11 @@ class OrchestratorDaemon:
                         closed_until_ms=claim.closed_until_ms,
                         attempts=claim.freshness_attempt_count + 1)
         result = self.pipeline_runner.run(claim.symbol, claim.closed_until_ms)
-        with self._result_store_lock:
-            persisted = self.result_store.finish(
-                claim.run_id, result, freshness_status="READY"
-            )
-            if persisted:
+        persisted = self.result_store.finish(
+            claim.run_id, result, freshness_status="READY"
+        )
+        if persisted:
+            with self._result_store_lock:
                 self._record(result)
         observation.update({"pipeline_status": result.status, "final_result": result.final_result})
         return observation
