@@ -7,7 +7,7 @@ analysis engine.  It never creates a new setup or changes entry eligibility.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, localcontext
 from enum import StrEnum
@@ -27,6 +27,12 @@ from app.db.paper_models import (
 from app.engine_analysis import AnalysisWindowConfig, EngineAnalysisCandle, run_engine_analysis
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow
 from app.engine_paper.fill_simulator import PaperFillCandle
+from app.engine_paper.analytical_exit import (
+    AnalyticalExitDecision,
+    ClosedAnalysisCandle,
+    ExitEvidenceV2,
+    analyze_position_exit,
+)
 from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_position.paper_models import PaperPosition
 
@@ -64,6 +70,9 @@ class HoldExitReason(StrEnum):
     STALE_SCALP = "STALE_SCALP"
     NET_PNL_PROTECTION = "NET_PNL_PROTECTION"
     MAX_HOLD_TIME = "MAX_HOLD_TIME"
+    ANALYTICAL_EXIT = "ANALYTICAL_EXIT"
+    STRONG_REVERSAL_EXIT = "STRONG_REVERSAL_EXIT"
+    PROFIT_PROTECTION_EXIT = "PROFIT_PROTECTION_EXIT"
 
 
 class CurrentCostSource(Protocol):
@@ -227,6 +236,7 @@ class ScalpingHoldDecision:
     exit_decision_reason: str | None
     exit_decision_at: datetime | None
     exit_fill_at: datetime | None
+    analytical_exit_evidence: ExitEvidenceV2 | None
 
     @property
     def force_exit(self) -> bool:
@@ -415,6 +425,7 @@ def evaluate_hold_lifecycle(
         exit_decision_reason=reason.value if reason is not None else None,
         exit_decision_at=evaluated_at if reason is not None else None,
         exit_fill_at=None,
+        analytical_exit_evidence=None,
     )
 
 
@@ -430,7 +441,7 @@ def canonical_hold_evidence(
     engine_candles = tuple(EngineAnalysisCandle(
         timestamp=datetime.fromtimestamp(item.open_time_ms / 1000, tz=timezone.utc).isoformat(),
         open=float(item.open_price), high=float(item.high_price), low=float(item.low_price),
-        close=float(item.close_price), volume=0.0,
+        close=float(item.close_price), volume=float(item.volume),
     ) for item in causal[-AnalysisWindowConfig().context_candles:])
     try:
         output = run_engine_analysis(symbol, "1m", engine_candles)
@@ -513,6 +524,9 @@ class PostgresScalpingHoldLifecycleService:
         candles: Iterable[PaperFillCandle],
         *,
         from_closed_until_ms: int,
+        analytical_1m: Iterable[ClosedAnalysisCandle] = (),
+        analytical_5m: Iterable[ClosedAnalysisCandle] = (),
+        runtime_revision: str | None = None,
     ) -> ScalpingHoldDecision | None:
         ordered = tuple(sorted(candles, key=lambda item: item.open_time_ms))
         candidates = tuple(item for item in ordered if (
@@ -529,6 +543,20 @@ class PostgresScalpingHoldLifecycleService:
             extension_until = session.scalar(select(func.max(
                 ScalpingPositionHoldDecisionRecord.extension_until_ms
             )).where(ScalpingPositionHoldDecisionRecord.position_id == position.position_id))
+            existing_evidence = tuple(session.scalars(select(
+                ScalpingPositionHoldDecisionRecord.evidence
+            ).where(
+                ScalpingPositionHoldDecisionRecord.position_id == position.position_id,
+                ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms < candidates[0].close_boundary_ms,
+            ).order_by(
+                ScalpingPositionHoldDecisionRecord.evaluation_closed_until_ms.desc()
+            ).limit(4)))
+        prior_scores = tuple(
+            float((value.get("analytical_exit") or {}).get("exit_score"))
+            for value in reversed(existing_evidence)
+            if isinstance(value, dict)
+            and (value.get("analytical_exit") or {}).get("exit_score") is not None
+        )
         selected: ScalpingHoldDecision | None = None
         for candle in candidates:
             evidence = canonical_hold_evidence(position.symbol, ordered, candle.close_boundary_ms)
@@ -538,7 +566,7 @@ class PostgresScalpingHoldLifecycleService:
                 - position.opened_at.astimezone(timezone.utc)
             ).total_seconds()))
             policy = SCALPING_V2.exit_policy.stale_position
-            if policy.soft_timeout_seconds < holding < policy.hard_timeout_seconds:
+            if holding < policy.hard_timeout_seconds:
                 try:
                     costs = self._cost_source.load(
                         position.symbol,
@@ -560,6 +588,40 @@ class PostgresScalpingHoldLifecycleService:
                 prior_extension_until_ms=extension_until,
                 modeled_net_exit=modeled_net_exit,
             )
+            gross_pnl = None if modeled_net_exit is None else modeled_net_exit.gross_pnl
+            net_pnl = None if modeled_net_exit is None else modeled_net_exit.quantized_net_exit_pnl
+            analytical = analyze_position_exit(
+                position_id=position.position_id, symbol=position.symbol,
+                side=position.side.value,
+                entry_price=position.average_entry_price,
+                stop_price=position.stop_price,
+                target_price=position.target_price,
+                opened_at_ms=int(position.opened_at.timestamp() * 1000),
+                candles_1m=analytical_1m, candles_5m=analytical_5m,
+                boundary_ms=candle.close_boundary_ms,
+                prior_exit_scores=prior_scores,
+                gross_pnl=gross_pnl, net_pnl=net_pnl,
+                runtime_revision=runtime_revision,
+            )
+            decision = replace(decision, analytical_exit_evidence=analytical)
+            prior_scores = (*prior_scores, analytical.exit_score)[-4:]
+            analytical_policy = SCALPING_V2.exit_policy.analytical_exit
+            if analytical_policy.mode == "PAPER" and analytical.decision in {
+                AnalyticalExitDecision.ANALYTICAL_EXIT,
+                AnalyticalExitDecision.STRONG_REVERSAL_EXIT,
+                AnalyticalExitDecision.PROFIT_PROTECTION_EXIT,
+            } and not decision.force_exit:
+                reason = {
+                    AnalyticalExitDecision.ANALYTICAL_EXIT: HoldExitReason.ANALYTICAL_EXIT,
+                    AnalyticalExitDecision.STRONG_REVERSAL_EXIT: HoldExitReason.STRONG_REVERSAL_EXIT,
+                    AnalyticalExitDecision.PROFIT_PROTECTION_EXIT: HoldExitReason.PROFIT_PROTECTION_EXIT,
+                }[analytical.decision]
+                decision = replace(
+                    decision, lifecycle_state=HoldLifecycleState.FORCE_EXIT,
+                    exit_reason=reason, exit_candidate_reason=reason.value,
+                    exit_decision_reason=reason.value,
+                    exit_decision_at=decision.evaluated_at,
+                )
             count, extension_until = decision.extension_count, decision.extension_until_ms
             self._persist(decision)
             if decision.force_exit:
@@ -570,6 +632,10 @@ class PostgresScalpingHoldLifecycleService:
     def _persist(self, decision: ScalpingHoldDecision) -> None:
         thesis_json = asdict(decision.thesis)
         evidence_json = asdict(decision.evidence)
+        evidence_json["analytical_exit"] = (
+            None if decision.analytical_exit_evidence is None
+            else decision.analytical_exit_evidence.to_dict()
+        )
         provenance = {
             "policy_version": POLICY_VERSION,
             "decision_hash": sha256(json.dumps({
@@ -578,6 +644,11 @@ class PostgresScalpingHoldLifecycleService:
                 "reason": decision.exit_reason.value if decision.exit_reason else None,
             }, sort_keys=True, default=str).encode()).hexdigest(),
             "signal_timeframe": "5m", "hold_timeframe": "1m",
+            "analytical_exit_mode": SCALPING_V2.exit_policy.analytical_exit.mode,
+            "analytical_exit_contract": "exit-evidence-v2",
+            "analytical_exit_authoritative": (
+                SCALPING_V2.exit_policy.analytical_exit.mode == "PAPER"
+            ),
             "future_bars_used": False,
             "net_pnl_numeric_type": "Decimal",
             "net_pnl_quantum": format(MONEY_QUANTUM, "f"),

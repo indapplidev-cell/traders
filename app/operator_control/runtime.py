@@ -72,6 +72,7 @@ from .production_lifecycle_worker import (
     lifecycle_poll_seconds,
 )
 from .runtime_health import PaperRuntimeHealthPublisher
+from .closed_candle_listener import PostgresClosedCandleListener
 
 
 APPLICATION_NAME = "traders-operator-control-api"
@@ -336,6 +337,7 @@ def create_runtime_app(
     continuation_worker = None
     lifecycle_worker = None
     runtime_health_publisher = None
+    closed_candle_listener = None
     universe_store = SqlAlchemyTradingUniverseStore(sessions) if sessions is not None else None
     if (
         require_production_store
@@ -391,6 +393,9 @@ def create_runtime_app(
             mutation_enabled=active_config.mutation_foundation_enabled,
             database_session_factory=sessions,
         )
+        closed_candle_listener = PostgresClosedCandleListener(
+            engine, lifecycle_worker.wake_for_closed_candle,
+        )
 
     from .service import PaperOperatorControlService
     service = PaperOperatorControlService(
@@ -419,6 +424,8 @@ def create_runtime_app(
             continuation_worker.start()
         if lifecycle_worker is not None:
             lifecycle_worker.start()
+        if closed_candle_listener is not None:
+            closed_candle_listener.start()
         if runtime_health_publisher is not None:
             runtime_health_publisher.start()
         try:
@@ -426,6 +433,8 @@ def create_runtime_app(
         finally:
             if runtime_health_publisher is not None:
                 runtime_health_publisher.stop()
+            if closed_candle_listener is not None:
+                closed_candle_listener.stop()
             if lifecycle_worker is not None:
                 lifecycle_worker.stop()
             if continuation_worker is not None:
@@ -450,6 +459,7 @@ def create_runtime_app(
     app.state.first_canary_continuation_worker = continuation_worker
     app.state.first_canary_lifecycle_worker = lifecycle_worker
     app.state.paper_runtime_health_publisher = runtime_health_publisher
+    app.state.closed_candle_listener = closed_candle_listener
     app.state.paper_continuous_authority_store = continuous_store
     app.state.trading_universe_store = universe_store
     return app

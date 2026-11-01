@@ -144,6 +144,10 @@ class PaperFillCandle:
     close_price: Decimal
     is_closed: bool
     observed_closed_until_ms: int
+    volume: Decimal = Decimal("0")
+    quote_volume: Decimal | None = None
+    trades_count: int | None = None
+    source: str | None = None
 
     def __post_init__(self) -> None:
         try:

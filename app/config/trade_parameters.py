@@ -167,6 +167,43 @@ class StalePositionPolicyParameters(StrictModel):
 
 class ExitPolicyParameters(StrictModel):
     stale_position: StalePositionPolicyParameters
+    analytical_exit: "AnalyticalExitParameters"
+
+
+class AnalyticalExitWeights(StrictModel):
+    graphical_structure: float = Field(ge=0, le=100)
+    technical_indicators: float = Field(ge=0, le=100)
+    momentum_volume: float = Field(ge=0, le=100)
+    holding_economics: float = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def normalized(self):
+        if abs(sum((self.graphical_structure, self.technical_indicators,
+                    self.momentum_volume, self.holding_economics)) - 100.0) > 1e-9:
+            raise ValueError("analytical exit weights must sum to 100")
+        return self
+
+
+class AnalyticalExitParameters(StrictModel):
+    enabled: Literal[True]
+    mode: Literal["SHADOW", "PAPER"]
+    contract_version: Literal["exit-evidence-v2"]
+    weights: AnalyticalExitWeights
+    at_risk_threshold: float = Field(ge=0, le=100)
+    exit_threshold: float = Field(ge=0, le=100)
+    strong_reversal_threshold: float = Field(ge=0, le=100)
+    confirmation_boundaries: int = Field(ge=2, le=5)
+    profit_protection_target_progress: float = Field(ge=0, le=1)
+    latency_slo_ms: int = Field(gt=0)
+    latency_hard_max_ms: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def ordered_thresholds(self):
+        if not self.at_risk_threshold < self.exit_threshold < self.strong_reversal_threshold:
+            raise ValueError("analytical exit thresholds must be strictly ordered")
+        if self.latency_slo_ms > self.latency_hard_max_ms:
+            raise ValueError("analytical exit SLO exceeds hard maximum")
+        return self
 
 
 class CausalOpportunityParameters(StrictModel):

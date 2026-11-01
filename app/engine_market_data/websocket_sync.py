@@ -70,7 +70,17 @@ class WebSocketClosedCandleSync:
             "source": "binance_public_websocket",
         }
         if self.notifier is not None:
-            self.notifier(event)
+            try:
+                self.notifier(event)
+            except Exception as error:
+                LOGGER.warning(json.dumps({
+                    "event": "CLOSED_CANDLE_NOTIFY_FAILED",
+                    "symbol": event["symbol"],
+                    "timeframe": event["timeframe"],
+                    "closed_until_ms": event["closed_until_ms"],
+                    "error_type": type(error).__name__,
+                    "polling_recovery_active": True,
+                }, sort_keys=True))
         LOGGER.info(json.dumps(event, sort_keys=True))
 
     async def run(self, symbols: Iterable[str], timeframes: Iterable[str]) -> None:

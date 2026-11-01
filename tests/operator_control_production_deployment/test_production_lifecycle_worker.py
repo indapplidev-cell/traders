@@ -65,7 +65,7 @@ def test_entry_fill_window_missed_detects_temporal_regression():
 
 
 def test_invalid_lifecycle_poll_override_falls_back(monkeypatch):
-    monkeypatch.setenv("TRADERS_FIRST_CANARY_LIFECYCLE_POLL_SECONDS", "1")
+    monkeypatch.setenv("TRADERS_FIRST_CANARY_LIFECYCLE_POLL_SECONDS", "0.01")
     assert lifecycle_poll_seconds() == DEFAULT_POLL_SECONDS
     monkeypatch.setenv("TRADERS_FIRST_CANARY_LIFECYCLE_POLL_SECONDS", "15")
     assert lifecycle_poll_seconds() == 15.0

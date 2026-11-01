@@ -13,7 +13,7 @@ import os
 import threading
 import urllib.parse
 import urllib.request
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -45,6 +45,7 @@ from app.engine_paper.order_execution_service import (
     PaperEntryExecutionRequest,
 )
 from app.engine_paper.scalping_paper_runner import read_binance_commission_snapshot
+from app.engine_paper.analytical_exit import ClosedAnalysisCandle
 from app.config.trade_parameters import SCALPING_V2
 from app.engine_safety.paper_domain import PaperPositionState
 from app.engine_paper.production_market_data import (
@@ -77,10 +78,17 @@ from .schemas import PaperOperatorRecoveryCloseDecision
 # Uvicorn owns the production stderr handler; using its error logger keeps the
 # structured canary trail in ``docker logs`` without adding a second handler.
 LOGGER = logging.getLogger("uvicorn.error")
-DEFAULT_POLL_SECONDS = 10.0
-MIN_POLL_SECONDS = 5.0
+DEFAULT_POLL_SECONDS = 0.5
+MIN_POLL_SECONDS = 0.1
 MAX_POLL_SECONDS = 60.0
 MAX_CANDLES = 512
+
+
+@dataclass(frozen=True, slots=True)
+class LifecycleMarketSnapshot:
+    fill_1m: tuple[PaperFillCandle, ...]
+    analysis_1m: tuple[ClosedAnalysisCandle, ...]
+    analysis_5m: tuple[ClosedAnalysisCandle, ...]
 
 
 def lifecycle_poll_seconds() -> float:
@@ -116,6 +124,23 @@ def _fill_candle(value) -> PaperFillCandle:
         close_price=value.close,
         is_closed=value.is_closed,
         observed_closed_until_ms=value.close_time_ms + 1,
+        volume=Decimal(str(value.volume)),
+        quote_volume=(None if value.quote_volume is None else Decimal(str(value.quote_volume))),
+        trades_count=value.trades_count,
+        source=value.source,
+    )
+
+
+def _analysis_candle(value) -> ClosedAnalysisCandle:
+    return ClosedAnalysisCandle(
+        symbol=value.symbol, timeframe=value.timeframe,
+        open_time_ms=value.open_time_ms, close_boundary_ms=value.close_time_ms + 1,
+        open_price=Decimal(str(value.open)), high_price=Decimal(str(value.high)),
+        low_price=Decimal(str(value.low)), close_price=Decimal(str(value.close)),
+        volume=Decimal(str(value.volume)),
+        quote_volume=(None if value.quote_volume is None else Decimal(str(value.quote_volume))),
+        trades_count=value.trades_count, source=value.source,
+        is_closed=bool(value.is_closed),
     )
 
 
@@ -169,6 +194,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self._stale_position_shadow = stale_position_shadow
         self._scalping_hold_lifecycle = scalping_hold_lifecycle
         self._stop = threading.Event()
+        self._wake = threading.Event()
         self._thread: threading.Thread | None = None
         self._ticks = 0
         self._last_result = "NOT_STARTED"
@@ -196,23 +222,34 @@ class ProductionPaperFirstCanaryLifecycleWorker:
 
     def stop(self) -> None:
         self._stop.set()
+        self._wake.set()
         thread = self._thread
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=min(self.poll_seconds + 1.0, 15.0))
         self._thread = None
 
+    def wake_for_closed_candle(self) -> None:
+        """Wake the lifecycle immediately; polling remains the recovery path."""
+        self._wake.set()
+
     def _snapshot(self, symbol: str, canary_id: str, *, continuous: bool = False):
         result = self._market_data.read(PaperProductionMarketDataRequest(
             scope=PaperProductionMarketDataScope(
-                symbols=(symbol,), timeframes=("1m",), candles_per_timeframe=MAX_CANDLES
+                symbols=(symbol,), timeframes=("1m", "5m"), candles_per_timeframe=MAX_CANDLES
             ),
             request_id=_id(canary_id, "lifecycle-market-snapshot", continuous=continuous),
         ))
         if result.readiness is not PaperProductionMarketDataReadiness.READY or result.data is None:
             return None, result.outcome.value
         snapshot = result.data.snapshots[0]
-        candles = dict(snapshot.candles)["1m"]
-        return tuple(_fill_candle(value) for value in candles), "READY"
+        by_timeframe = dict(snapshot.candles)
+        one = tuple(by_timeframe["1m"])
+        five = tuple(by_timeframe["5m"])
+        return LifecycleMarketSnapshot(
+            fill_1m=tuple(_fill_candle(value) for value in one),
+            analysis_1m=tuple(_analysis_candle(value) for value in one),
+            analysis_5m=tuple(_analysis_candle(value) for value in five),
+        ), "READY"
 
     def _finalize(self, canary, state) -> str:
         """Reconcile a close; only the historical first canary auto-disables."""
@@ -576,11 +613,16 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             )
             if current_exit_policy is None:
                 raise ValueError("RECOVERY_CLOSE_CURRENT_COMMISSION_NOT_READY")
-            candles, market = self._snapshot(
+            snapshot, market = self._snapshot(
                 graph.command.symbol, canary.canary_id, continuous=True
             )
-            if candles is None:
+            if snapshot is None:
                 raise ValueError(f"RECOVERY_CLOSE_MARKET_DATA_{market}")
+            candles = (
+                snapshot.fill_1m
+                if isinstance(snapshot, LifecycleMarketSnapshot)
+                else snapshot
+            )
             if lifecycle is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
                 target = PaperProductionMutationTarget(
                     environment=canary.environment,
@@ -870,11 +912,16 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 )
                 if current_exit_policy is None:
                     return f"WAITING_FOR_EXIT_COMMISSION:{commission_status}"
-            candles, market = self._snapshot(
+            snapshot, market = self._snapshot(
                 graph.command.symbol, canary.canary_id, continuous=continuous
             )
-            if candles is None:
+            if snapshot is None:
                 return f"WAITING_FOR_MARKET_DATA:{market}"
+            candles = (
+                snapshot.fill_1m
+                if isinstance(snapshot, LifecycleMarketSnapshot)
+                else snapshot
+            )
             if lifecycle is PaperLifecycleState.ENTRY_ORDER_OPEN:
                 cycle, readiness_code = self._entry_cycle(
                     canary.canary_id, graph, candles, continuous=continuous
@@ -910,6 +957,15 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                             position,
                             candles,
                             from_closed_until_ms=graph.cursors[0].last_evaluated_closed_until_ms,
+                            analytical_1m=(
+                                snapshot.analysis_1m
+                                if isinstance(snapshot, LifecycleMarketSnapshot) else ()
+                            ),
+                            analytical_5m=(
+                                snapshot.analysis_5m
+                                if isinstance(snapshot, LifecycleMarketSnapshot) else ()
+                            ),
+                            runtime_revision=os.environ.get("TRADERS_RUNTIME_SOURCE_IDENTITY"),
                         )
                         if hold is not None and hold.force_exit:
                             now = datetime.now(timezone.utc)
@@ -1072,7 +1128,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 _safe_event("paper_canary_lifecycle_fault", error_type=type(error).__name__)
             finally:
                 self._ticks += 1
-            self._stop.wait(self.poll_seconds)
+            self._wake.wait(self.poll_seconds)
+            self._wake.clear()
 
 
 __all__ = (

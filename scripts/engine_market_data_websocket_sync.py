@@ -13,12 +13,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import websockets
+from sqlalchemy import text
 
 from app.engine_market_data.binance_kline_ws import BinanceKlineWebSocketClient
 from app.engine_market_data.db.candle_repository import CandleRepository
 from app.engine_market_data.db.session import create_market_data_session_factory
 from app.engine_market_data.sync_state_repository import SyncStateRepository
 from app.engine_market_data.websocket_sync import WebSocketClosedCandleSync
+from app.operator_control.closed_candle_listener import CLOSED_1M_CHANNEL
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
@@ -37,8 +39,19 @@ async def run(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
     factory = create_market_data_session_factory()
     client = BinanceKlineWebSocketClient(websocket_factory=websockets.connect)
+    def notify(event: dict[str, object]) -> None:
+        if event.get("timeframe") != "1m":
+            return
+        with factory() as session:
+            session.execute(text("SELECT pg_notify(:channel, :payload)"), {
+                "channel": CLOSED_1M_CHANNEL,
+                "payload": json.dumps(event, sort_keys=True),
+            })
+            session.commit()
+
     service = WebSocketClosedCandleSync(
         client, CandleRepository(factory), SyncStateRepository(factory),
+        notifier=notify,
     )
     print(json.dumps({
         "event": "websocket_market_data_started",
