@@ -10064,3 +10064,36 @@ Evidence: `docs/audits/TRADERS_SCALPING_V2_END_TO_END_READINESS_LATENCY_AND_PROF
 The outcome reconciliation defect was repaired and deployed before measurement.
 The fresh natural plan proved that selector computation is not the bottleneck:
 the plan itself arrived after the strict causal entry deadline.
+
+## Scalping v2 low-latency fast path 05
+
+```text
+TASK = SCALPING_V2_LOW_LATENCY_FAST_PATH
+RECORDED_AT_UTC = 2026-11-01T03:16:00Z
+STATUS = PASS_ANALYSIS_PATH; NATURAL_SIGNAL_TO_OPEN_UNPROVEN
+RUNTIME_REVISION = 4841b62
+REPORT_REVISION = 2f20e7b
+SCHEMA = 0040_plan_outcome_session_boundary
+ACTIVE_ACCOUNTING_SESSION = TRADERS_PAPER_SESSION_02
+INITIAL_BALANCE_USDT = 1000
+CONTROL = CONTINUOUS_ARMED; GENERATION_20; COMMANDS_USED_0
+CONTROL_BOUNDARY = 2026-11-01T03:15:00Z
+SYMBOLS_COMPLETED = 20
+FIRST_ANALYSIS_START_MS = 3938
+LAST_ANALYSIS_START_MS = 7557
+FULL_UNIVERSE_FINISH_MS = 7821
+ANALYSIS_DURATION_P50_MS = 304
+ANALYSIS_DURATION_P95_MS = 327
+ANALYSIS_DURATION_MAX_MS = 329
+TARGET_P95_MS = 8000; HARD_MAX_MS = 10000; RESULT_PASS
+CURRENT_SESSION_NEW_COMMANDS_BY_TASK = 0
+CURRENT_SESSION_NEW_POSITIONS_BY_TASK = 0
+LIVE_STATE = DISABLED
+REAL_BINANCE_ORDER_CALLS = 0
+NEXT_ACTION = COLLECT_24_TO_48H_LATENCY_COHORT; MEASURE_FIRST_NATURAL_SIGNAL_TO_OPEN
+```
+
+Evidence: `docs/audits/TRADERS_SCALPING_V2_LOW_LATENCY_FAST_PATH_20261101.md`.
+The WebSocket closed-candle path, batched freshness checks, 20-symbol parallel
+analysis, independent persistence, and SQL health aggregation replaced the
+49–76 second historical delay without changing strategy economics or risk.
