@@ -167,14 +167,16 @@ class StalePositionPolicyParameters(StrictModel):
 
 class ExitPolicyParameters(StrictModel):
     stale_position: StalePositionPolicyParameters
-    analytical_exit: "AnalyticalExitParameters"
+    analytical_exit: "AnalyticalExitParameters" = Field(
+        default_factory=lambda: AnalyticalExitParameters()
+    )
 
 
 class AnalyticalExitWeights(StrictModel):
-    graphical_structure: float = Field(ge=0, le=100)
-    technical_indicators: float = Field(ge=0, le=100)
-    momentum_volume: float = Field(ge=0, le=100)
-    holding_economics: float = Field(ge=0, le=100)
+    graphical_structure: float = Field(default=35.0, ge=0, le=100)
+    technical_indicators: float = Field(default=35.0, ge=0, le=100)
+    momentum_volume: float = Field(default=20.0, ge=0, le=100)
+    holding_economics: float = Field(default=10.0, ge=0, le=100)
 
     @model_validator(mode="after")
     def normalized(self):
@@ -185,17 +187,17 @@ class AnalyticalExitWeights(StrictModel):
 
 
 class AnalyticalExitParameters(StrictModel):
-    enabled: Literal[True]
-    mode: Literal["SHADOW", "PAPER"]
-    contract_version: Literal["exit-evidence-v2"]
-    weights: AnalyticalExitWeights
-    at_risk_threshold: float = Field(ge=0, le=100)
-    exit_threshold: float = Field(ge=0, le=100)
-    strong_reversal_threshold: float = Field(ge=0, le=100)
-    confirmation_boundaries: int = Field(ge=2, le=5)
-    profit_protection_target_progress: float = Field(ge=0, le=1)
-    latency_slo_ms: int = Field(gt=0)
-    latency_hard_max_ms: int = Field(gt=0)
+    enabled: Literal[True] = True
+    mode: Literal["SHADOW", "PAPER"] = "SHADOW"
+    contract_version: Literal["exit-evidence-v2"] = "exit-evidence-v2"
+    weights: AnalyticalExitWeights = Field(default_factory=AnalyticalExitWeights)
+    at_risk_threshold: float = Field(default=55.0, ge=0, le=100)
+    exit_threshold: float = Field(default=70.0, ge=0, le=100)
+    strong_reversal_threshold: float = Field(default=80.0, ge=0, le=100)
+    confirmation_boundaries: int = Field(default=2, ge=2, le=5)
+    profit_protection_target_progress: float = Field(default=0.5, ge=0, le=1)
+    latency_slo_ms: int = Field(default=5000, gt=0)
+    latency_hard_max_ms: int = Field(default=8000, gt=0)
 
     @model_validator(mode="after")
     def ordered_thresholds(self):
