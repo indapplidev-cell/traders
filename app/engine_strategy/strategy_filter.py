@@ -24,6 +24,7 @@ from app.engine_strategy.strategy_rules import (
 )
 from app.engine_strategy.strategy_status import StrategyStatus
 from app.engine_orchestrator.trade_profile import SCALPING_PROFILE_IDS
+from app.engine_analysis.independent_expert import weighted_score
 
 
 class StrategyFilter:
@@ -70,11 +71,37 @@ class StrategyFilter:
         result = evaluate_strategy_rules(context, self.config)
         score_diagnostics = strategy_score_diagnostics(context, self.config)
         profile_id = getattr(self.runtime_parameters, "profile_id", None)
+        expert = (setup_candidate.context or {}).get("independent_expert") or {}
+        expert_components = (
+            expert.get("entry_components") if isinstance(expert, dict) else None
+        )
+        expert_weights = dict(
+            getattr(self.runtime_parameters, "entry_score_weights", ()) or ()
+        )
+        expert_score = (
+            weighted_score(expert_components, expert_weights)
+            if profile_id == "trade-5m-v2" and expert.get("eligible")
+            and isinstance(expert_components, dict) and expert_weights
+            else None
+        )
         decision_score = (
-            score_diagnostics["strategy_final_score"]
+            expert_score if expert_score is not None else score_diagnostics["strategy_final_score"]
             if profile_id == "trade-5m-v2"
             else result.score
         )
+        calibration_blocked = bool(
+            profile_id == "trade-5m-v2"
+            and getattr(self.runtime_parameters, "expert_calibration_enabled", False)
+            and expert_score is None and decision_score is not None
+        )
+        if calibration_blocked:
+            # This calibration was verified for causal LONG entries only.
+            # Existing non-expert/SHORT candidates remain observable but cannot
+            # cross the lowered calibration-specific risk threshold.
+            decision_score = min(
+                float(decision_score),
+                float(self.runtime_parameters.risk_minimum_strategy_score) - 0.001,
+            )
         gate_diagnostics = strategy_gate_diagnostics(result)
         conflict_trace = []
         for warning in context.quality_warnings:
@@ -122,9 +149,9 @@ class StrategyFilter:
             setup_quality_score=context.quality_score,
             strategy_score=decision_score, strategy_quality=result.quality,
             strategy_quality_threshold=score_diagnostics["strategy_quality_threshold"],
-            component_scores=score_diagnostics["component_scores"],
-            raw_component_values=score_diagnostics["raw_component_values"],
-            normalized_component_scores=score_diagnostics["normalized_component_scores"],
+            component_scores=(expert_components if expert_score is not None else score_diagnostics["component_scores"]),
+            raw_component_values=(expert_components if expert_score is not None else score_diagnostics["raw_component_values"]),
+            normalized_component_scores=(expert_components if expert_score is not None else score_diagnostics["normalized_component_scores"]),
             positive_contributions=score_diagnostics["positive_contributions"],
             negative_penalties=score_diagnostics["negative_penalties"],
             conflict_trace=conflict_trace,
@@ -141,8 +168,13 @@ class StrategyFilter:
             strategy_gate_results=gate_diagnostics["strategy_gate_results"],
             strategy_failed_gate=gate_diagnostics["strategy_failed_gate"],
             strategy_failed_gate_reason=gate_diagnostics["strategy_failed_gate_reason"],
-            strategy_final_score=score_diagnostics["strategy_final_score"],
-            strategy_margin_to_threshold=score_diagnostics["strategy_margin_to_threshold"],
+            strategy_final_score=decision_score,
+            strategy_margin_to_threshold=(
+                score_diagnostics["strategy_margin_to_threshold"]
+                if expert_score is None and not calibration_blocked else round(
+                    decision_score - float(getattr(self.runtime_parameters, "risk_minimum_strategy_score", 0.0)), 3
+                )
+            ),
             shadow_quality_cohorts=(
                 strategy_shadow_threshold_cohorts(
                     result.score,
@@ -169,7 +201,14 @@ class StrategyFilter:
                 "source_setup_quality": source_setup_quality,
                 "source_quality_reasons": list(source_quality_reasons),
                 "scalping_score_decomposition": (
-                    scalping_strategy_score_decomposition(context)
+                    ({
+                        "model": "independent-expert-entry-score-v1",
+                        "calibration_id": expert.get("calibration_id"),
+                        "target_weights": expert_weights,
+                        "components": expert_components,
+                        "mapped_total": round(expert_score, 6),
+                        "future_bars_used": False,
+                    } if expert_score is not None else scalping_strategy_score_decomposition(context))
                     if getattr(self.runtime_parameters, "profile_id", None) in SCALPING_PROFILE_IDS
                     else None
                 ),

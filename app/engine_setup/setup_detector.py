@@ -122,12 +122,22 @@ class SetupDetector:
         )
         identity = setup_candidate_id(snapshot.symbol, snapshot.timeframe, snapshot.closed_until_ms,
                                       result.setup_type, result.status)
+        expert = context.analysis_context.get("independent_expert") or {}
+        expert_used = bool(
+            isinstance(expert, dict) and expert.get("eligible")
+            and result.direction_hint == DirectionHint.BULLISH.value
+        )
         quality = diagnose_setup_quality(
             status=result.status, setup_type=result.setup_type, direction_hint=result.direction_hint,
             confirmation_state=result.confirmation_state, diagnostics=result.diagnostics,
             reason_codes=result.reason_codes, invalidation_reasons=result.invalidation_reasons,
-            source_analysis_entry_quality=context.entry_quality, source_confidence=context.confidence,
-            source_regime=context.regime, source_impulse_phase=context.impulse_phase,
+            source_analysis_entry_quality=(
+                SetupQuality.ACCEPTABLE.value if expert_used else context.entry_quality
+            ), source_confidence=(
+                float(expert.get("confidence", 0.0)) / 100.0 if expert_used else context.confidence
+            ),
+            source_regime=("UP" if expert_used else context.regime),
+            source_impulse_phase=context.impulse_phase,
         )
         candidate_context = setup_causal_context(
             dict(context.analysis_context), direction=result.direction_hint,
@@ -239,6 +249,31 @@ class SetupDetector:
         """
         if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v2":
             return result
+        expert = context.analysis_context.get("independent_expert") or {}
+        if (
+            isinstance(expert, dict) and expert.get("eligible")
+            and not result.invalidation_reasons
+            and result.status not in {SetupStatus.SETUP_INVALID.value, SetupStatus.ERROR.value}
+        ):
+            return SetupRuleResult(
+                status=SetupStatus.SETUP_CANDIDATE.value,
+                setup_type=SetupType.TREND_CONTINUATION.value,
+                direction_hint=DirectionHint.BULLISH.value,
+                confirmation_state=ConfirmationState.CONFIRMED_BY_ANALYSIS.value,
+                setup_quality=SetupQuality.ACCEPTABLE.value,
+                reason_codes=[SetupReasonCode.ANALYSIS_CONFIRMS_BREAKOUT_CONTINUATION.value],
+                invalidation_reasons=[],
+                diagnostics=SetupDiagnostics(
+                    has_structural_trigger=True, has_directional_context=True,
+                    has_level_context=True, has_confirmation_requirement=False,
+                    has_invalidation_context=True, is_actionable_setup_candidate=True,
+                    semantic_bucket=SetupSemanticBucket.CANDIDATE_STRUCTURE.value,
+                    diagnostic_reasons=[
+                        "INDEPENDENT_EXPERT_CAUSAL_LONG_TRIGGER",
+                        str(expert.get("calibration_id") or "UNKNOWN_CALIBRATION"),
+                    ],
+                ),
+            )
         scalping = context.analysis_context.get("scalping") or {}
         indicators = context.analysis_context.get("technical_indicators") or {}
         quality_basis = context.analysis_context.get("quality_basis") or {}

@@ -15,6 +15,8 @@ from typing import Iterable
 
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
 from app.engine_analysis import AnalysisWindowConfig, EngineAnalysisCandle, run_engine_analysis
+from app.engine_analysis.independent_expert import exit_components as expert_exit_components
+from app.engine_market_data.candle import Candle
 
 
 CONTRACT_VERSION = "exit-evidence-v2"
@@ -102,6 +104,17 @@ def _engine_candles(values: tuple[ClosedAnalysisCandle, ...]) -> tuple[EngineAna
     ) for item in values)
 
 
+def _market_candles(values: tuple[ClosedAnalysisCandle, ...]) -> tuple[Candle, ...]:
+    return tuple(Candle(
+        symbol=item.symbol, timeframe=item.timeframe,
+        open_time_ms=item.open_time_ms, close_time_ms=item.close_boundary_ms - 1,
+        open=item.open_price, high=item.high_price, low=item.low_price,
+        close=item.close_price, volume=item.volume, quote_volume=item.quote_volume,
+        trades_count=item.trades_count, source=item.source or "analytical-exit",
+        is_closed=item.is_closed,
+    ) for item in values)
+
+
 def _causal_series(
     values: Iterable[ClosedAnalysisCandle], timeframe: str, boundary_ms: int,
 ) -> tuple[ClosedAnalysisCandle, ...]:
@@ -165,6 +178,7 @@ def analyze_position_exit(
     candles_5m: Iterable[ClosedAnalysisCandle], boundary_ms: int,
     prior_exit_scores: tuple[float, ...] = (),
     gross_pnl: Decimal | None = None, net_pnl: Decimal | None = None,
+    net_pnl_bps: float | None = None,
     runtime_revision: str | None = None,
 ) -> ExitEvidenceV2:
     started = perf_counter()
@@ -208,32 +222,7 @@ def analyze_position_exit(
             "nison": context_5m.nison_context.to_dict(),
             "regime": output_5m.composer_output.result.market_regime.value,
         }
-        structure_1m_opposed = _direction_opposed(
-            context_1m.altunina_context.structure_direction, side)
-        structure_5m_opposed = _direction_opposed(
-            context_5m.altunina_context.structure_direction, side)
-        regime_1m_opposed = _direction_opposed(
-            output_1m.composer_output.result.market_regime, side)
-        technical_1m_opposed = _direction_opposed(
-            context_1m.indicator_context.direction, side)
-        technical_5m_opposed = _direction_opposed(
-            context_5m.indicator_context.direction, side)
         weights = policy.weights
-        graphical = weights.graphical_structure * (
-            (4.0 / 7.0 if structure_1m_opposed else 0.0)
-            + (3.0 / 7.0 if structure_5m_opposed else 0.0)
-        )
-        technical = weights.technical_indicators * (
-            (4.0 / 7.0 if technical_1m_opposed else 0.0)
-            + (3.0 / 7.0 if technical_5m_opposed else 0.0)
-        )
-        ratio = float(context_1m.volume_context.recent_to_baseline_ratio)
-        impulse = str(output_1m.json_payload.get("impulse_phase") or "").upper()
-        momentum = weights.momentum_volume * (
-            0.5 if regime_1m_opposed or impulse in {
-            "IMPULSE_EXHAUSTION", "IMPULSE_EXHAUSTION_RISK", "POST_SPIKE_PULLBACK"
-            } else 0.0
-        ) + weights.momentum_volume * (0.5 if ratio < 0.80 else 0.0)
         current = one[-1].close_price
         progress = _target_progress(side, entry_price, target_price, current)
         held = tuple(item for item in one if item.close_boundary_ms > opened_at_ms)
@@ -249,22 +238,60 @@ def analyze_position_exit(
             stop_distance = float((stop_price - current) / current * Decimal("10000"))
             mfe = float(max(Decimal("0"), entry_price - lowest) / entry_price * Decimal("10000"))
             mae = float(max(Decimal("0"), highest - entry_price) / entry_price * Decimal("10000"))
-        economics = weights.holding_economics if (
-            net_pnl is not None and net_pnl > 0
-            and progress >= policy.profit_protection_target_progress
-        ) else 0.0
-        scores = {
-            "graphical_structure": graphical,
-            "technical_indicators": technical,
-            "momentum_volume": momentum,
-            "holding_economics": economics,
-        }
+        if side == "LONG":
+            expert = expert_exit_components(
+                boundary_ms, _market_candles(one), _market_candles(five),
+                entry_price=float(entry_price), net_profit_bps=net_pnl_bps,
+            )
+            raw_scores = expert["component_values"]
+            scores = {
+                name: float(raw_scores[name]) * float(getattr(weights, name)) / 100.0
+                for name in raw_scores
+            }
+            strong = bool(expert["strong_reversal"])
+        else:
+            structure_1m_opposed = _direction_opposed(
+                context_1m.altunina_context.structure_direction, side)
+            structure_5m_opposed = _direction_opposed(
+                context_5m.altunina_context.structure_direction, side)
+            regime_1m_opposed = _direction_opposed(
+                output_1m.composer_output.result.market_regime, side)
+            technical_1m_opposed = _direction_opposed(
+                context_1m.indicator_context.direction, side)
+            technical_5m_opposed = _direction_opposed(
+                context_5m.indicator_context.direction, side)
+            ratio = float(context_1m.volume_context.recent_to_baseline_ratio)
+            impulse = str(output_1m.json_payload.get("impulse_phase") or "").upper()
+            scores = {
+                "graphical_structure": weights.graphical_structure * (
+                    (4.0 / 7.0 if structure_1m_opposed else 0.0)
+                    + (3.0 / 7.0 if structure_5m_opposed else 0.0)
+                ),
+                "technical_indicators": weights.technical_indicators * (
+                    (4.0 / 7.0 if technical_1m_opposed else 0.0)
+                    + (3.0 / 7.0 if technical_5m_opposed else 0.0)
+                ),
+                "momentum_volume": weights.momentum_volume * (
+                    0.5 if regime_1m_opposed or impulse in {
+                        "IMPULSE_EXHAUSTION", "IMPULSE_EXHAUSTION_RISK",
+                        "POST_SPIKE_PULLBACK",
+                    } else 0.0
+                ) + weights.momentum_volume * (0.5 if ratio < 0.80 else 0.0),
+                "holding_economics": weights.holding_economics if (
+                    net_pnl is not None and net_pnl > 0
+                    and progress >= policy.profit_protection_target_progress
+                ) else 0.0,
+            }
+            strong = structure_1m_opposed and regime_1m_opposed
         exit_score = min(100.0, sum(scores.values()))
-        strong = structure_1m_opposed and regime_1m_opposed
+        protected_profit = bool(
+            net_pnl_bps is not None
+            and net_pnl_bps >= policy.profit_lock_buffer_bps
+        )
         decision, reason_values, confirmation_count = classify_analytical_exit(
             exit_score=exit_score, strong_reversal=strong,
             prior_exit_scores=prior_exit_scores,
-            net_positive=net_pnl is not None and net_pnl > 0,
+            net_positive=protected_profit,
             target_progress=progress,
         )
         return ExitEvidenceV2(

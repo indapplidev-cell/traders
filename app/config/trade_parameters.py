@@ -38,6 +38,23 @@ class ReloadParameters(StrictModel):
     activation_timeframe_seconds: int = Field(gt=0)
 
 
+class EntryScoreWeights(StrictModel):
+    structure: float = Field(default=25.0, ge=0, le=45)
+    context: float = Field(default=15.0, ge=0, le=45)
+    momentum: float = Field(default=15.0, ge=0, le=45)
+    volume: float = Field(default=15.0, ge=0, le=45)
+    entry_quality: float = Field(default=10.0, ge=0, le=45)
+    liquidity: float = Field(default=10.0, ge=0, le=45)
+    confirmation: float = Field(default=10.0, ge=0, le=45)
+
+    @model_validator(mode="after")
+    def normalized(self):
+        if abs(sum((self.structure, self.context, self.momentum, self.volume,
+                    self.entry_quality, self.liquidity, self.confirmation)) - 100.0) > 1e-9:
+            raise ValueError("entry score weights must sum to 100")
+        return self
+
+
 class SignalParameters(StrictModel):
     timeframe: Literal["5m"]
     required_timeframes: tuple[str, ...]
@@ -53,6 +70,8 @@ class SignalParameters(StrictModel):
     volume_baseline_candles: int = Field(gt=0)
     regime_lookback_candles: int = Field(gt=0)
     strategy_minimum_score: float = Field(ge=0, le=100)
+    expert_calibration_enabled: bool = False
+    entry_score_weights: EntryScoreWeights = Field(default_factory=EntryScoreWeights)
 
 
 class RiskParameters(StrictModel):
@@ -173,10 +192,10 @@ class ExitPolicyParameters(StrictModel):
 
 
 class AnalyticalExitWeights(StrictModel):
-    graphical_structure: float = Field(default=35.0, ge=0, le=100)
-    technical_indicators: float = Field(default=35.0, ge=0, le=100)
-    momentum_volume: float = Field(default=20.0, ge=0, le=100)
-    holding_economics: float = Field(default=10.0, ge=0, le=100)
+    graphical_structure: float = Field(default=35.0, ge=0, le=45)
+    technical_indicators: float = Field(default=35.0, ge=0, le=45)
+    momentum_volume: float = Field(default=20.0, ge=0, le=45)
+    holding_economics: float = Field(default=10.0, ge=0, le=45)
 
     @model_validator(mode="after")
     def normalized(self):
@@ -200,6 +219,7 @@ class AnalyticalExitParameters(StrictModel):
     strong_reversal_threshold: float = Field(default=80.0, ge=0, le=100)
     confirmation_boundaries: int = Field(default=2, ge=2, le=5)
     profit_protection_target_progress: float = Field(default=0.5, ge=0, le=1)
+    profit_lock_buffer_bps: float = Field(default=8.0, ge=0, le=20)
     latency_slo_ms: int = Field(default=5000, gt=0)
     latency_hard_max_ms: int = Field(default=8000, gt=0)
 

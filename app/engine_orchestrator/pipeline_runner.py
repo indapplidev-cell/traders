@@ -14,6 +14,7 @@ from app.engine_orchestrator.config_epoch import ConfigurationEpoch
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_analysis.scalping_semantics import project_scalping_analysis_semantics
+from app.engine_analysis.independent_expert import entry_verdict, weighted_score
 from app.engine_analysis.analysis_snapshot_store import AnalysisSnapshotStore
 from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.engine_analysis.engine import run_engine_analysis
@@ -377,6 +378,37 @@ class PipelineRunner:
                 expansion_ratio=self.runtime_parameters.analysis_expansion_ratio,
             )
 
+    def _enrich_independent_expert(
+        self, analysis: object, snapshots: dict[str, MarketDataSnapshot],
+    ) -> None:
+        """Attach the verified, causal OHLCV rubric to the PAPER decision."""
+        if not getattr(self.runtime_parameters, "expert_calibration_enabled", False):
+            return
+        context = getattr(analysis, "analysis_context", None)
+        if not isinstance(context, dict):
+            return
+        try:
+            verdict = entry_verdict(
+                str(getattr(analysis, "symbol")), int(getattr(analysis, "closed_until_ms")),
+                snapshots["1m"].candles, snapshots["5m"].candles,
+            )
+            weights = dict(self.runtime_parameters.entry_score_weights)
+            verdict["weights"] = weights
+            verdict["entry_score"] = round(
+                weighted_score(verdict["entry_components"], weights), 6
+            )
+            verdict["entry_threshold"] = self.runtime_parameters.risk_minimum_strategy_score
+            verdict["eligible"] = bool(
+                verdict["direction"] != "BEARISH"
+                and verdict["entry_score"] >= verdict["entry_threshold"]
+            )
+            context["independent_expert"] = verdict
+        except (KeyError, TypeError, ValueError) as exc:
+            context["independent_expert"] = {
+                "eligible": False, "future_bars_used": False,
+                "error": type(exc).__name__, "reason": str(exc),
+            }
+
     @staticmethod
     def _invoke(target: object, method: str, value: object) -> object:
         function = getattr(target, method, target)
@@ -540,6 +572,7 @@ class PipelineRunner:
             self._enrich_5m_analysis_semantics(
                 analysis, snapshots[self.config.primary_timeframe]
             )
+            self._enrich_independent_expert(analysis, snapshots)
             self._enrich_5m_target_context(analysis, snapshots)
 
             setup = self._invoke(self.setup_runner, "process_analysis_snapshot", analysis)

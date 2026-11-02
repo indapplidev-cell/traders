@@ -88,6 +88,8 @@ class RuntimeProfileParameters:
     risk_shadow_policy_id: str
     risk_minimum_strategy_quality: str
     risk_minimum_strategy_score: float
+    expert_calibration_enabled: bool
+    entry_score_weights: tuple[tuple[str, float], ...]
     validity_boundaries: int
     minimum_planned_rr: float
     cost_safety_margin_bps: float
@@ -469,6 +471,12 @@ def _runtime_parameters(
         ),
         risk_minimum_strategy_quality=declared.risk_minimum_strategy_quality,
         risk_minimum_strategy_score=SCALPING_V2.signal.strategy_minimum_score if is_v2 else 65.0,
+        expert_calibration_enabled=(SCALPING_V2.signal.expert_calibration_enabled if is_v2 else False),
+        entry_score_weights=(
+            tuple((name, float(value)) for name, value in
+                  SCALPING_V2.signal.entry_score_weights.model_dump().items())
+            if is_v2 else ()
+        ),
         validity_boundaries=profile.validity_boundaries,
         minimum_planned_rr=profile.minimum_planned_rr,
         cost_safety_margin_bps=profile.cost_safety_margin_bps,

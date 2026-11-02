@@ -590,6 +590,13 @@ class PostgresScalpingHoldLifecycleService:
             )
             gross_pnl = None if modeled_net_exit is None else modeled_net_exit.gross_pnl
             net_pnl = None if modeled_net_exit is None else modeled_net_exit.quantized_net_exit_pnl
+            net_pnl_bps = None
+            if modeled_net_exit is not None:
+                entry_notional = position.average_entry_price * position.remaining_quantity
+                if entry_notional > 0:
+                    net_pnl_bps = float(
+                        modeled_net_exit.quantized_net_exit_pnl / entry_notional * Decimal("10000")
+                    )
             analytical = analyze_position_exit(
                 position_id=position.position_id, symbol=position.symbol,
                 side=position.side.value,
@@ -600,7 +607,7 @@ class PostgresScalpingHoldLifecycleService:
                 candles_1m=analytical_1m, candles_5m=analytical_5m,
                 boundary_ms=candle.close_boundary_ms,
                 prior_exit_scores=prior_scores,
-                gross_pnl=gross_pnl, net_pnl=net_pnl,
+                gross_pnl=gross_pnl, net_pnl=net_pnl, net_pnl_bps=net_pnl_bps,
                 runtime_revision=runtime_revision,
             )
             decision = replace(decision, analytical_exit_evidence=analytical)
