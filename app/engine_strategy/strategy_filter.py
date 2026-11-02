@@ -81,6 +81,7 @@ class StrategyFilter:
         expert_score = (
             weighted_score(expert_components, expert_weights)
             if profile_id == "trade-5m-v2" and expert.get("eligible")
+            and setup_candidate.direction_hint == "BULLISH"
             and isinstance(expert_components, dict) and expert_weights
             else None
         )
