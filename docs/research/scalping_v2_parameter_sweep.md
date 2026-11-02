@@ -315,3 +315,56 @@ The frozen dataset must remain at the path recorded in SEARCH_MANIFEST.json.
 No export activates trading. One profitable trade does not establish robustness,
 independent profitability or deployment readiness. Full GUI/CLI integration is
 the next block.
+
+## Bull-run entry/exit weight calibration
+
+The research package also provides a read-only, long-only weight calibration
+workflow for executable 5–30 minute bullish legs. Its production-shaped October
+2026 request is
+`config/research/bull_run_weight_calibration_202610.json`. The workflow never
+updates `trade_parameters.yaml`, PAPER control state, PostgreSQL, or LIVE.
+
+First freeze ordinary result-search history with enough storage for all 20
+symbols and the 1m/5m/15m/1h warmup and exit tail. Then reconstruct causal module
+observations from that immutable history:
+
+```powershell
+python -m traders_ml.parameter_sweep `
+  --result-search-request config/research/bull_run_history_202610.json `
+  --result-search-freeze-history artifacts/result_search/october_2026_history `
+  --history-max-rows 2000000 `
+  --history-warmup-bars 200 `
+  --history-exit-tail-ms 3600000
+
+python -m traders_ml.parameter_sweep `
+  --bull-run-request config/research/bull_run_weight_calibration_202610.json `
+  --bull-run-source-history artifacts/result_search/october_2026_history `
+  --bull-run-freeze-output artifacts/bull_run_weights/october_2026_dataset
+```
+
+Reconstruction reruns the authoritative pipeline with a research-only zero
+strategy-score probe so downstream geometry/economics can be observed. Hard
+setup, invalidation, cost, statistics, risk, and safety gates remain active. It
+stores complete analysis/setup/strategy/risk/paper payloads and causal 1m/5m
+analytical-exit evidence. Missing historical costs or candle gaps produce an
+`INCOMPLETE` dataset and exit code 2; current fees are never substituted.
+
+Run calibration only after the dataset reports `HISTORICAL_VERIFIED`:
+
+```powershell
+python -m traders_ml.parameter_sweep `
+  --bull-run-request config/research/bull_run_weight_calibration_202610.json `
+  --bull-run-dataset artifacts/bull_run_weights/october_2026_dataset `
+  --bull-run-output artifacts/bull_run_weights/october_2026_run
+```
+
+Entry weights use the seven-component 25/15/15/15/10/10/10 decomposition;
+analytical exit uses the existing 35/35/20/10 groups. All weights are
+non-negative, sum to 100, and are capped at 45 per component. Search, validation,
+and one-shot holdout are fixed to October 1–19, 20–25, and 26–31 UTC. Finalists
+are frozen before holdout access and independently replayed twice. A failed gate
+publishes `NO_ELIGIBLE_CANDIDATE`, never a best-effort activation.
+
+Artifacts include labels, full finalist metrics and trades, an integrity manifest,
+`REPORT.md`, and `INACTIVE_CANDIDATE.yaml`. The YAML always has `active: false`
+and records the mandatory full-November external holdout after 2026-12-01.

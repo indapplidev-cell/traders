@@ -89,15 +89,57 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Freeze real history for the typed request into a new directory")
     parser.add_argument("--history-statistics-source", type=Path)
     parser.add_argument("--history-parameter-set-id")
+    parser.add_argument("--history-max-rows", type=int, default=100000,
+                        help="Bounded frozen-history row ceiling; applies only to result-search history freeze")
+    parser.add_argument("--history-warmup-bars", type=int, default=200)
+    parser.add_argument("--history-exit-tail-ms", type=int, default=3600000)
     parser.add_argument(
         "--range-override", type=Path,
         help="Explicit run-local DATA_DRIVEN_SEARCH_RANGES.json input.",
     )
+    parser.add_argument("--bull-run-request", type=Path,
+                        help="Versioned bullish-run weight calibration request")
+    parser.add_argument("--bull-run-dataset", type=Path,
+                        help="Immutable causal observation dataset directory")
+    parser.add_argument("--bull-run-output", type=Path,
+                        help="New output directory for reports and an inactive candidate")
+    parser.add_argument("--bull-run-source-history", type=Path,
+                        help="Result-search frozen history used to build causal observations")
+    parser.add_argument("--bull-run-freeze-output", type=Path,
+                        help="New immutable bullish-run causal dataset directory")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    freeze_values = (args.bull_run_source_history, args.bull_run_freeze_output)
+    if any(value is not None for value in freeze_values):
+        if args.bull_run_request is None or not all(value is not None for value in freeze_values):
+            raise SystemExit("BULL_RUN_REQUEST_SOURCE_HISTORY_FREEZE_OUTPUT_REQUIRED_TOGETHER")
+        from .bull_run_dataset import build_dataset
+        from .bull_run_weights import CalibrationRequest
+        request = CalibrationRequest.model_validate_json(
+            args.bull_run_request.read_text(encoding="utf-8")
+        )
+        manifest = build_dataset(
+            request, args.bull_run_source_history, args.bull_run_freeze_output,
+        )
+        print(f"BULL_RUN_DATASET = {manifest['evidence_quality']}")
+        print(args.bull_run_freeze_output / "DATASET_MANIFEST.json")
+        if manifest["evidence_quality"] != "HISTORICAL_VERIFIED":
+            raise SystemExit(2)
+        return
+    bull_run_values = (args.bull_run_request, args.bull_run_dataset, args.bull_run_output)
+    if any(value is not None for value in bull_run_values):
+        if not all(value is not None for value in bull_run_values):
+            raise SystemExit("BULL_RUN_REQUEST_DATASET_OUTPUT_REQUIRED_TOGETHER")
+        from .bull_run_weights import run as run_bull_run_weights
+        result = run_bull_run_weights(
+            args.bull_run_request, args.bull_run_dataset, args.bull_run_output,
+        )
+        print(f"BULL_RUN_WEIGHT_CALIBRATION = {result['outcome']}")
+        print(args.bull_run_output / "REPORT.md")
+        return
     if args.result_search_diagnostics or args.result_search_request:
         import json
         from .result_search import ResultSearchService, deployment_diagnostics
@@ -108,7 +150,9 @@ def main(argv: Sequence[str] | None = None) -> None:
             from .search_history import HistoryProvider
             request = ResultSearchService.request(json.loads(args.result_search_request.read_text(encoding="utf-8")))
             manifest = HistoryProvider().freeze(request, args.result_search_freeze_history,
-                statistics_source=args.history_statistics_source, parameter_set_id=args.history_parameter_set_id)
+                warmup_bars=args.history_warmup_bars, exit_tail_ms=args.history_exit_tail_ms,
+                max_rows=args.history_max_rows, statistics_source=args.history_statistics_source,
+                parameter_set_id=args.history_parameter_set_id)
             print(json.dumps(manifest, indent=2))
             if manifest["outcome"] == "BLOCKED_DATA":
                 raise SystemExit(2)
