@@ -373,3 +373,13 @@ The completed October execution is documented in
 `docs/audits/TRADERS_BULL_RUN_WEIGHT_CALIBRATION_RESULTS_20261102.md`. Both the
 strict account-cost study and the persisted conservative-taker-cap study returned
 `NO_ELIGIBLE_CANDIDATE`. Their rejected reference weights must not be promoted.
+
+### Independent bull-run module audit
+
+`bull_run_expert_audit` is a separate event-conditioned diagnostic. It derives
+graphical and technical verdicts directly from causally closed OHLCV, compares
+them with persisted Altunina/Schwager/Nison and indicator outputs, and searches
+shared interpretation weights for labelled bull runs. Successful event trades
+do not establish whole-market profitability: outside-event signals are reported
+but do not participate in selection. The generated calibration is always
+inactive and requires a separate negative-window shadow qualification.

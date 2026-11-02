@@ -1,0 +1,10 @@
+{
+  "version": "bull-run-expert-audit/1",
+  "calibration_request_path": "config/research/bull_run_weight_calibration_conservative_202610.json",
+  "minimum_net_profit_bps": 8.0,
+  "minimum_event_coverage": 0.60,
+  "maximum_regime_calibrations": 3,
+  "maximum_holding_minutes": 30,
+  "search_trials": 100,
+  "seed": 20261102
+}
