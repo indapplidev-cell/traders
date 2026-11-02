@@ -109,6 +109,45 @@ def _strong_reversal(evidence: Any) -> bool:
     return _opposed(altunina.get("structure_direction")) and _opposed(graphical.get("regime"))
 
 
+def _selected(source: Mapping[str, Any], names: Sequence[str]) -> dict[str, Any]:
+    """Keep decision-bearing verdicts without duplicating full indicator traces."""
+    return {name: source[name] for name in names if name in source}
+
+
+def _compact_exit_verdicts(evidence: Any) -> dict[str, Any]:
+    technical_names = (
+        "direction", "trend", "signal", "rsi", "macd", "adx", "bollinger",
+        "ema", "sma", "vwap",
+    )
+    graphical_names = (
+        "direction", "structure_direction", "trend_direction", "trend_strength",
+        "trend_stability", "breakout", "breakout_direction", "retest",
+        "failed_breakout", "pattern", "pattern_direction", "signal",
+    )
+
+    def graphical(payload: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "regime": payload.get("regime"),
+            "altunina": _selected(_mapping(payload.get("altunina")), graphical_names),
+            "schwager": _selected(_mapping(payload.get("schwager")), graphical_names),
+            "nison": _selected(_mapping(payload.get("nison")), graphical_names),
+        }
+
+    return {
+        "technical_1m": _selected(_mapping(evidence.technical_1m), technical_names),
+        "technical_5m": _selected(_mapping(evidence.technical_5m), technical_names),
+        "graphical_1m": graphical(_mapping(evidence.graphical_1m)),
+        "graphical_5m": graphical(_mapping(evidence.graphical_5m)),
+        "volume_1m": _selected(_mapping(evidence.volume_1m), (
+            "direction", "signal", "recent_to_baseline_ratio", "trend", "state",
+        )),
+        "component_scores": dict(evidence.component_scores),
+        "baseline_decision": evidence.decision.value,
+        "baseline_exit_score": evidence.exit_score,
+        "reason_codes": list(evidence.reason_codes),
+    }
+
+
 def _closed(row: Mapping[str, Any], timeframe: str) -> ClosedAnalysisCandle:
     step = 60_000 if timeframe == "1m" else 300_000
     return ClosedAnalysisCandle(
@@ -159,13 +198,14 @@ def _exit_path(
             open_time_ms=int(row["open_time_ms"]), close_time_ms=int(row["close_time_ms"]),
             open=float(row["open"]), high=float(row["high"]), low=float(row["low"]),
             close=float(row["close"]), strong_reversal=_strong_reversal(evidence),
-            module_verdicts={
-                "technical_1m": evidence.technical_1m, "technical_5m": evidence.technical_5m,
-                "graphical_1m": evidence.graphical_1m, "graphical_5m": evidence.graphical_5m,
-                "volume_1m": evidence.volume_1m, "baseline_decision": evidence.decision.value,
-                "baseline_exit_score": evidence.exit_score,
-            }, **factors,
+            module_verdicts=_compact_exit_verdicts(evidence), **factors,
         ))
+        # Replay is stop-first and target-second before it evaluates analytical
+        # evidence.  No later candle can ever be observed after either fill, so
+        # retaining and analysing the unused suffix only wastes CPU while
+        # producing exactly the same trade ledger.
+        if float(row["low"]) <= stop or float(row["high"]) >= target:
+            break
     return tuple(points)
 
 

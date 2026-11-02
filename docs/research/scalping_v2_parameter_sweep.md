@@ -368,3 +368,8 @@ publishes `NO_ELIGIBLE_CANDIDATE`, never a best-effort activation.
 Artifacts include labels, full finalist metrics and trades, an integrity manifest,
 `REPORT.md`, and `INACTIVE_CANDIDATE.yaml`. The YAML always has `active: false`
 and records the mandatory full-November external holdout after 2026-12-01.
+
+The completed October execution is documented in
+`docs/audits/TRADERS_BULL_RUN_WEIGHT_CALIBRATION_RESULTS_20261102.md`. Both the
+strict account-cost study and the persisted conservative-taker-cap study returned
+`NO_ELIGIBLE_CANDIDATE`. Their rejected reference weights must not be promoted.

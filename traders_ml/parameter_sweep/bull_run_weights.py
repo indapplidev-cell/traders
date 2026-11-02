@@ -151,6 +151,11 @@ class CalibrationRequest(Contract):
     refinement_weight_step: int = Field(default=1, ge=1, le=5)
     max_trials: int = Field(default=500, gt=0)
     finalist_count: int = Field(default=5, gt=0, le=50)
+    evidence_mode: Literal[
+        "HISTORICAL_VERIFIED", "HISTORICAL_OBSERVED_SUBSET", "HISTORICAL_CONSERVATIVE_POLICY"
+    ] = (
+        "HISTORICAL_VERIFIED"
+    )
     gates: AcceptanceGates = Field(default_factory=AcceptanceGates)
 
     @model_validator(mode="after")
@@ -569,7 +574,10 @@ def trade_metrics(trades: Sequence[Trade]) -> dict[str, Any]:
         by_symbol[trade.symbol] = by_symbol.get(trade.symbol, 0.0) + trade.net_pnl
         days.add(datetime.fromtimestamp(trade.entry_boundary_ms / 1000, timezone.utc).date().isoformat())
     positive_total = sum(max(0.0, value) for value in by_symbol.values())
-    concentration = max((max(0.0, value) / positive_total for value in by_symbol.values()), default=0.0)
+    concentration = (
+        max((max(0.0, value) / positive_total for value in by_symbol.values()), default=0.0)
+        if positive_total > 0 else 0.0
+    )
     matched = [trade for trade in trades if trade.matched_event_id]
     return {
         "closed_trades": len(trades), "wins": len(wins), "losses": len(losses),
@@ -952,7 +960,7 @@ def run(request_path: Path, dataset: Path, output: Path) -> dict[str, Any]:
         raise ValueError("UNSUPPORTED_BULL_RUN_DATASET_SCHEMA")
     if tuple(sorted(manifest["symbols"])) != request.symbols:
         raise ValueError("REQUEST_DATASET_SYMBOL_MISMATCH")
-    if manifest.get("evidence_quality") != "HISTORICAL_VERIFIED":
+    if manifest.get("evidence_quality") != request.evidence_mode:
         raise ValueError("BLOCKED_DATA:HISTORICAL_COST_OR_CAUSAL_EVIDENCE_INCOMPLETE")
     events, labels = label_bull_runs(candles, minimum_edge_bps=request.minimum_edge_bps,
         minimum_leg_candles=request.minimum_leg_candles,

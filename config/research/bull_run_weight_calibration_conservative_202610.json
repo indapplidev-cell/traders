@@ -1,0 +1,37 @@
+{
+  "version": "bull-run-weight-calibration/1",
+  "symbols": [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "LINKUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT",
+    "ZECUSDT", "NEARUSDT", "UNIUSDT", "ENAUSDT", "XLMUSDT",
+    "TRXUSDT", "WLDUSDT", "LTCUSDT", "FETUSDT", "FILUSDT"
+  ],
+  "period_start_ms": 1790812800000,
+  "period_end_ms": 1793491200000,
+  "splits": [
+    {"name": "SEARCH", "start_ms": 1790812800000, "end_ms": 1792454400000},
+    {"name": "VALIDATION", "start_ms": 1792454400000, "end_ms": 1792972800000},
+    {"name": "HOLDOUT", "start_ms": 1792972800000, "end_ms": 1793491200000}
+  ],
+  "seed": 20261001,
+  "initial_capital": 1000.0,
+  "risk_per_trade_bps": 5.0,
+  "maximum_open_positions": 2,
+  "minimum_edge_bps": 8.0,
+  "minimum_leg_candles": 1,
+  "maximum_leg_candles": 6,
+  "confirmation_boundaries": 2,
+  "maximum_holding_minutes": 30,
+  "coarse_weight_step": 5,
+  "refinement_weight_step": 1,
+  "max_trials": 500,
+  "finalist_count": 5,
+  "evidence_mode": "HISTORICAL_CONSERVATIVE_POLICY",
+  "gates": {
+    "minimum_closed_trades": 100,
+    "minimum_independent_days": 5,
+    "minimum_profit_factor": 1.2,
+    "minimum_win_rate_exclusive": 0.5,
+    "maximum_symbol_profit_share": 0.25
+  }
+}

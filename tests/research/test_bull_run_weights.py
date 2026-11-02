@@ -181,6 +181,15 @@ def test_metrics_and_acceptance_include_false_entry_and_concentration_gates():
     assert "SYMBOL_PROFIT_CONCENTRATION" in failures
 
 
+def test_metrics_define_zero_concentration_when_every_symbol_is_unprofitable():
+    trades, _ = replay_configuration(
+        [observation(path=(point(1, 97.9),))], [], WeightConfiguration()
+    )
+    metrics = trade_metrics(trades)
+    assert metrics["net_pnl"] < 0
+    assert metrics["maximum_symbol_profit_share"] == 0.0
+
+
 def test_search_is_deterministic_and_holdout_is_opened_after_freeze():
     req = request()
     rows = [
