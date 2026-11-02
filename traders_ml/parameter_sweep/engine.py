@@ -549,8 +549,13 @@ class ReadOnlyResearchDatabase:
                 connection.rollback()
         except SweepExpectedError:
             raise
-        except SQLAlchemyError:
-            raise SweepExpectedError("DATABASE_CONNECTION_FAILED") from None
+        except SQLAlchemyError as error:
+            # Preserve a non-sensitive SQLSTATE/classification so long-running
+            # read-only research can distinguish timeout, syntax and transport
+            # failures without exposing the protected connection string.
+            sqlstate = getattr(getattr(error, "orig", None), "sqlstate", None)
+            suffix = f":{type(error).__name__}" + (f":{sqlstate}" if sqlstate else "")
+            raise SweepExpectedError("DATABASE_CONNECTION_FAILED" + suffix) from None
 
     @staticmethod
     def _assert_select(statement: object) -> None:

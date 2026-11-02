@@ -521,11 +521,13 @@ def gate_candidate(row: Mapping[str, Any], config: Mapping[str, object]) -> tupl
     stop = _float(row.get("stop_distance_bps")); target = _float(row.get("target_distance_bps"))
     cost = _effective_cost(row, config); samples = int(row.get("probability_sample_size") or 0)
     checks = (
+        (float(row.get("strategy_score") or 0) >= float(config.get("strategy_minimum_score", 0)), "REJECT_STRUCTURAL"),
         (stop is not None, "REJECT_GEOMETRY"),
         (stop is not None and stop <= float(config["stop_max_bps"]), "REJECT_GEOMETRY"),
         (target is not None, "REJECT_TARGET"),
         (target is not None and target >= float(config["target_min_bps"]), "REJECT_TARGET"),
         (cost is not None, "REJECT_COST"),
+        (row.get("net_edge_bps") is None or float(row["net_edge_bps"]) >= float(config.get("min_net_edge_bps", 0)), "REJECT_COST"),
         (row.get("net_rr") is None or float(row["net_rr"]) >= float(config["minimum_planned_rr"]), "REJECT_RR"),
         # Probability was not instrumented for every historical era.  Missing
         # optional family evidence disables that family for the row; it must

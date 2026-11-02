@@ -128,6 +128,104 @@ class FullPipelineCalibrationRequestV1(Contract):
         return fingerprint(self.model_dump(mode="json"))
 
 
+class FullPipelineCalibrationRequestV2(Contract):
+    """Calibration request for symbols with different causal history depths."""
+
+    version: Literal["full-pipeline-calibration/2"] = "full-pipeline-calibration/2"
+    symbols: tuple[str, ...]
+    direction: Literal["LONG"] = "LONG"
+    data_start_ms: int = Field(ge=0)
+    data_end_ms: int = Field(gt=0)
+    windows: tuple[TimeWindow, ...]
+    warmup_bars: dict[str, int] = Field(
+        default_factory=lambda: {"1m": 60, "5m": 120, "15m": 64, "1h": 50}
+    )
+    minimum_segment_bars_5m: int = Field(default=12, ge=1)
+    seed: int = Field(default=20261102, ge=0)
+    initial_equity: float = Field(default=1000.0, gt=0)
+    search: SearchBudget = Field(default_factory=SearchBudget)
+    gates: AcceptanceGates = Field(default_factory=AcceptanceGates)
+    maximum_regime_sets: int = Field(default=3, ge=1, le=3)
+    maximum_no_improvement_rounds: int = Field(default=3, ge=1, le=10)
+    automatic_paper_canary: Literal[True] = True
+    live_allowed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def valid_request(self) -> "FullPipelineCalibrationRequestV2":
+        normalized = tuple(sorted(str(symbol).upper() for symbol in self.symbols))
+        if len(normalized) != 20 or len(set(normalized)) != 20:
+            raise ValueError("exactly 20 unique symbols are required")
+        if self.data_start_ms >= self.data_end_ms:
+            raise ValueError("invalid dataset period")
+        if set(self.warmup_bars) != {"1m", "5m", "15m", "1h"}:
+            raise ValueError("warmup bars required for 1m/5m/15m/1h")
+        if any(value <= 0 for value in self.warmup_bars.values()):
+            raise ValueError("warmup bars must be positive")
+        internal = [window for window in self.windows if window.role == "INTERNAL_HOLDOUT"]
+        external = [window for window in self.windows if window.role == "EXTERNAL_HOLDOUT"]
+        if len(internal) != 1 or not internal[0].locked:
+            raise ValueError("one locked internal holdout is required")
+        if len(external) != 1 or not external[0].locked:
+            raise ValueError("one locked external holdout is required")
+        non_external = sorted(
+            (window for window in self.windows if window.role != "EXTERNAL_HOLDOUT"),
+            key=lambda item: (item.start_ms, item.end_ms, item.name),
+        )
+        if any(window.start_ms < self.data_start_ms or window.end_ms > self.data_end_ms
+               for window in non_external):
+            raise ValueError("non-external window outside dataset period")
+        validation = [window for window in self.windows if window.role == "VALIDATION"]
+        if not validation:
+            raise ValueError("at least one validation window is required")
+        object.__setattr__(self, "symbols", normalized)
+        return self
+
+    @property
+    def identity(self) -> str:
+        return fingerprint(self.model_dump(mode="json"))
+
+
+class CoverageSegmentV2(Contract):
+    start_ms: int = Field(ge=0)
+    end_ms: int = Field(gt=0)
+    rows_5m: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def ordered(self) -> "CoverageSegmentV2":
+        if self.end_ms <= self.start_ms:
+            raise ValueError("coverage segment end must follow start")
+        return self
+
+
+class SymbolCoverageV2(Contract):
+    symbol: str = Field(min_length=3)
+    status: Literal["USABLE", "PARTIAL_COVERAGE", "UNUSABLE"]
+    available_start_ms: int | None = None
+    available_end_ms: int | None = None
+    usable_start_ms: int | None = None
+    usable_end_ms: int | None = None
+    segments: tuple[CoverageSegmentV2, ...] = ()
+    timeframe_inventory: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    fold_participation: dict[str, bool] = Field(default_factory=dict)
+    reasons: tuple[str, ...] = ()
+
+
+class RaggedDatasetManifestV2(Contract):
+    version: Literal["ragged-full-pipeline-dataset/2"] = "ragged-full-pipeline-dataset/2"
+    request_hash: str = Field(min_length=64, max_length=64)
+    registry_hash: str = Field(min_length=64, max_length=64)
+    dataset_hash: str = Field(min_length=64, max_length=64)
+    status: Literal["FROZEN", "BLOCKED_DATA"]
+    symbols: tuple[SymbolCoverageV2, ...]
+    usable_symbol_count: int = Field(ge=0, le=20)
+    partial_symbol_count: int = Field(ge=0, le=20)
+    historical_cost_evidence: dict[str, Any]
+    cost_model_hash: str = Field(min_length=64, max_length=64)
+    blocked_reasons: tuple[str, ...] = ()
+    closed_only_required: Literal[True] = True
+    production_mutations: Literal[0] = 0
+
+
 class StageParameterDomain(Contract):
     name: str = Field(min_length=1)
     stage: Literal[
@@ -445,8 +543,11 @@ def _write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
 
-def _load_request(path: Path) -> FullPipelineCalibrationRequestV1:
-    return FullPipelineCalibrationRequestV1.model_validate_json(path.read_text(encoding="utf-8"))
+def _load_request(path: Path) -> FullPipelineCalibrationRequestV1 | FullPipelineCalibrationRequestV2:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if raw.get("version") == "full-pipeline-calibration/2":
+        return FullPipelineCalibrationRequestV2.model_validate(raw)
+    return FullPipelineCalibrationRequestV1.model_validate(raw)
 
 
 def freeze_dataset(request_path: Path, output: Path, database_url: str | None) -> dict[str, Any]:
@@ -639,6 +740,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--database-url")
     parser.add_argument("--dataset", type=Path)
+    parser.add_argument("--baseline", type=Path)
     parser.add_argument("--candidate", type=Path)
     parser.add_argument("--trades", type=Path)
     parser.add_argument("--rollback-parameter-set", default="scalping-v2-set-2")
@@ -648,9 +750,18 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     if args.action == "freeze":
-        manifest = freeze_dataset(args.request, args.output, args.database_url)
-        print(f"FULL_PIPELINE_FREEZE = {manifest['status']} dataset_hash={manifest['dataset_hash']}")
-        if manifest["status"] != "FROZEN":
+        request = _load_request(args.request)
+        if isinstance(request, FullPipelineCalibrationRequestV2):
+            from .full_pipeline_ragged import freeze_ragged_dataset
+            manifest_v2 = freeze_ragged_dataset(args.request, args.output, args.database_url)
+            status = manifest_v2.status
+            dataset_hash = manifest_v2.dataset_hash
+        else:
+            manifest = freeze_dataset(args.request, args.output, args.database_url)
+            status = manifest["status"]
+            dataset_hash = manifest["dataset_hash"]
+        print(f"FULL_PIPELINE_FREEZE = {status} dataset_hash={dataset_hash}")
+        if status != "FROZEN":
             raise SystemExit(2)
         return
     if args.action in {"baseline", "train"}:
@@ -663,6 +774,22 @@ def main(argv: Sequence[str] | None = None) -> None:
         if not manifest_path.exists():
             raise SystemExit("FULL_PIPELINE_FROZEN_DATASET_REQUIRED")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("version") == "ragged-full-pipeline-dataset/2":
+            if manifest.get("status") != "FROZEN":
+                result = record_blocked_action(args.action, args.request, args.dataset, args.output)
+                print(f"FULL_PIPELINE_{args.action.upper()} = {result['status']}")
+                raise SystemExit(2)
+            from .full_pipeline_ragged import reconstruct_baseline, train_ragged
+            if args.action == "baseline":
+                result = reconstruct_baseline(
+                    args.request, args.dataset, args.output, args.database_url,
+                )
+            else:
+                if args.baseline is None:
+                    raise SystemExit("FULL_PIPELINE_BASELINE_DIRECTORY_REQUIRED")
+                result = train_ragged(args.request, args.dataset, args.baseline, args.output)
+            print(f"FULL_PIPELINE_{args.action.upper()} = {result['status']}")
+            return
         if manifest.get("status") != "FROZEN" or not (args.dataset / "DECISION_TRACES.jsonl").exists():
             result = record_blocked_action(args.action, args.request, args.dataset, args.output)
             print(f"FULL_PIPELINE_{args.action.upper()} = {result['status']}")
