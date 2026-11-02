@@ -1,0 +1,49 @@
+{
+  "version": "full-pipeline-calibration/1",
+  "symbols": [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "LINKUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT",
+    "ZECUSDT", "NEARUSDT", "UNIUSDT", "ENAUSDT", "XLMUSDT",
+    "TRXUSDT", "WLDUSDT", "LTCUSDT", "FETUSDT", "FILUSDT"
+  ],
+  "direction": "LONG",
+  "data_start_ms": 1751508000000,
+  "data_end_ms": 1793491200000,
+  "windows": [
+    {"name": "FOLD_1_TRAIN", "role": "TRAIN", "start_ms": 1751508000000, "end_ms": 1767225600000, "locked": false},
+    {"name": "FOLD_1_VALIDATION", "role": "VALIDATION", "start_ms": 1767225600000, "end_ms": 1772323200000, "locked": false},
+    {"name": "FOLD_2_TRAIN", "role": "TRAIN", "start_ms": 1756684800000, "end_ms": 1772323200000, "locked": false},
+    {"name": "FOLD_2_VALIDATION", "role": "VALIDATION", "start_ms": 1772323200000, "end_ms": 1777593600000, "locked": false},
+    {"name": "FOLD_3_TRAIN", "role": "TRAIN", "start_ms": 1767225600000, "end_ms": 1782864000000, "locked": false},
+    {"name": "FOLD_3_VALIDATION", "role": "VALIDATION", "start_ms": 1782864000000, "end_ms": 1788134400000, "locked": false},
+    {"name": "SEPTEMBER_OCTOBER_2026", "role": "INTERNAL_HOLDOUT", "start_ms": 1788134400000, "end_ms": 1793491200000, "locked": true},
+    {"name": "NOVEMBER_2026", "role": "EXTERNAL_HOLDOUT", "start_ms": 1793491200000, "end_ms": 1796083200000, "locked": true}
+  ],
+  "seed": 20261102,
+  "initial_equity": 1000.0,
+  "search": {
+    "one_factor": 200,
+    "per_block": 1000,
+    "joint": 5000,
+    "local_refinement": 1000,
+    "maximum_rounds": 5,
+    "worker_count": 1
+  },
+  "gates": {
+    "minimum_closed_trades": 300,
+    "minimum_independent_days": 10,
+    "minimum_symbols": 10,
+    "minimum_net_expectancy_bps": 8.0,
+    "minimum_profit_factor": 1.2,
+    "minimum_win_rate_exclusive": 0.5,
+    "maximum_drawdown_fraction": 0.05,
+    "maximum_symbol_profit_share": 0.2,
+    "maximum_day_profit_share": 0.25,
+    "minimum_profitable_walk_forward_folds": 3,
+    "stress_cost_multiplier": 1.25,
+    "minimum_stress_profit_factor": 1.0
+  },
+  "maximum_regime_sets": 3,
+  "automatic_paper_canary": true,
+  "live_allowed": false
+}

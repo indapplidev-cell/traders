@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 from typing import Sequence
 
 from .engine import PROJECT_ROOT, ParameterSweepEngine, SweepExpectedError
@@ -111,7 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw and raw[0] == "full-pipeline":
+        from .full_pipeline import main as full_pipeline_main
+        full_pipeline_main(raw[1:])
+        return
+    args = build_parser().parse_args(raw)
     freeze_values = (args.bull_run_source_history, args.bull_run_freeze_output)
     if any(value is not None for value in freeze_values):
         if args.bull_run_request is None or not all(value is not None for value in freeze_values):
