@@ -3,22 +3,22 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ceea4d670a68d6bc6a92b9748468d7346c11662a
+STATUS_AS_OF_COMMIT = 590b501ff5f3de786e63cd6a68d47b6ffd4dff92
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-11-02T04:14:03Z
-RECONCILED_BY_TASK = TRADERS_BULL_RUN_WEIGHT_CALIBRATION_IMPLEMENTATION
+RECONCILED_AT_UTC = 2026-11-02T16:22:39Z
+RECONCILED_BY_TASK = TRADERS_BULL_RUN_WEIGHT_CALIBRATION_EXECUTION
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = d4652b93ca8d6d5502e3eae9628738ec2f9aa5dc
 PUSH_STATE_AT_RECONCILIATION = LOCAL_IMPLEMENTATION_COMMITTED_NOT_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING
-FILES_CHANGED = traders_ml/parameter_sweep/bull_run_weights.py; traders_ml/parameter_sweep/bull_run_dataset.py; traders_ml/parameter_sweep/cli.py; tests/research/test_bull_run_weights.py; tests/research/test_bull_run_dataset.py; config/research/bull_run_weight_calibration_202610.json; config/research/bull_run_history_202610.json; docs/research/scalping_v2_parameter_sweep.md; docs/audits/TRADERS_BULL_RUN_WEIGHT_CALIBRATION_IMPLEMENTATION_20261102.md; online_trader.md.
+FILES_CHANGED = traders_ml/parameter_sweep/bull_run_weights.py; traders_ml/parameter_sweep/bull_run_dataset.py; traders_ml/parameter_sweep/bull_run_observed_dataset.py; tests/research/test_bull_run_weights.py; tests/research/test_bull_run_dataset.py; config/research/bull_run_weight_calibration_observed_subset_202610.json; config/research/bull_run_weight_calibration_conservative_202610.json; scripts/research/bull_run_threshold_probe.py; docs/research/scalping_v2_parameter_sweep.md; docs/audits/TRADERS_BULL_RUN_WEIGHT_CALIBRATION_RESULTS_20261102.md; online_trader.md.
 
 ## Bull-run weight calibration research contour
 
 ```text
-TASK = TRADERS_BULL_RUN_WEIGHT_CALIBRATION_IMPLEMENTATION
-FINAL_STATUS = IMPLEMENTATION_PASS; OCTOBER_HISTORICAL_VERIFICATION_BLOCKED_DATA
-IMPLEMENTATION_COMMIT = ceea4d670a68d6bc6a92b9748468d7346c11662a
+TASK = TRADERS_BULL_RUN_WEIGHT_CALIBRATION_EXECUTION
+FINAL_STATUS = RESEARCH_COMPLETE_NO_ELIGIBLE_CANDIDATE
+RESULT_COMMIT = 590b501ff5f3de786e63cd6a68d47b6ffd4dff92
 SCOPE = LONG_ONLY; 20_SYMBOLS; 2026_10; 5_TO_30_MINUTE_BULL_RUNS
 OUTPUT = READ_ONLY_REPORT_AND_INACTIVE_YAML_CANDIDATE_ONLY
 ACTIVE_PARAMETER_SET_CHANGED = NO
@@ -27,22 +27,27 @@ LIVE_STATE_CHANGED = NO
 PRODUCTION_DB_MUTATED = NO
 PRODUCTION_SERVICES_RESTARTED = NO
 REAL_BINANCE_ORDER_CALLS = 0
-TESTS = 46_SELECTED_TESTS_PASS
+TESTS = 48_SELECTED_TESTS_PASS
 DATA_COVERAGE = 178560_5M_CANDLES; 892800_1M_CANDLES; 20_SYMBOLS
-PIPELINE_COVERAGE = 135222_OF_178560_5M_BOUNDARIES_HAVE_TRADE_5M_V2_RESULT
-PRIMARY_BLOCKER = HISTORICAL_CAUSAL_COST_SNAPSHOTS_ARE_NOT_COMPLETE_ENOUGH_FOR_A_VERIFIABLE_CAMPAIGN
-WEIGHT_CANDIDATE = NOT_PUBLISHED
-RESEARCH_STATUS_WHEN_COST_DATA_IS_INCOMPLETE = BLOCKED_DATA
-NOVEMBER_EXTERNAL_HOLDOUT = NOT_BEFORE_2026_12_01
+STRICT_COST_OBSERVATIONS = 1951
+CONSERVATIVE_COST_OBSERVATIONS = 2540; SEARCH_2022; VALIDATION_358; HOLDOUT_160
+BULL_EVENTS = 140
+SEARCH = 500_CONFIGURATIONS; OPTUNA_TPE_SEED_20261001; ONE_WORKER
+VERIFIER = BYTE_IDENTICAL_SEARCH_RESULT_FINALISTS_TRADES_LABELS_AND_INACTIVE_YAML
+BASELINE_HOLDOUT = 50_TRADES; NET_MINUS_33.618124_USDT; PF_0.0241; WIN_RATE_6_PERCENT
+BEST_REJECTED_HOLDOUT = 6_TRADES; NET_MINUS_3.298400_USDT; PF_0.0293; WIN_RATE_16.67_PERCENT
+WEIGHT_CANDIDATE = NONE; INACTIVE_YAML_CONFIGURATION_NULL
+PRIMARY_BLOCKER = WEIGHTS_AND_SCORE_THRESHOLDS_ALONE_DO_NOT_SEPARATE_PROFITABLE_LONG_ENTRIES
+NOVEMBER_EXTERNAL_HOLDOUT = NO_CANDIDATE_TO_TEST; EARLIEST_DATE_REMAINS_2026_12_01
 PREEXISTING_USER_CHANGES_PRESERVED = YES
-NEXT_ACTION = ESTABLISH_COMPLETE_HISTORICAL_COST_AUTHORITY; FREEZE_DATASET; RUN_500_TRIAL_SEARCH_AND_INDEPENDENT_VERIFIER
+NEXT_ACTION = REQUIRE_SEPARATE_APPROVAL_FOR_SIGNAL_OR_GEOMETRY_FEATURE_CHANGE; DO_NOT_ACTIVATE_REJECTED_WEIGHTS
 ```
 
-The implementation adds deterministic executable-price labelling, causal module
-replay, baseline and sensitivity passes, seeded single-worker Optuna search,
-Pareto finalist selection, chronological validation/holdout gates, independent
-verification and inactive report artifacts. It intentionally refuses to infer
-missing historical fees or execution costs from current values.
+The completed study used both strict account-cost observations and a separately
+identified conservative scenario with persisted historical book evidence and a
+10 bps taker-fee floor per side. Neither produced positive weights. The least-bad
+reference reduced loss but failed every economic gate and remains rejected.
+Evidence: `docs/audits/TRADERS_BULL_RUN_WEIGHT_CALIBRATION_RESULTS_20261102.md`.
 
 ## Calibration history cleanup
 
