@@ -123,8 +123,12 @@ class SetupDetector:
         identity = setup_candidate_id(snapshot.symbol, snapshot.timeframe, snapshot.closed_until_ms,
                                       result.setup_type, result.status)
         expert = context.analysis_context.get("independent_expert") or {}
+        module_calibration = (
+            expert.get("module_calibration") if isinstance(expert, dict) else {}
+        ) or {}
         expert_used = bool(
             isinstance(expert, dict) and expert.get("eligible")
+            and module_calibration.get("confirmed") is True
             and result.direction_hint == DirectionHint.BULLISH.value
         )
         quality = diagnose_setup_quality(
@@ -250,8 +254,13 @@ class SetupDetector:
         if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v2":
             return result
         expert = context.analysis_context.get("independent_expert") or {}
+        module_calibration = (
+            expert.get("module_calibration") if isinstance(expert, dict) else {}
+        ) or {}
         if (
             isinstance(expert, dict) and expert.get("eligible")
+            and module_calibration.get("confirmed") is True
+            and module_calibration.get("direction") == DirectionHint.BULLISH.value
             and not result.invalidation_reasons
             and result.status not in {SetupStatus.SETUP_INVALID.value, SetupStatus.ERROR.value}
         ):
@@ -269,7 +278,8 @@ class SetupDetector:
                     has_invalidation_context=True, is_actionable_setup_candidate=True,
                     semantic_bucket=SetupSemanticBucket.CANDIDATE_STRUCTURE.value,
                     diagnostic_reasons=[
-                        "INDEPENDENT_EXPERT_CAUSAL_LONG_TRIGGER",
+                        "CALIBRATED_ALTUNINA_SCHWAGER_NISON_INTERACTION_LONG_TRIGGER",
+                        "|".join(module_calibration.get("bullish_modules") or ()),
                         str(expert.get("calibration_id") or "UNKNOWN_CALIBRATION"),
                     ],
                 ),

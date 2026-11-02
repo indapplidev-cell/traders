@@ -73,11 +73,11 @@ def test_bearish_multi_timeframe_evidence_is_not_hold_for_long():
     first = evaluate(candles("1m", falling=True), candles("5m", falling=True))
     assert first.component_scores["technical_indicators"] > 0
     pending = classify_analytical_exit(
-        exit_score=70, strong_reversal=False, prior_exit_scores=(),
+        exit_score=80, strong_reversal=False, prior_exit_scores=(),
         net_positive=False, target_progress=0,
     )
     confirmed = classify_analytical_exit(
-        exit_score=70, strong_reversal=False, prior_exit_scores=(70,),
+        exit_score=80, strong_reversal=False, prior_exit_scores=(80,),
         net_positive=False, target_progress=0,
     )
     assert pending[0] is AnalyticalExitDecision.EXIT_CONFIRMATION_PENDING

@@ -398,8 +398,10 @@ class PipelineRunner:
                 weighted_score(verdict["entry_components"], weights), 6
             )
             verdict["entry_threshold"] = self.runtime_parameters.risk_minimum_strategy_score
+            module_calibration = verdict.get("module_calibration") or {}
             verdict["eligible"] = bool(
-                verdict["direction"] != "BEARISH"
+                verdict["direction"] == "BULLISH"
+                and module_calibration.get("confirmed") is True
                 and verdict["entry_score"] >= verdict["entry_threshold"]
             )
             context["independent_expert"] = verdict

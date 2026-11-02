@@ -21,12 +21,15 @@ import random
 import statistics
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
 from pydantic import Field, model_validator
+
+from app.engine_analysis.engine import run_engine_analysis_from_rows
 
 from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 from .bull_run_observed_dataset import _load_candles
@@ -51,6 +54,7 @@ REGIMES = ("IMPULSE_BREAKOUT", "BREAKOUT_RETEST", "LOCAL_LOW_RECOVERY")
 _ENTRY_VERDICT_CACHE: dict[tuple[str, int], IndependentExpertVerdict] = {}
 _EXIT_VERDICT_CACHE: dict[tuple[str, int, str, float, float], IndependentExpertVerdict] = {}
 _FUTURE_ROWS_CACHE: dict[tuple[str, int], tuple[Mapping[str, Any], ...]] = {}
+_PROJECT_VERDICT_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
 
 
 class ExpertAuditRequest(Contract):
@@ -80,6 +84,7 @@ class IndependentExpertVerdict(Contract):
     indicators: dict[str, float | None]
     reasons: tuple[str, ...]
     source_open_times_ms: tuple[int, ...]
+    module_calibration: dict[str, Any] = Field(default_factory=dict)
     future_bars_used: bool = False
 
 
@@ -286,6 +291,57 @@ def independent_entry_verdict(symbol: str, boundary_ms: int,
     volatility = 100.0 if i5.bollinger_lower < close < i5.bollinger_upper * 1.01 else 45.0
     technical = 0.25 * trend + 0.15 * macd + 0.10 * rsi + 0.15 * adx + 0.15 * vwap + 0.10 * volume + 0.10 * volatility
     regime = _classify_regime(five, i5)
+    modules = {
+        "altunina": {
+            "direction": (
+                "BULLISH" if higher_low and (higher_high or alignment >= 65.0)
+                else "BEARISH" if not higher_low and close < i5.vwap20
+                else "NEUTRAL"
+            ),
+            "score": _clip(structure),
+        },
+        "schwager": {
+            "direction": "BULLISH" if breakout or (
+                near_retest and close > float(previous["close"])
+            ) else "NEUTRAL",
+            "score": _clip(breakout_score),
+        },
+        "nison": {
+            "direction": (
+                "BULLISH" if close > float(current["open"]) and candle_score >= 55.0
+                else "BEARISH" if close < float(current["open"]) and candle_score <= 45.0
+                else "NEUTRAL"
+            ),
+            "score": _clip(candle_score),
+        },
+        "technical": {
+            "direction": (
+                "BULLISH" if technical >= 60.0
+                else "BEARISH" if technical < 35.0
+                else "NEUTRAL"
+            ),
+            "score": _clip(technical),
+        },
+    }
+    bullish_modules = tuple(
+        name for name, value in modules.items() if value["direction"] == "BULLISH"
+    )
+    bearish_modules = tuple(
+        name for name, value in modules.items() if value["direction"] == "BEARISH"
+    )
+    direction = (
+        "BULLISH" if len(bullish_modules) >= 2 and len(bearish_modules) <= 1
+        else "BEARISH" if len(bearish_modules) >= 2
+        else "NEUTRAL"
+    )
+    module_calibration = {
+        "contract_version": "scalping-module-interaction/1",
+        "direction": direction,
+        "confirmed": direction == "BULLISH",
+        "bullish_modules": bullish_modules,
+        "bearish_modules": bearish_modules,
+        "modules": modules,
+    }
     components = {
         "structure": _clip(graphical),
         "context": _clip((alignment + trend) / 2),
@@ -296,7 +352,6 @@ def independent_entry_verdict(symbol: str, boundary_ms: int,
         "confirmation": _clip((candle_score + alignment + macd) / 3),
     }
     strength = (graphical + technical) / 2
-    direction = "BULLISH" if strength >= 60 else ("BEARISH" if strength < 35 else "NEUTRAL")
     reasons = tuple(name for name, passed in (
         ("HIGHER_HIGH", higher_high), ("HIGHER_LOW", higher_low),
         ("BREAKOUT", breakout), ("EMA_ALIGNMENT", alignment == 100),
@@ -309,6 +364,7 @@ def independent_entry_verdict(symbol: str, boundary_ms: int,
         graphical_score=_clip(graphical), technical_score=_clip(technical),
         entry_components=components, indicators={"1m_" + k: v for k, v in i1.to_dict().items()} |
         {"5m_" + k: v for k, v in i5.to_dict().items()}, reasons=reasons,
+        module_calibration=module_calibration,
         source_open_times_ms=tuple(int(row["open_time_ms"]) for row in one + five),
     )
 
@@ -363,14 +419,88 @@ def _weighted(values: Mapping[str, float], weights: Any) -> float:
     return sum(float(getattr(weights, name)) * float(value) / 100.0 for name, value in values.items())
 
 
-def _actual_verdict(observation: CausalObservation) -> dict[str, Any]:
+def _engine_rows(
+    rows: Sequence[Mapping[str, Any]], boundary_ms: int,
+) -> list[dict[str, object]]:
+    """Return the exact closed prefix consumed by the native analysis engine."""
+    selected = [
+        row for row in rows
+        if int(row["close_time_ms"]) + 1 <= boundary_ms
+    ][-120:]
+    return [{
+        "timestamp": datetime.fromtimestamp(
+            int(row["open_time_ms"]) / 1000, tz=timezone.utc,
+        ).isoformat(),
+        "open": float(row["open"]), "high": float(row["high"]),
+        "low": float(row["low"]), "close": float(row["close"]),
+        "volume": float(row["volume"]),
+    } for row in selected]
+
+
+def _compact_native_module_verdict(output: Any) -> dict[str, Any]:
+    matrix = output.composer_output.matrix
+    altunina = matrix.altunina_context
+    schwager = matrix.schwager_context
+    nison = matrix.nison_context
+    indicators = matrix.unified_context.indicator_context
+    hypotheses = matrix.hypothesis_result
+    return {
+        "regime": output.composer_output.result.market_regime.value,
+        "confidence": float(output.composer_output.result.confidence),
+        "altunina": {
+            "structure_direction": altunina.structure_direction.value,
+            "trend_strength_score": float(altunina.trend_strength_score),
+            "trend_consistency_score": float(altunina.trend_consistency_score),
+            "trend_progress_score": float(altunina.trend_progress_score),
+            "dominant_impulse_direction": (
+                altunina.impulse_correction.dominant_impulse_direction.value
+            ),
+            "reason_codes": list(altunina.reason_codes),
+        },
+        "schwager": {
+            "breakout_status": schwager.breakout_context.status.value,
+            "breakout_direction": (
+                schwager.breakout_context.direction.value
+                if schwager.breakout_context.direction else None
+            ),
+            "polarity_status": schwager.polarity_flip_context.status.value,
+            "range_detected": bool(schwager.trading_range.is_detected),
+            "reason_codes": list(schwager.reason_codes),
+        },
+        "nison": {
+            "summary": dict(nison.summary),
+            "reason_codes": list(nison.reason_codes),
+            "directional_evidence": [
+                {"code": item.code, "contribution": float(item.contribution)}
+                for item in nison.window_evidence if item.contribution != 0
+            ],
+        },
+        "technical": {
+            "direction": indicators.direction.value,
+            "reason_codes": list(indicators.reason_codes),
+        },
+        "hypotheses": [{
+            "type": item.hypothesis_type.value,
+            "direction": item.direction.value,
+            "status": item.status.value,
+            "score": float(item.score),
+            "reason_codes": list(item.reason_codes),
+        } for item in hypotheses.hypotheses],
+    }
+
+
+def _actual_verdict(
+    observation: CausalObservation,
+    rows_1m: Sequence[Mapping[str, Any]] | None = None,
+    rows_5m: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     snapshot = observation.module_snapshot
     analysis = dict(snapshot.get("analysis") or {})
     strategy = dict(snapshot.get("strategy") or {})
     first_exit_modules = (
         observation.exit_path[0].module_verdicts if observation.exit_path else {}
     )
-    return {
+    value = {
         "analysis_direction": analysis.get("direction"),
         "analysis_trend": analysis.get("trend"),
         "analysis_confidence": analysis.get("confidence"),
@@ -382,15 +512,47 @@ def _actual_verdict(observation: CausalObservation) -> dict[str, Any]:
         "module_reasons": snapshot.get("module_reasons"),
         "first_closed_1m_module_verdicts": first_exit_modules,
     }
+    if rows_1m is None or rows_5m is None:
+        return value
+    key = (observation.symbol, observation.boundary_ms)
+    native = _PROJECT_VERDICT_CACHE.get(key)
+    if native is None:
+        one = _engine_rows(rows_1m, observation.boundary_ms)
+        five = _engine_rows(rows_5m, observation.boundary_ms)
+        if len(one) >= 20 and len(five) >= 20:
+            native = {
+                "1m": _compact_native_module_verdict(
+                    run_engine_analysis_from_rows(observation.symbol, "1m", one)
+                ),
+                "5m": _compact_native_module_verdict(
+                    run_engine_analysis_from_rows(observation.symbol, "5m", five)
+                ),
+            }
+        else:
+            native = {"error": "NATIVE_MODULE_HISTORY_UNAVAILABLE"}
+        _PROJECT_VERDICT_CACHE[key] = native
+    value["native_module_verdicts"] = native
+    return value
 
 
 def _discrepancies(actual: Mapping[str, Any], expert: IndependentExpertVerdict,
                    entry_delay_ms: int, successful: bool) -> tuple[str, ...]:
     codes: list[str] = []
+    native = actual.get("native_module_verdicts") or {}
+    native_directions = {
+        str((native.get(timeframe) or {}).get("regime") or "UNKNOWN").upper()
+        for timeframe in ("1m", "5m")
+    }
     actual_direction = str(actual.get("analysis_direction") or actual.get("strategy_direction") or "UNKNOWN").upper()
     if expert.direction == "BULLISH" and "BULL" not in actual_direction:
-        codes.append("WRONG_OR_MISSING_DIRECTION")
-    if expert.strength >= 65 and float(actual.get("analysis_confidence") or 0) * 100 < 50:
+        if "UP" not in native_directions:
+            codes.append("WRONG_OR_MISSING_DIRECTION")
+    native_confidence = max(
+        (float((native.get(timeframe) or {}).get("confidence") or 0.0)
+         for timeframe in ("1m", "5m")), default=0.0,
+    )
+    persisted_confidence = float(actual.get("analysis_confidence") or 0.0)
+    if expert.strength >= 65 and max(native_confidence, persisted_confidence) * 100 < 50:
         codes.append("UNDERSTATED_STRENGTH")
     if actual.get("strategy_failed_gate"):
         codes.append("FALSE_BLOCK_OR_DOWNSTREAM_GATE")
@@ -432,11 +594,13 @@ def _evaluate_event(event: BullRunEvent, observations: Sequence[CausalObservatio
             continue
         if calibration.regime not in {"ALL", verdict.regime}:
             continue
-        if verdict.direction != "BEARISH" and _weighted(verdict.entry_components, calibration.entry_weights) >= calibration.thresholds.entry:
+        if (verdict.direction == "BULLISH"
+                and verdict.module_calibration.get("confirmed") is True
+                and _weighted(verdict.entry_components, calibration.entry_weights) >= calibration.thresholds.entry):
             selected = observation, verdict
             break
     if selected is None:
-        actual = _actual_verdict(eligible[0]) if eligible else {}
+        actual = _actual_verdict(eligible[0], rows_1m, rows_5m) if eligible else {}
         return BullRunTradeEvaluation(
             event_id=event.event_id, symbol=event.symbol, regime="UNKNOWN",
             calibration_id=None, event_entry_open_time_ms=event.entry_open_time_ms,
@@ -454,7 +618,7 @@ def _evaluate_event(event: BullRunEvent, observations: Sequence[CausalObservatio
             event_entry_open_time_ms=event.entry_open_time_ms,
             event_peak_open_time_ms=event.peak_open_time_ms, signal_boundary_ms=observation.boundary_ms,
             successful=False, captured_excursion_ratio=0,
-            actual_project_verdict=_actual_verdict(observation), independent_entry_verdict=entry_verdict,
+            actual_project_verdict=_actual_verdict(observation, rows_1m, rows_5m), independent_entry_verdict=entry_verdict,
             independent_exit_verdict=None, discrepancy_codes=("ENTRY_FILL_UNAVAILABLE",),
             failure_reason="ENTRY_FILL_UNAVAILABLE",
         )
@@ -519,7 +683,7 @@ def _evaluate_event(event: BullRunEvent, observations: Sequence[CausalObservatio
             event_peak_open_time_ms=event.peak_open_time_ms,
             signal_boundary_ms=observation.boundary_ms, entry_fill_ms=int(fill["open_time_ms"]),
             entry_price=effective_entry, successful=False, captured_excursion_ratio=0,
-            actual_project_verdict=_actual_verdict(observation), independent_entry_verdict=entry_verdict,
+            actual_project_verdict=_actual_verdict(observation, rows_1m, rows_5m), independent_entry_verdict=entry_verdict,
             independent_exit_verdict=None, discrepancy_codes=("EXIT_FILL_UNAVAILABLE",),
             failure_reason="EXIT_FILL_UNAVAILABLE",
         )
@@ -533,7 +697,7 @@ def _evaluate_event(event: BullRunEvent, observations: Sequence[CausalObservatio
     net = gross - fees - impacts
     success = net >= calibration.minimum_net_profit_bps
     capture = max(0.0, min(1.0, net / max(1e-12, event.net_excursion_bps)))
-    actual = _actual_verdict(observation)
+    actual = _actual_verdict(observation, rows_1m, rows_5m)
     discrepancies = _discrepancies(actual, entry_verdict,
                                    observation.boundary_ms - event.entry_open_time_ms, success)
     return BullRunTradeEvaluation(
@@ -758,6 +922,7 @@ def run(request_path: Path, dataset: Path, output: Path) -> dict[str, Any]:
     _ENTRY_VERDICT_CACHE.clear()
     _EXIT_VERDICT_CACHE.clear()
     _FUTURE_ROWS_CACHE.clear()
+    _PROJECT_VERDICT_CACHE.clear()
     request = ExpertAuditRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
     calibration_path = Path(request.calibration_request_path)
     calibration_request = CalibrationRequest.model_validate_json(calibration_path.read_text(encoding="utf-8"))

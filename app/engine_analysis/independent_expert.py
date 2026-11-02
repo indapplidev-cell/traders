@@ -40,6 +40,14 @@ def _clip(value: float) -> float:
     return max(0.0, min(100.0, float(value)))
 
 
+def _score_direction(score: float, *, bullish: float = 60.0, bearish: float = 35.0) -> str:
+    if score >= bullish:
+        return "BULLISH"
+    if score < bearish:
+        return "BEARISH"
+    return "NEUTRAL"
+
+
 def _ema(values: Sequence[float], period: int) -> float:
     alpha = 2.0 / (period + 1.0)
     result = float(values[0])
@@ -143,6 +151,66 @@ def entry_verdict(symbol: str, boundary_ms: int, candles_1m: Sequence[Candle], c
     volume = _clip(50.0 + (i1.volume_ratio - 1.0) * 100.0)
     volatility = 100.0 if i5.bollinger_lower < close < i5.bollinger_upper * 1.01 else 45.0
     technical = .25 * trend + .15 * macd + .10 * rsi + .15 * adx + .15 * vwap + .10 * volume + .10 * volatility
+    # The original book modules intentionally remain conservative.  This
+    # explicit interaction projection adapts their evidence to the 5-30 minute
+    # scalp horizon instead of silently replacing their verdict downstream.
+    altunina_score = _clip(structure)
+    schwager_score = _clip(breakout_score)
+    nison_score = _clip(candle_score)
+    calibrated_modules = {
+        "altunina": {
+            "direction": (
+                "BULLISH" if higher_low and (higher_high or alignment >= 65.0)
+                else "BEARISH" if not higher_low and close < i5.vwap20
+                else "NEUTRAL"
+            ),
+            "score": altunina_score,
+            "higher_high": higher_high,
+            "higher_low": higher_low,
+        },
+        "schwager": {
+            "direction": "BULLISH" if breakout or (
+                near_retest and close > float(previous["close"])
+            ) else "NEUTRAL",
+            "score": schwager_score,
+            "breakout": breakout,
+            "retest": bool(near_retest and not breakout),
+        },
+        "nison": {
+            "direction": (
+                "BULLISH" if close > float(current["open"]) and nison_score >= 55.0
+                else "BEARISH" if close < float(current["open"]) and nison_score <= 45.0
+                else "NEUTRAL"
+            ),
+            "score": nison_score,
+            "bullish_body": close > float(current["open"]),
+        },
+        "technical": {
+            "direction": _score_direction(technical),
+            "score": _clip(technical),
+        },
+    }
+    bullish_modules = tuple(
+        name for name, value in calibrated_modules.items()
+        if value["direction"] == "BULLISH"
+    )
+    bearish_modules = tuple(
+        name for name, value in calibrated_modules.items()
+        if value["direction"] == "BEARISH"
+    )
+    consensus = (
+        "BULLISH" if len(bullish_modules) >= 2 and len(bearish_modules) <= 1
+        else "BEARISH" if len(bearish_modules) >= 2
+        else "NEUTRAL"
+    )
+    module_calibration = {
+        "contract_version": "scalping-module-interaction/1",
+        "direction": consensus,
+        "confirmed": consensus == "BULLISH",
+        "bullish_modules": bullish_modules,
+        "bearish_modules": bearish_modules,
+        "modules": calibrated_modules,
+    }
     components = {"structure": _clip(graphical), "context": _clip((alignment + trend) / 2),
         "momentum": _clip((macd + rsi + adx) / 3), "volume": volume,
         "entry_quality": _clip((breakout_score + candle_score + invalidation) / 3),
@@ -150,7 +218,7 @@ def entry_verdict(symbol: str, boundary_ms: int, candles_1m: Sequence[Candle], c
     strength = (graphical + technical) / 2
     return {"calibration_id": CALIBRATION_ID, "rubric_version": RUBRIC_VERSION,
         "symbol": symbol, "boundary_ms": boundary_ms, "regime": _regime(five, i5),
-        "direction": "BULLISH" if strength >= 60 else ("BEARISH" if strength < 35 else "NEUTRAL"),
+        "direction": consensus, "module_calibration": module_calibration,
         "strength": _clip(strength), "confidence": _clip(abs(strength - 50) * 2),
         "graphical_score": _clip(graphical), "technical_score": _clip(technical),
         "entry_components": components, "indicators": {"1m_" + k: v for k, v in asdict(i1).items()} | {"5m_" + k: v for k, v in asdict(i5).items()},

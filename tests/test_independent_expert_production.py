@@ -30,6 +30,14 @@ def test_verified_weights_are_reproducible_and_normalized():
     assert sum(weights.values()) == 100
     assert verdict["future_bars_used"] is False
     assert weighted_score(verdict["entry_components"], weights) >= 50
+    calibration = verdict["module_calibration"]
+    assert calibration["contract_version"] == "scalping-module-interaction/1"
+    assert calibration["direction"] == "BULLISH"
+    assert calibration["confirmed"] is True
+    assert len(calibration["bullish_modules"]) >= 2
+    assert set(calibration["modules"]) == {
+        "altunina", "schwager", "nison", "technical",
+    }
 
 
 def test_future_candle_mutation_does_not_change_past_verdict():

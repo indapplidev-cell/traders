@@ -75,12 +75,17 @@ class StrategyFilter:
         expert_components = (
             expert.get("entry_components") if isinstance(expert, dict) else None
         )
+        module_calibration = (
+            expert.get("module_calibration") if isinstance(expert, dict) else {}
+        ) or {}
         expert_weights = dict(
             getattr(self.runtime_parameters, "entry_score_weights", ()) or ()
         )
         expert_score = (
             weighted_score(expert_components, expert_weights)
             if profile_id == "trade-5m-v2" and expert.get("eligible")
+            and module_calibration.get("confirmed") is True
+            and module_calibration.get("direction") == "BULLISH"
             and setup_candidate.direction_hint == "BULLISH"
             and isinstance(expert_components, dict) and expert_weights
             else None
