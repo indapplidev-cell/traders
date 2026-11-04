@@ -735,7 +735,7 @@ def record_blocked_action(action: str, request_path: Path, dataset: Path, output
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Full causal scalping pipeline calibration")
-    parser.add_argument("action", choices=("freeze", "baseline", "train", "verify", "paper-canary"))
+    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "train", "verify", "paper-canary"))
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--database-url")
@@ -763,6 +763,13 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"FULL_PIPELINE_FREEZE = {status} dataset_hash={dataset_hash}")
         if status != "FROZEN":
             raise SystemExit(2)
+        return
+    if args.action == "cache-v3":
+        if args.dataset is None:
+            raise SystemExit("FULL_PIPELINE_FROZEN_DATASET_REQUIRED")
+        from .full_pipeline_v3 import build_feature_cache_v3
+        result = build_feature_cache_v3(args.request, args.dataset, args.output, args.database_url)
+        print(f"FULL_PIPELINE_CACHE_V3 = {result.status} boundaries={result.completed_boundaries}")
         return
     if args.action in {"baseline", "train"}:
         # Training is intentionally fail-closed until a frozen trace dataset from
