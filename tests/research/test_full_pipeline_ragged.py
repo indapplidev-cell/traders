@@ -10,6 +10,7 @@ from traders_ml.parameter_sweep.full_pipeline_ragged import (
     HistoricalCostBucketV1,
     HistoricalCostModelV1,
     _intersect,
+    _training_validation_rows,
     _truncate_to_checkpoint,
 )
 from traders_ml.parameter_sweep.historical_replay import gate_candidate
@@ -62,6 +63,30 @@ def test_replay_windows_cannot_overlap():
             {"name": "a", "start_ms": 0, "end_ms": 20},
             {"name": "b", "start_ms": 5, "end_ms": 15},
         ])
+
+
+def test_training_excludes_validation_and_clips_future_execution_path():
+    request = FullPipelineCalibrationRequestV2.model_validate_json(
+        REQUEST.read_text(encoding="utf-8")
+    )
+    final = next(window for window in request.windows if window.name == "FINAL_VALIDATION")
+    earlier = next(window for window in request.windows if window.name == "FOLD_3_VALIDATION")
+    holdout = next(window for window in request.windows if window.role == "INTERNAL_HOLDOUT")
+    rows = [
+        {"boundary_ms": final.start_ms - 60_000,
+         "market_path_1m": [{"close_time_ms": final.start_ms - 1},
+                            {"close_time_ms": final.start_ms + 60_000}]},
+        {"boundary_ms": earlier.start_ms, "market_path_1m": []},
+        {"boundary_ms": final.start_ms,
+         "market_path_1m": [{"close_time_ms": final.end_ms - 1},
+                            {"close_time_ms": final.end_ms + 60_000}]},
+        {"boundary_ms": holdout.start_ms, "market_path_1m": []},
+    ]
+    training, validation = _training_validation_rows(rows, request.windows)
+    assert [row["boundary_ms"] for row in training] == [final.start_ms - 60_000]
+    assert [row["boundary_ms"] for row in validation] == [final.start_ms]
+    assert len(training[0]["market_path_1m"]) == 1
+    assert len(validation[0]["market_path_1m"]) == 1
 
 
 def test_strategy_threshold_is_part_of_end_to_end_gate():

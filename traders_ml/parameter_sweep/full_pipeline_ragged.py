@@ -800,6 +800,35 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _training_validation_rows(
+    rows: Sequence[Mapping[str, Any]], windows: Sequence[Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Keep validation out of search and clip execution paths at role boundaries."""
+
+    validations = sorted((window for window in windows if window.role == "VALIDATION"),
+                         key=lambda window: window.start_ms)
+    final = validations[-1]
+    training: list[dict[str, Any]] = []
+    validation: list[dict[str, Any]] = []
+    for source in rows:
+        boundary = int(source["boundary_ms"])
+        if boundary >= final.end_ms:
+            continue
+        if final.start_ms <= boundary < final.end_ms:
+            destination, cutoff = validation, final.end_ms
+        else:
+            if any(window.start_ms <= boundary < window.end_ms for window in validations):
+                continue
+            destination = training
+            cutoff = min((window.start_ms for window in validations if window.start_ms > boundary),
+                         default=final.start_ms)
+        row = dict(source)
+        row["market_path_1m"] = [candle for candle in source.get("market_path_1m", [])
+                                  if int(candle["close_time_ms"]) < cutoff]
+        destination.append(row)
+    return training, validation
+
+
 def _truncate_to_checkpoint(path: Path, boundary_ms: int) -> None:
     if not path.exists():
         return
@@ -902,14 +931,17 @@ def train_ragged(
 
     request = FullPipelineCalibrationRequestV2.model_validate_json(request_path.read_text(encoding="utf-8"))
     manifest = RaggedDatasetManifestV2.model_validate_json((dataset / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+    baseline_status = json.loads((baseline / "BASELINE.json").read_text(encoding="utf-8"))
+    if baseline_status.get("dataset_hash") != manifest.dataset_hash:
+        raise ValueError("BASELINE_DATASET_HASH_MISMATCH")
+    if baseline_status.get("version") != "full-pipeline-baseline/3":
+        raise ValueError("FULL_PIPELINE_FEATURE_CACHE_REQUIRED")
     rows = _read_jsonl(baseline / "REPLAY_ROWS.jsonl")
     if not rows:
         raise ValueError("NO_REPLAYABLE_PRODUCTION_OPPORTUNITIES")
     output.mkdir(parents=True, exist_ok=True)
     validations = sorted((window for window in request.windows if window.role == "VALIDATION"), key=lambda item: item.start_ms)
-    final_validation = validations[-1]
-    calibration_rows = [row for row in rows if int(row["boundary_ms"]) < final_validation.start_ms]
-    validation_rows = [row for row in rows if final_validation.start_ms <= int(row["boundary_ms"]) < final_validation.end_ms]
+    calibration_rows, validation_rows = _training_validation_rows(rows, request.windows)
     if not calibration_rows or not validation_rows:
         raise ValueError("TRAIN_VALIDATION_ROWS_REQUIRED")
     baseline_values = _baseline_values()
@@ -920,7 +952,7 @@ def train_ragged(
         for value in domain:
             if value == baseline_values.get(name):
                 continue
-            result = FullPipelineReplayEngineV1(validation_rows, request.initial_equity).evaluate({name: value})
+            result = FullPipelineReplayEngineV1(calibration_rows, request.initial_equity).evaluate({name: value})
             sensitivity.append({"parameter": name, "value": value, "metrics": _replay_metrics(result)})
     _json(output / "SENSITIVITY.json", sensitivity)
 
@@ -936,7 +968,7 @@ def train_ragged(
         proposal = {name: trial.suggest_categorical(name, list(values)) for name, values in SEARCH_DOMAINS.items()}
         if int(proposal["hard_timeout_seconds"]) < int(proposal["soft_timeout_seconds"]):
             raise optuna.TrialPruned("hard timeout precedes soft timeout")
-        result = FullPipelineReplayEngineV1(validation_rows, request.initial_equity).evaluate(proposal)
+        result = FullPipelineReplayEngineV1(calibration_rows, request.initial_equity).evaluate(proposal)
         metrics = _replay_metrics(result)
         trial.set_user_attr("configuration_hash", fingerprint(proposal))
         trial.set_user_attr("lexicographic", list(_lexicographic(metrics)))
@@ -954,7 +986,16 @@ def train_ragged(
         study.optimize(objective, n_trials=target - completed, n_jobs=1, gc_after_trial=True)
     records = _read_jsonl(ledger)
     unique = {record["configuration_hash"]: record for record in records}
-    finalists = sorted(unique.values(), key=lambda item: tuple(item["lexicographic"]), reverse=True)[:3]
+    # Search ranks on training only. Validation selects from the frozen
+    # training Pareto shortlist without feeding its outcome back into TPE.
+    training_shortlist = sorted(unique.values(), key=lambda item: tuple(item["lexicographic"]), reverse=True)[:20]
+    finalists = []
+    for item in training_shortlist:
+        validation = FullPipelineReplayEngineV1(validation_rows, request.initial_equity).evaluate(item["parameters"])
+        finalists.append({**item, "validation_metrics": _replay_metrics(validation),
+                          "validation_rank": _lexicographic(_replay_metrics(validation))})
+    finalists.sort(key=lambda item: tuple(item["validation_rank"]), reverse=True)
+    finalists = finalists[:3]
     freeze = {
         "version": "full-pipeline-finalist-freeze/2", "dataset_hash": manifest.dataset_hash,
         "seed": request.seed, "finalists": finalists,
