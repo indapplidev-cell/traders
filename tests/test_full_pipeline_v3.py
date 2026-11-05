@@ -9,6 +9,7 @@ from app.config.trade_parameters import load_trade_parameters
 from traders_ml.parameter_sweep.full_pipeline_v3 import (
     CausalBoundaryFeaturesV3,
     HistoricalCostLedgerV3,
+    _compact_stage_payloads,
     resolve_research_parameter_set_v3,
 )
 
@@ -63,3 +64,21 @@ def test_research_candidate_is_native_and_does_not_change_baseline() -> None:
     assert candidate.resolved_config_hash != baseline.resolved_config_hash
     with pytest.raises(ValueError, match="UNSUPPORTED_NATIVE_PARAMETER"):
         resolve_research_parameter_set_v3(baseline, {"entry_slippage_bps": 0})
+
+
+def test_compaction_preserves_unique_stage_evidence() -> None:
+    payload = {
+        "analysis": {"frozen_parameter_snapshot": {"large": "repeat"},
+                     "analysis_context": {"technical_indicators": {"rsi": 52}}},
+        "setup": {"frozen_parameter_snapshot": {"large": "repeat"},
+                  "context": {"technical_indicators": {"rsi": 52}, "setup_type": "BREAKOUT"}},
+        "strategy": {"frozen_parameter_snapshot": {"large": "repeat"}, "strategy_score": 55},
+        "risk": {"frozen_parameter_snapshot": {"large": "repeat"}},
+        "paper": {"frozen_parameter_snapshot": {"large": "repeat"}},
+    }
+    compact = _compact_stage_payloads(payload)
+    assert compact["analysis"]["analysis_context"]["technical_indicators"] == {"rsi": 52}
+    assert compact["setup"]["context"] == {"setup_type": "BREAKOUT"}
+    assert compact["strategy"]["strategy_score"] == 55
+    assert all("frozen_parameter_snapshot" not in compact[stage]
+               for stage in ("analysis", "setup", "strategy", "risk", "paper"))

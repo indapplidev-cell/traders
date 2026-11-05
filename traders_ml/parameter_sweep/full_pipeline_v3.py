@@ -222,6 +222,26 @@ def _first_rejection(payload: dict[str, Any]) -> str | None:
     return payload.get("final_reason")
 
 
+def _compact_stage_payloads(payload: dict[str, Any]) -> dict[str, Any]:
+    """Keep native evidence once instead of repeating the 120 KB config snapshot.
+
+    The authoritative parameter snapshot is identified by configuration hash;
+    the candle archive and candidate parameter set provide its inputs. Setup
+    carries a copy of the analysis context plus setup-specific additions, so
+    only those additions belong in its boundary record.
+    """
+    for stage in ("analysis", "setup", "strategy", "risk", "paper"):
+        payload[stage].pop("frozen_parameter_snapshot", None)
+    analysis_context = payload["analysis"].get("analysis_context")
+    setup_context = payload["setup"].get("context")
+    if isinstance(analysis_context, dict) and isinstance(setup_context, dict):
+        payload["setup"]["context"] = {
+            key: value for key, value in setup_context.items()
+            if key not in analysis_context or analysis_context[key] != value
+        }
+    return payload
+
+
 def _write_candles_once(path: Path, candles: dict[str, list[Any]], *,
                         dataset_hash: str, allowed_end: int) -> str:
     """Materialize the actual pre-holdout inputs independently of decisions."""
@@ -346,6 +366,7 @@ def build_feature_cache_v3(request_path: Path, dataset: Path, output: Path,
                                             "checksum": fingerprint(candle.market_values())}
                         payload = {stage: dict(result.get(stage + "_payload") or {})
                                    for stage in ("market_data", "analysis", "setup", "strategy", "risk", "paper")}
+                        payload = _compact_stage_payloads(payload)
                         payload["final_reason"] = result.get("final_reason")
                         statuses = {name: result.get(name) for name in
                                     ("analysis_status", "setup_status", "strategy_status", "risk_status", "paper_status")}

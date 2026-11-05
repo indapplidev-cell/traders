@@ -18,3 +18,7 @@
 4. Implement stage activity, causal train/validation search, immutable finalist freeze, one-time holdout, verifier and acceptance gates. Keep PAPER/LIVE unchanged.
 
 The implementation is **partial**. No v3 baseline parity, training result, verifier PASS or activation is claimed.
+
+## Cache storage correction
+
+The initial full cache pass was stopped after ADAUSDT reached 16,400 boundaries: each record repeated a roughly 120 KB frozen parameter snapshot in five stage payloads. The partial feature file reached about 10.3 GB, which would have exhausted the research disk before all symbols completed. Native payload compaction now retains that snapshot by configuration hash and removes duplicate analysis context from the setup record. A smoke record fell from about 655 KB to 37 KB while preserving the unique module and stage evidence. Five v3 tests passed. The oversized partial artifact is retained for forensic comparison because automated deletion was rejected; the corrected pass uses a new output directory and does not treat the old checkpoint as compatible.
