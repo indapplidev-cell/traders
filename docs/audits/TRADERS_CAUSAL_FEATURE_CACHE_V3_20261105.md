@@ -13,7 +13,7 @@
 ## Open implementation work
 
 1. Finish the pre-holdout cache and verify its boundary counts and partition checksums. The frozen manifest reports 592,193 5m rows whereas baseline v2 emitted 592,196 boundaries; BTCUSDT, ETHUSDT and SOLUSDT each account for one extra v2 boundary. This difference must be reconciled before parity can pass.
-2. Implement candidate-specific native reruns using the candle archive and parameter block hashes. The current v3 code supplies the isolated parameter resolver but does not yet run candidate trials or model the full position lifecycle.
+2. Validate candidate-specific native reruns on completed partitions, add block-hash reuse and model the full portfolio position lifecycle. The current reader only recomputes stage decisions.
 3. Connect explicit v3 ledgers to portfolio fills and exits, then reproduce the baseline and explain the PnL difference from v2.
 4. Implement stage activity, causal train/validation search, immutable finalist freeze, one-time holdout, verifier and acceptance gates. Keep PAPER/LIVE unchanged.
 
@@ -22,3 +22,7 @@ The implementation is **partial**. No v3 baseline parity, training result, verif
 ## Cache storage correction
 
 The initial full cache pass was stopped after ADAUSDT reached 16,400 boundaries: each record repeated a roughly 120 KB frozen parameter snapshot in five stage payloads. The partial feature file reached about 10.3 GB, which would have exhausted the research disk before all symbols completed. Native payload compaction now retains that snapshot by configuration hash and removes duplicate analysis context from the setup record. A smoke record fell from about 655 KB to 37 KB while preserving the unique module and stage evidence. Five v3 tests passed. The oversized partial artifact is retained for forensic comparison because automated deletion was rejected; the corrected pass uses a new output directory and does not treat the old checkpoint as compatible.
+
+## Candidate-specific native stage replay
+
+An additional v3 reader verifies a completed feature partition and its frozen candle archive, constructs an isolated candidate parameter snapshot, and reruns the native `PipelineRunner` on each pre-holdout boundary. It emits new stage payloads and decision hashes rather than filtering the 981 old trades. The reader refuses incomplete partitions, changed baseline configuration, damaged candle checksums and holdout boundaries. This is the stage-decision portion only: portfolio fills, explicit cost ledgers on actual exits, baseline parity and training are still pending.

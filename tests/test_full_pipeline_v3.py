@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
 from app.config.trade_parameters import load_trade_parameters
+from app.engine_market_data.candle import Candle
+from traders_ml.parameter_sweep.full_pipeline import fingerprint
+from traders_ml.parameter_sweep.full_pipeline_candidate_v3 import _frozen_candles
 from traders_ml.parameter_sweep.full_pipeline_v3 import (
     CausalBoundaryFeaturesV3,
     HistoricalCostLedgerV3,
     _compact_stage_payloads,
+    _sha256,
     resolve_research_parameter_set_v3,
 )
 
@@ -82,3 +88,26 @@ def test_compaction_preserves_unique_stage_evidence() -> None:
     assert compact["strategy"]["strategy_score"] == 55
     assert all("frozen_parameter_snapshot" not in compact[stage]
                for stage in ("analysis", "setup", "strategy", "risk", "paper"))
+
+
+def test_candidate_candles_are_frozen_and_checked(tmp_path) -> None:
+    partition = tmp_path / "BTCUSDT" / "0"
+    partition.mkdir(parents=True)
+    candle = Candle(symbol="BTCUSDT", timeframe="1m", open_time_ms=0,
+                    close_time_ms=59999, open=100, high=101, low=99,
+                    close=100, volume=1, quote_volume=100, trades_count=1,
+                    is_closed=True, source="test")
+    row = {"timeframe": "1m", "open_time_ms": 0, "close_time_ms": 59999,
+           "open": "100", "high": "101", "low": "99", "close": "100",
+           "volume": "1", "quote_volume": "100", "trades_count": 1,
+           "checksum": fingerprint(candle.market_values())}
+    source = partition / "CANDLES.jsonl"
+    source.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    receipt = {"dataset_hash": "a" * 64, "allowed_end_ms": 60000,
+               "sha256": _sha256(source)}
+    (partition / "CANDLES.json").write_text(json.dumps(receipt), encoding="utf-8")
+    loaded = _frozen_candles(partition, "a" * 64)
+    assert loaded["1m"][0].market_values() == candle.market_values()
+    source.write_text(json.dumps({**row, "close": "101"}) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="CANDIDATE_FROZEN_CANDLES_CORRUPT"):
+        _frozen_candles(partition, "a" * 64)
