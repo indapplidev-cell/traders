@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from app.config.trade_parameters import load_trade_parameters
 from traders_ml.parameter_sweep.full_pipeline_ragged import (
     HistoricalCostBucketV1,
     HistoricalCostModelV1,
@@ -13,7 +14,10 @@ from traders_ml.parameter_sweep.full_pipeline_replay_v3 import (
     ReplayPolicyV3,
     replay_signal_shards_v3,
 )
-from traders_ml.parameter_sweep.full_pipeline_v3 import _sha256
+from traders_ml.parameter_sweep.full_pipeline_v3 import (
+    _sha256,
+    resolve_research_parameter_set_v3,
+)
 
 
 def _model() -> HistoricalCostModelV1:
@@ -22,7 +26,7 @@ def _model() -> HistoricalCostModelV1:
         buckets={"GLOBAL": HistoricalCostBucketV1(
             key="GLOBAL", sample_size=0, entry_fee_bps=10, exit_fee_bps=10,
             spread_bps=3, entry_slippage_bps=2, exit_slippage_bps=2,
-            reserve_bps=3,
+            depth_impact_bps=4, reserve_bps=3,
         )},
     )
 
@@ -37,6 +41,17 @@ def _engine(slots: int = 1) -> FullPipelineReplayEngineV3:
                               hard_timeout_ms=600_000),
         cost_model=_model(), initial_equity=1000, role_end_ms=1_000_000,
     )
+
+
+def test_replay_policy_uses_isolated_candidate_parameters() -> None:
+    baseline = load_trade_parameters().resolve_scalping_v2_parameter_set()
+    candidate = resolve_research_parameter_set_v3(
+        baseline, {"max_open_positions": 1})
+    policy = ReplayPolicyV3.from_parameters(candidate.parameters)
+    assert policy.max_open_positions == 1
+    assert policy.hard_timeout_ms == (
+        candidate.parameters.exit_policy.stale_position.hard_timeout_seconds * 1000)
+    assert policy.entry_ttl_ms == candidate.parameters.lifecycle.entry_fill_window_seconds * 1000
 
 
 def _decision(symbol: str, score: float = 100, opportunity: str = "one") -> dict:
@@ -66,6 +81,7 @@ def test_shared_slots_later_fill_and_separate_cost_ledger() -> None:
         "entry_fee", "exit_fee", "spread", "entry_slippage",
         "exit_slippage", "depth_impact", "reserve")) == pytest.approx(ledger["net_pnl"])
     assert ledger["provenance"] == "MODELLED_CONSERVATIVE"
+    assert ledger["depth_impact"] > 0
     assert result["balance"] == pytest.approx(1000 + ledger["net_pnl"])
 
 

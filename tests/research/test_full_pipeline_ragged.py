@@ -76,6 +76,7 @@ def test_v3_cost_fit_query_excludes_all_validation_and_holdout():
     assert connection.parameters["v2_start"] == request.windows[2].start_ms
     assert "v3_start" not in connection.parameters
     assert "AND NOT" in connection.statement
+    assert "depth_impact_bps" in connection.statement
     assert model.observed_rows == 0
 
 

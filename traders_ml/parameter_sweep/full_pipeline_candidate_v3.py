@@ -93,7 +93,7 @@ def native_candidate_decisions_v3(
     candles = _frozen_candles(partition, manifest.dataset_hash)
     repository = CausalCandleRepository(partition.parent.name, candles)
     resolved = resolve_research_parameter_set_v3(baseline, changes)
-    cost_path = cache / "PREVALIDATION_COST_MODEL.json"
+    cost_path = cache / "PREVALIDATION_COST_MODEL_V3_2.json"
     cost_receipt = cost_path.with_suffix(".receipt.json")
     if not cost_path.exists() or not cost_receipt.exists():
         raise ValueError("CANDIDATE_PREVALIDATION_COST_MODEL_REQUIRED")

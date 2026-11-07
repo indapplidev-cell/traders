@@ -70,6 +70,7 @@ class HistoricalCostBucketV1(Contract):
     entry_fee_bps: float = Field(ge=0)
     exit_fee_bps: float = Field(ge=0)
     spread_bps: float = Field(ge=0)
+    depth_impact_bps: float = Field(default=0.0, ge=0)
     entry_slippage_bps: float = Field(ge=0)
     exit_slippage_bps: float = Field(ge=0)
     reserve_bps: float = Field(ge=3)
@@ -78,7 +79,8 @@ class HistoricalCostBucketV1(Contract):
     def round_trip_bps(self) -> float:
         return (
             self.entry_fee_bps + self.exit_fee_bps + self.spread_bps
-            + self.entry_slippage_bps + self.exit_slippage_bps + self.reserve_bps
+            + self.entry_slippage_bps + self.exit_slippage_bps
+            + self.depth_impact_bps + self.reserve_bps
         )
 
 
@@ -126,6 +128,7 @@ def _cost_bucket(key: str, rows: Sequence[Mapping[str, Any]], *, fee_floor: floa
         entry_fee_bps=max(fee_floor, _percentile(values("entry_fee_bps"), .90)),
         exit_fee_bps=max(fee_floor, _percentile(values("exit_fee_bps"), .90)),
         spread_bps=_percentile(values("spread_bps"), .90),
+        depth_impact_bps=_percentile(values("depth_impact_bps"), .90),
         entry_slippage_bps=max(0.0, _percentile(values("entry_slippage_bps"), .90)),
         exit_slippage_bps=max(0.0, _percentile(values("exit_slippage_bps"), .90)),
         reserve_bps=max(reserve_floor, _percentile(values("reserve_bps"), .90)),
@@ -158,6 +161,7 @@ def fit_cost_model(
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,entry_fee_bps}','')::double precision AS entry_fee_bps,
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,exit_fee_bps}','')::double precision AS exit_fee_bps,
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,spread_bps}','')::double precision AS spread_bps,
+               NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,depth_impact_bps}','')::double precision AS depth_impact_bps,
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,entry_slippage_bps}','')::double precision AS entry_slippage_bps,
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,exit_slippage_bps}','')::double precision AS exit_slippage_bps,
                NULLIF(r.paper_payload_json#>>'{paper_context,scalping_geometry_diagnostics,adverse_fill_reserve_bps}','')::double precision AS reserve_bps
@@ -395,7 +399,7 @@ class HistoricalConservativeCostSource:
             spread_bps=bucket.spread_bps,
             spread_source=f"HISTORICAL_COST_MODEL:{provenance}",
             spread_authoritative=True,
-            depth_impact_bps=0.0,
+            depth_impact_bps=bucket.depth_impact_bps,
             depth_impact_source=f"HISTORICAL_COST_MODEL:{provenance}",
             depth_authoritative=True,
             economic_input_timestamp_ms=self.boundary_ms,

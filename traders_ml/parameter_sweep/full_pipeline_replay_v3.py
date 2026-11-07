@@ -16,6 +16,7 @@ from heapq import merge
 from pathlib import Path
 from typing import Any
 
+from app.config.trade_parameters import ScalpingV2Parameters
 from app.engine_analysis import AnalysisWindowConfig
 from app.engine_paper.analytical_exit import (
     AnalyticalExitDecision,
@@ -35,6 +36,17 @@ class ReplayPolicyV3:
     total_open_risk_limit_bps: float
     entry_ttl_ms: int
     hard_timeout_ms: int
+
+    @classmethod
+    def from_parameters(cls, parameters: ScalpingV2Parameters) -> ReplayPolicyV3:
+        return cls(
+            max_open_positions=parameters.risk.max_open_positions,
+            max_new_commands_per_cycle=parameters.risk.max_new_commands_per_cycle,
+            risk_per_trade_bps=parameters.risk.risk_per_trade_bps,
+            total_open_risk_limit_bps=parameters.risk.total_open_risk_limit_bps,
+            entry_ttl_ms=parameters.lifecycle.entry_fill_window_seconds * 1000,
+            hard_timeout_ms=parameters.exit_policy.stale_position.hard_timeout_seconds * 1000,
+        )
 
 
 @dataclass(slots=True)
@@ -175,6 +187,7 @@ class FullPipelineReplayEngineV3:
             cost_reserve_fraction = (
                 bucket.entry_fee_bps + bucket.exit_fee_bps + bucket.spread_bps
                 + bucket.entry_slippage_bps + bucket.exit_slippage_bps
+                + bucket.depth_impact_bps
                 + bucket.reserve_bps
             ) / 10_000
             notional = min(self.available / (1 + cost_reserve_fraction),
@@ -225,7 +238,7 @@ class FullPipelineReplayEngineV3:
             spread_bps=bucket.spread_bps,
             entry_slippage_bps=bucket.entry_slippage_bps,
             exit_slippage_bps=bucket.exit_slippage_bps,
-            depth_impact_bps=0.0, reserve_bps=bucket.reserve_bps,
+            depth_impact_bps=bucket.depth_impact_bps, reserve_bps=bucket.reserve_bps,
         )
         self.available += position.locked + ledger.net_pnl
         self.balance += ledger.net_pnl
@@ -325,6 +338,7 @@ def replay_signal_shards_v3(
         bucket, _ = cost_model.resolve(symbol)
         cost_bps = (bucket.entry_fee_bps + bucket.exit_fee_bps + bucket.spread_bps
                     + bucket.entry_slippage_bps + bucket.exit_slippage_bps
+                    + bucket.depth_impact_bps
                     + bucket.reserve_bps)
         net = gross - Decimal(str(position["notional"] * cost_bps / 10_000))
         identity = str(position["opportunity_id"])

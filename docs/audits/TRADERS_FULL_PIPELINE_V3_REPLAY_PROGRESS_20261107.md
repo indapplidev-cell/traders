@@ -9,7 +9,7 @@
 
 ## Cost isolation
 
-The V2 aggregate cost model was fit through the dataset end and is unsuitable for v3 search because that interval includes validation and locked holdout dates. A separate v3 cost model was built from 963 production observations strictly before the final validation start (12 October), excluding all earlier validation windows in the SQL query. Its model hash is `1678bc194cf8b2972a9991a99e03ffb2a2d76adafe8c75d1e5f8f973b24b7174`; its receipt records `holdout_evaluated=false`. Candidate native reruns now require this model and reject the V2 aggregate model. Aggregate bucket costs are labelled `MODELLED_CONSERVATIVE`, not timestamped `OBSERVED` snapshots.
+The V2 aggregate cost model was fit through the dataset end and is unsuitable for v3 search because that interval includes validation and locked holdout dates. A separate v3 cost model was built from 963 production observations strictly before the final validation start (12 October), excluding all earlier validation windows in the SQL query. An initial derived model omitted nonzero depth impact; its incomplete native stage run was stopped at ADAUSDT 2,400 boundaries and retained for forensics. The corrected `PREVALIDATION_COST_MODEL_V3_2.json` has model hash `a0643437258c20231519fa06ae307e00297fe5e67f44aaa4f09903df0b8168e1`; global 90th-percentile depth impact is 0.251042 bps and the observed training-date maximum is 4.616374 bps. Its receipt records `holdout_evaluated=false`. Candidate native reruns now require this corrected model and reject the V2 aggregate model. Aggregate bucket costs are labelled `MODELLED_CONSERVATIVE`, not timestamped `OBSERVED` snapshots.
 
 ## Implemented, not yet accepted
 
