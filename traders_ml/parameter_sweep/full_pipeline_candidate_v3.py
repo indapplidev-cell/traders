@@ -322,6 +322,25 @@ def build_native_candidate_signal_cache_v3(
                 "configuration_hash": candidate.resolved_config_hash,
                 "expected_boundaries": expected, "holdout_evaluated": False}
     output.mkdir(parents=True, exist_ok=True)
+    cost_path = cache / "PREVALIDATION_COST_MODEL_V3_2.json"
+    cost_receipt_path = cost_path.with_suffix(".receipt.json")
+    if not cost_path.exists() or not cost_receipt_path.exists():
+        raise ValueError("CANDIDATE_COST_MODEL_V3_2_REQUIRED")
+    cost_receipt = json.loads(cost_receipt_path.read_text(encoding="utf-8"))
+    if (cost_receipt.get("dataset_hash") != dataset_manifest.dataset_hash
+            or cost_receipt.get("request_hash") != request.identity
+            or cost_receipt.get("sha256") != _sha256(cost_path)):
+        raise ValueError("CANDIDATE_COST_MODEL_V3_2_INVALID")
+    cost_lock = {"dataset_hash": dataset_manifest.dataset_hash,
+                 "request_hash": request.identity,
+                 "model_hash": cost_receipt["model_hash"],
+                 "sha256": cost_receipt["sha256"]}
+    lock_path = output / "COST_MODEL_LOCK.json"
+    if lock_path.exists():
+        if json.loads(lock_path.read_text(encoding="utf-8")) != cost_lock:
+            raise ValueError("CANDIDATE_COST_MODEL_CHANGED_DURING_RESUME")
+    else:
+        _write_json(lock_path, cost_lock)
     manifest_path = output / "CANDIDATE_SIGNAL_MANIFEST.json"
     if manifest_path.exists():
         saved = json.loads(manifest_path.read_text(encoding="utf-8"))
