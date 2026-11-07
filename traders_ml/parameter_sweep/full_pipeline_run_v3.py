@@ -23,8 +23,11 @@ def _signal_source_for_candidate_v3(
     baseline_hash: str, candidate_hash: str, changes: dict[str, Any],
 ) -> tuple[str, bool]:
     """Reuse native entry signals only when changes affect analytical exit alone."""
-    if changes and all(NATIVE_PARAMETER_PATHS_V3.get(name, "").startswith(
-            "exit_policy.analytical_exit.") for name in changes):
+    if changes and all(
+        name == "hard_timeout_seconds"
+        or NATIVE_PARAMETER_PATHS_V3.get(name, "").startswith(
+            "exit_policy.analytical_exit.") for name in changes
+    ):
         return baseline_hash, True
     return candidate_hash, False
 

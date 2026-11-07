@@ -43,6 +43,9 @@ def test_exit_only_candidate_reuses_baseline_entry_signals() -> None:
         "baseline", "changed", {"analytical_exit_exit_threshold": 60},
     ) == ("baseline", True)
     assert _signal_source_for_candidate_v3(
+        "baseline", "changed", {"hard_timeout_seconds": 1800},
+    ) == ("baseline", True)
+    assert _signal_source_for_candidate_v3(
         "baseline", "changed", {"min_net_edge_bps": 8},
     ) == ("changed", False)
     assert _signal_source_for_candidate_v3(
