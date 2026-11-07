@@ -179,7 +179,8 @@ class FullPipelineReplayEngineV3:
                          stage="FILL", reason="ENTRY_TTL_EXPIRED",
                          opportunity_id=pending.opportunity_id)
             pending = None
-        if pending and event_ms > pending.signal_ms and low <= pending.entry <= high:
+        if (pending and event_ms > pending.signal_ms and event_ms < self.role_end_ms
+                and low <= pending.entry <= high):
             risk_bps = self.policy.risk_per_trade_bps
             current_risk = len(self.positions) * risk_bps
             stop_bps = (pending.entry - pending.stop) / pending.entry * 10_000
@@ -220,6 +221,7 @@ class FullPipelineReplayEngineV3:
                 "entry_price": plan.entry, "stop_price": plan.stop,
                 "target_price": plan.target, "filled_ms": position.filled_ms,
                 "notional": position.notional, "close": close,
+                "regime": plan.regime,
             }, candle)
         ):
             self._close(symbol, event_ms, close, reason)
@@ -335,7 +337,7 @@ def replay_signal_shards_v3(
         entry = Decimal(str(position["entry_price"]))
         close = Decimal(str(position["close"]))
         gross = Decimal(str(position["notional"])) * (close - entry) / entry
-        bucket, _ = cost_model.resolve(symbol)
+        bucket, _ = cost_model.resolve(symbol, position.get("regime"))
         cost_bps = (bucket.entry_fee_bps + bucket.exit_fee_bps + bucket.spread_bps
                     + bucket.entry_slippage_bps + bucket.exit_slippage_bps
                     + bucket.depth_impact_bps

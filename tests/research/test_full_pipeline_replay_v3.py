@@ -112,6 +112,17 @@ def test_role_boundary_rejects_future_candle() -> None:
                                          "high": 101, "low": 99, "close": 100})
 
 
+def test_entry_touch_at_role_end_does_not_create_uncloseable_position() -> None:
+    engine = _engine()
+    engine.on_boundary(900_000, [_decision("BTCUSDT")])
+    engine.on_1m_candle("BTCUSDT", {"close_time_ms": 999_999,
+                                     "high": 101, "low": 99, "close": 100})
+    result = engine.finish_role()
+    assert result["trades"] == []
+    assert engine.positions == {}
+    assert any(trace["reason"] == "PENDING_CANCELLED" for trace in result["traces"])
+
+
 def test_shards_merge_native_signals_with_later_candles(tmp_path) -> None:
     shards = {}
     for symbol in ("BTCUSDT", "ETHUSDT"):

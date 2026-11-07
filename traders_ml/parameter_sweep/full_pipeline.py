@@ -735,7 +735,7 @@ def record_blocked_action(action: str, request_path: Path, dataset: Path, output
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Full causal scalping pipeline calibration")
-    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "parity-v3", "train", "verify", "paper-canary"))
+    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "parity-v3", "replay-v3", "train", "verify", "paper-canary"))
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--database-url")
@@ -744,6 +744,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--changes", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--candidate", type=Path)
+    parser.add_argument("--role-name")
     parser.add_argument("--trades", type=Path)
     parser.add_argument("--rollback-parameter-set", default="scalping-v2-set-2")
     return parser
@@ -793,6 +794,21 @@ def main(argv: Sequence[str] | None = None) -> None:
             args.request, args.dataset, args.cache, args.candidate, args.output)
         print(f"FULL_PIPELINE_PARITY_V3 = {result['status']} "
               f"boundaries={result['totals']['boundaries']}")
+        return
+    if args.action == "replay-v3":
+        if (args.dataset is None or args.cache is None or args.candidate is None
+                or args.role_name is None):
+            raise SystemExit("REPLAY_V3_DATASET_CACHE_SIGNALS_AND_ROLE_REQUIRED")
+        from .full_pipeline_run_v3 import run_preholdout_role_v3
+
+        changes = json.loads(args.changes.read_text(encoding="utf-8")) if args.changes else {}
+        if not isinstance(changes, dict):
+            raise SystemExit("REPLAY_V3_CHANGES_OBJECT_REQUIRED")
+        result = run_preholdout_role_v3(
+            args.request, args.dataset, args.cache, args.candidate,
+            args.output, args.role_name, changes)
+        print(f"FULL_PIPELINE_REPLAY_V3 = {result['status']} "
+              f"role={result['role']} trades={len(result['trades'])}")
         return
     if args.action in {"baseline", "train"}:
         # Training is intentionally fail-closed until a frozen trace dataset from
