@@ -7,12 +7,21 @@ No production persistence or exchange services are used here.
 from __future__ import annotations
 
 import json
+from collections import defaultdict, deque
 from collections.abc import Callable, Iterable, Mapping
 from contextlib import ExitStack
 from dataclasses import dataclass
+from decimal import Decimal
 from heapq import merge
 from pathlib import Path
 from typing import Any
+
+from app.engine_analysis import AnalysisWindowConfig
+from app.engine_paper.analytical_exit import (
+    AnalyticalExitDecision,
+    ClosedAnalysisCandle,
+    analyze_position_exit,
+)
 
 from .full_pipeline_ragged import HistoricalCostModelV1
 from .full_pipeline_v3 import HistoricalCostLedgerV3, _sha256
@@ -194,6 +203,7 @@ class FullPipelineReplayEngineV3:
             self._close(symbol, event_ms, plan.target, "TARGET")
         elif self.analytical_exit is not None and (
             reason := self.analytical_exit(symbol, {
+                "opportunity_id": plan.opportunity_id,
                 "entry_price": plan.entry, "stop_price": plan.stop,
                 "target_price": plan.target, "filled_ms": position.filled_ms,
                 "notional": position.notional, "close": close,
@@ -249,16 +259,19 @@ def _events_from_handle(handle: Any, *, symbol: str, kind: str,
     previous = -1
     for line in handle:
         row = json.loads(line)
-        if kind == "CANDLE":
-            if row["timeframe"] != "1m":
-                return  # CANDLES.jsonl is grouped by timeframe, starting with 1m.
+        if kind.startswith("CANDLE_"):
+            timeframe = kind.removeprefix("CANDLE_")
+            if row["timeframe"] != timeframe:
+                if timeframe == "1m" or row["timeframe"] in {"15m", "1h"}:
+                    return  # Frozen archive is grouped 1m, 5m, 15m, 1h.
+                continue
             event_ms = int(row["close_time_ms"]) + 1
-            priority = 0
+            priority = 0 if timeframe == "5m" else 1
             if event_ms > end_ms:
                 return
         else:
             event_ms = int(row["boundary_ms"])
-            priority = 1
+            priority = 2
             if event_ms >= end_ms:
                 return
         if event_ms < previous:
@@ -266,6 +279,24 @@ def _events_from_handle(handle: Any, *, symbol: str, kind: str,
         previous = event_ms
         if event_ms >= start_ms:
             yield event_ms, priority, symbol, row
+
+
+def _analysis_candle(symbol: str, row: Mapping[str, Any]) -> ClosedAnalysisCandle:
+    return ClosedAnalysisCandle(
+        symbol=symbol, timeframe=str(row["timeframe"]),
+        open_time_ms=int(row["open_time_ms"]),
+        close_boundary_ms=int(row["close_time_ms"]) + 1,
+        open_price=Decimal(str(row["open"])),
+        high_price=Decimal(str(row["high"])),
+        low_price=Decimal(str(row["low"])),
+        close_price=Decimal(str(row["close"])),
+        volume=Decimal(str(row["volume"])),
+        quote_volume=(Decimal(str(row["quote_volume"]))
+                      if row.get("quote_volume") is not None else None),
+        trades_count=(int(row["trades_count"])
+                      if row.get("trades_count") is not None else None),
+        source="v3-frozen-research", is_closed=True,
+    )
 
 
 def replay_signal_shards_v3(
@@ -279,9 +310,49 @@ def replay_signal_shards_v3(
     """Merge certified per-symbol native signals and frozen 1m candles."""
     if role_start_ms >= role_end_ms or role_end_ms > holdout_start_ms or not shards:
         raise ValueError("V3_INVALID_REPLAY_ROLE_OR_SHARDS")
+    context_size = AnalysisWindowConfig().context_candles + 4
+    candle_context: dict[str, dict[str, deque[ClosedAnalysisCandle]]] = defaultdict(
+        lambda: {"1m": deque(maxlen=context_size), "5m": deque(maxlen=context_size)})
+    prior_scores: dict[str, list[float]] = defaultdict(list)
+
+    def native_exit(symbol: str, position: Mapping[str, Any], candle: Mapping[str, Any]) -> str | None:
+        boundary_ms = int(candle["close_time_ms"]) + 1
+        if boundary_ms <= int(position["filled_ms"]):
+            return None
+        entry = Decimal(str(position["entry_price"]))
+        close = Decimal(str(position["close"]))
+        gross = Decimal(str(position["notional"])) * (close - entry) / entry
+        bucket, _ = cost_model.resolve(symbol)
+        cost_bps = (bucket.entry_fee_bps + bucket.exit_fee_bps + bucket.spread_bps
+                    + bucket.entry_slippage_bps + bucket.exit_slippage_bps
+                    + bucket.reserve_bps)
+        net = gross - Decimal(str(position["notional"] * cost_bps / 10_000))
+        identity = str(position["opportunity_id"])
+        evidence = analyze_position_exit(
+            position_id=identity, symbol=symbol, side="LONG",
+            entry_price=entry, stop_price=Decimal(str(position["stop_price"])),
+            target_price=Decimal(str(position["target_price"])),
+            opened_at_ms=int(position["filled_ms"]),
+            candles_1m=candle_context[symbol]["1m"],
+            candles_5m=candle_context[symbol]["5m"],
+            boundary_ms=boundary_ms,
+            prior_exit_scores=tuple(prior_scores[identity]),
+            gross_pnl=gross, net_pnl=net,
+            net_pnl_bps=float(net / Decimal(str(position["notional"])) * 10_000),
+        )
+        if evidence.decision not in {AnalyticalExitDecision.DATA_UNAVAILABLE,
+                                     AnalyticalExitDecision.ERROR}:
+            prior_scores[identity].append(evidence.exit_score)
+        if evidence.decision in {AnalyticalExitDecision.ANALYTICAL_EXIT,
+                                 AnalyticalExitDecision.STRONG_REVERSAL_EXIT,
+                                 AnalyticalExitDecision.PROFIT_PROTECTION_EXIT}:
+            return str(evidence.decision.value)
+        return None
+
+    exit_evaluator = analytical_exit if analytical_exit is not None else native_exit
     engine = FullPipelineReplayEngineV3(
         policy=policy, cost_model=cost_model, initial_equity=initial_equity,
-        role_end_ms=role_end_ms, analytical_exit=analytical_exit,
+        role_end_ms=role_end_ms, analytical_exit=exit_evaluator,
     )
     with ExitStack() as stack:
         streams = []
@@ -296,10 +367,13 @@ def replay_signal_shards_v3(
                     or candle_receipt.get("allowed_end_ms", 0) > holdout_start_ms
                     or signal_receipt.get("holdout_evaluated", False)):
                 raise ValueError("V3_REPLAY_SOURCE_IDENTITY_OR_ROLE_MISMATCH")
-            for path, kind in ((signal_path, "SIGNAL"), (candle_path, "CANDLE")):
+            for path, kind in ((signal_path, "SIGNAL"), (candle_path, "CANDLE_1m"),
+                               (candle_path, "CANDLE_5m")):
                 handle = stack.enter_context(path.open(encoding="utf-8"))
                 streams.append(_events_from_handle(handle, symbol=symbol, kind=kind,
-                                                   start_ms=role_start_ms,
+                                                   start_ms=(role_start_ms if kind == "SIGNAL"
+                                                             else max(0, role_start_ms
+                                                                      - context_size * 300_000)),
                                                    end_ms=role_end_ms))
         boundary = None
         decisions: list[dict[str, Any]] = []
@@ -308,9 +382,11 @@ def replay_signal_shards_v3(
                 engine.on_boundary(boundary, decisions)
                 decisions = []
                 boundary = None
-            if priority == 0:
+            if priority in (0, 1):
+                candle_context[symbol][row["timeframe"]].append(_analysis_candle(symbol, row))
+            if priority == 1:
                 engine.on_1m_candle(symbol, row)
-            else:
+            elif priority == 2:
                 boundary = event_ms
                 decisions.append(row)
         if boundary is not None:
@@ -318,6 +394,6 @@ def replay_signal_shards_v3(
     result = engine.finish_role()
     result["status"] = "REPLAY_NOT_VERIFIED"
     result["eligible_for_training"] = False
-    result["analytical_exit_integrated"] = analytical_exit is not None
+    result["analytical_exit_integrated"] = True
     result["holdout_evaluated"] = False
     return result

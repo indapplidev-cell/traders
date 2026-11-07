@@ -110,7 +110,8 @@ def test_shards_merge_native_signals_with_later_candles(tmp_path) -> None:
         }), encoding="utf-8")
         candles = root / "CANDLES.jsonl"
         candles.write_text("".join(json.dumps({
-            "timeframe": "1m", "close_time_ms": time_ms,
+            "timeframe": "1m", "open_time_ms": time_ms - 59_999,
+            "close_time_ms": time_ms, "open": 100, "volume": 1,
             "high": high, "low": low, "close": close,
         }) + "\n" for time_ms, high, low, close in (
             (359999, 100.5, 99.5, 100),
@@ -132,3 +133,11 @@ def test_shards_merge_native_signals_with_later_candles(tmp_path) -> None:
     assert result["trades"][0]["filled_ms"] > result["trades"][0]["signal_ms"]
     assert result["holdout_evaluated"] is False
     assert result["analytical_exit_integrated"] is True
+    native = replay_signal_shards_v3(
+        shards, dataset_hash="frozen", policy=_engine().policy,
+        cost_model=_model(), initial_equity=1000,
+        role_start_ms=300_000, role_end_ms=1_000_000,
+        holdout_start_ms=1_000_000,
+    )
+    assert len(native["trades"]) == 1
+    assert native["status"] == "REPLAY_NOT_VERIFIED"
