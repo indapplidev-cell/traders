@@ -158,6 +158,7 @@ def test_shards_merge_native_signals_with_later_candles(tmp_path) -> None:
     )
     assert len(result["trades"]) == 1
     assert result["trades"][0]["filled_ms"] > result["trades"][0]["signal_ms"]
+    assert result["signal_rows_processed"] == 2
     assert result["holdout_evaluated"] is False
     assert result["analytical_exit_integrated"] is True
     native = replay_signal_shards_v3(

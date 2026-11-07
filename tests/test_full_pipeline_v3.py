@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config.trade_parameters import load_trade_parameters
+from app.engine_analysis.analysis_snapshot import AnalysisSnapshot
 from app.engine_market_data.candle import Candle
 from traders_ml.parameter_sweep import full_pipeline_candidate_v3
 from traders_ml.parameter_sweep.full_pipeline import fingerprint
@@ -70,6 +72,11 @@ def test_compact_candidate_signal_receipt_and_resume(tmp_path, monkeypatch) -> N
     output.with_suffix(".json").unlink()
     assert full_pipeline_candidate_v3.write_native_candidate_signals_v3(
         request, dataset, root, partition, {}, output) == receipt
+    changed_receipt = {**receipt, "analysis_reuse_mode": "ENRICHED_BASELINE_ANALYSIS"}
+    output.with_suffix(".json").write_text(json.dumps(changed_receipt), encoding="utf-8")
+    with pytest.raises(ValueError, match="RESUME_IDENTITY_MISMATCH"):
+        full_pipeline_candidate_v3.write_native_candidate_signals_v3(
+            request, dataset, root, partition, {}, output)
 
 
 def test_future_cost_snapshot_is_rejected() -> None:
@@ -114,6 +121,40 @@ def test_research_candidate_is_native_and_does_not_change_baseline() -> None:
     assert baseline.parameters.exit_policy.analytical_exit.exit_threshold != 60
     with pytest.raises(ValueError, match="UNSUPPORTED_NATIVE_PARAMETER"):
         resolve_research_parameter_set_v3(baseline, {"entry_slippage_bps": 0})
+
+
+def test_enriched_analysis_reuse_is_limited_to_downstream_parameters() -> None:
+    safe = full_pipeline_candidate_v3._analysis_reuse_safe_v3
+    assert safe({"min_net_edge_bps": 8})
+    assert safe({"atr_multiplier": 0.35, "analytical_exit_exit_threshold": 60})
+    assert not safe({"entry_score_weights": {}})
+    assert not safe({"min_net_edge_bps": 8, "strategy_minimum_score": 55})
+    assert not safe({"unknown": 1})
+
+
+def test_cached_analysis_requires_exact_boundary_and_is_consumed_once() -> None:
+    snapshot = AnalysisSnapshot.for_window(
+        symbol="BTCUSDT", timeframe="5m", closed_until_ms=300_000,
+        created_at_ms=300_000, market_data_health="OK", degraded=False,
+        enough_data=True, analysis_context={"causal": True},
+    )
+    source = CausalBoundaryFeaturesV3(
+        symbol="BTCUSDT", segment_start_ms=1, boundary_ms=300_000,
+        dataset_hash="a" * 64, analysis_parameter_hash="b" * 64,
+        candle_refs={}, market_data={}, analysis=asdict(snapshot),
+        setup={}, strategy={}, risk={}, paper={}, statuses={},
+        feature_completeness={"analysis": True}, decision_hash="c" * 64,
+    )
+    cached = full_pipeline_candidate_v3._CachedAnalysisRunnerV3()
+    cached.set_boundary(source)
+    with pytest.raises(ValueError, match="INPUT_MISMATCH"):
+        cached.analyze_market_data_snapshot(SimpleNamespace(
+            symbol="BTCUSDT", timeframe="5m", closed_until_ms=600_000))
+    assert cached.analyze_market_data_snapshot(SimpleNamespace(
+        symbol="BTCUSDT", timeframe="5m", closed_until_ms=300_000)) == snapshot
+    with pytest.raises(ValueError, match="INPUT_MISMATCH"):
+        cached.analyze_market_data_snapshot(SimpleNamespace(
+            symbol="BTCUSDT", timeframe="5m", closed_until_ms=300_000))
 
 
 def test_compaction_preserves_unique_stage_evidence() -> None:

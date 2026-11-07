@@ -395,6 +395,7 @@ def replay_signal_shards_v3(
                                                    end_ms=role_end_ms))
         boundary = None
         decisions: list[dict[str, Any]] = []
+        signal_rows = 0
         for event_ms, priority, symbol, row in merge(*streams):
             if boundary is not None and event_ms != boundary:
                 engine.on_boundary(boundary, decisions)
@@ -407,6 +408,7 @@ def replay_signal_shards_v3(
             elif priority == 2:
                 boundary = event_ms
                 decisions.append(row)
+                signal_rows += 1
         if boundary is not None:
             engine.on_boundary(boundary, decisions)
     result = engine.finish_role()
@@ -414,4 +416,5 @@ def replay_signal_shards_v3(
     result["eligible_for_training"] = False
     result["analytical_exit_integrated"] = True
     result["holdout_evaluated"] = False
+    result["signal_rows_processed"] = signal_rows
     return result

@@ -6,6 +6,7 @@ import pytest
 
 from traders_ml.parameter_sweep.full_pipeline import FullPipelineCalibrationRequestV2
 from traders_ml.parameter_sweep.full_pipeline_run_v3 import (
+    _signal_source_for_candidate_v3,
     preholdout_role_windows_v3,
     run_preholdout_role_v3,
 )
@@ -35,3 +36,16 @@ def test_locked_holdout_role_rejected_before_any_source_read(tmp_path: Path) -> 
         run_preholdout_role_v3(REQUEST, dataset, cache, signals,
                                tmp_path / "result.json", "INTERNAL_HOLDOUT", {})
     assert not (tmp_path / "result.json").exists()
+
+
+def test_exit_only_candidate_reuses_baseline_entry_signals() -> None:
+    assert _signal_source_for_candidate_v3(
+        "baseline", "changed", {"analytical_exit_exit_threshold": 60},
+    ) == ("baseline", True)
+    assert _signal_source_for_candidate_v3(
+        "baseline", "changed", {"min_net_edge_bps": 8},
+    ) == ("changed", False)
+    assert _signal_source_for_candidate_v3(
+        "baseline", "changed",
+        {"analytical_exit_exit_threshold": 60, "strategy_minimum_score": 50},
+    ) == ("changed", False)

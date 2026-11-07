@@ -16,7 +16,17 @@ from .full_pipeline import (
 from .full_pipeline_candidate_v3 import resolve_research_parameter_set_v3
 from .full_pipeline_ragged import HistoricalCostModelV1
 from .full_pipeline_replay_v3 import ReplayPolicyV3, replay_signal_shards_v3
-from .full_pipeline_v3 import _sha256, _write_json
+from .full_pipeline_v3 import NATIVE_PARAMETER_PATHS_V3, _sha256, _write_json
+
+
+def _signal_source_for_candidate_v3(
+    baseline_hash: str, candidate_hash: str, changes: dict[str, Any],
+) -> tuple[str, bool]:
+    """Reuse native entry signals only when changes affect analytical exit alone."""
+    if changes and all(NATIVE_PARAMETER_PATHS_V3.get(name, "").startswith(
+            "exit_policy.analytical_exit.") for name in changes):
+        return baseline_hash, True
+    return candidate_hash, False
 
 
 def preholdout_role_windows_v3(request: FullPipelineCalibrationRequestV2) -> dict[str, tuple[int, int]]:
@@ -59,6 +69,9 @@ def run_preholdout_role_v3(
                          if window.role == "INTERNAL_HOLDOUT")
     baseline = load_trade_parameters().resolve_scalping_v2_parameter_set()
     candidate = resolve_research_parameter_set_v3(baseline, changes)
+    baseline_signal_hash = resolve_research_parameter_set_v3(baseline, {}).resolved_config_hash
+    signal_hash, reused_upstream = _signal_source_for_candidate_v3(
+        baseline_signal_hash, candidate.resolved_config_hash, changes)
     if (frozen.status != "FROZEN" or frozen.request_hash != request.identity
             or source.get("dataset_hash") != frozen.dataset_hash
             or source.get("request_hash") != request.identity
@@ -66,7 +79,7 @@ def run_preholdout_role_v3(
             or native.get("dataset_hash") != frozen.dataset_hash
             or native.get("request_hash") != request.identity
             or native.get("source_cache_hash") != fingerprint(source)
-            or native.get("configuration_hash") != candidate.resolved_config_hash
+            or native.get("configuration_hash") != signal_hash
             or native.get("holdout_evaluated") is not False
             or native.get("status") != "COMPLETE_PREHOLDOUT"
             or native.get("completed_boundaries") != source.get("completed_boundaries")
@@ -92,8 +105,9 @@ def run_preholdout_role_v3(
     for symbol, start_ms in sorted(source_parts):
         source_part = source_parts[(symbol, start_ms)]
         native_part = native_parts[(symbol, start_ms)]
-        if int(source_part["boundaries"]) != int(native_part["boundaries"]):
-            raise ValueError("V3_REPLAY_PARTITION_COUNT_MISMATCH")
+        if (int(source_part["boundaries"]) != int(native_part["boundaries"])
+                or native_part.get("source_sha256") != source_part["sha256"]):
+            raise ValueError("V3_REPLAY_PARTITION_SOURCE_OR_COUNT_MISMATCH")
         signal_path = signals / "symbols" / symbol / str(start_ms) / "SIGNALS.jsonl"
         candle_path = cache / "symbols" / symbol / str(start_ms) / "CANDLES.jsonl"
         if (_sha256(signal_path) != native_part["sha256"]
@@ -112,6 +126,10 @@ def run_preholdout_role_v3(
                    "role_start_ms": start_ms, "role_end_ms": end_ms,
                    "dataset_hash": frozen.dataset_hash,
                    "configuration_hash": candidate.resolved_config_hash,
+                   "signal_source_configuration_hash": signal_hash,
+                   "native_entry_stage_reused": reused_upstream,
+                   "reused_native_signal_rows": (
+                       result["signal_rows_processed"] if reused_upstream else 0),
                    "cost_model_hash": cost_model.identity})
     _write_json(output, result)
     return result

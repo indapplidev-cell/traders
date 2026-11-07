@@ -10,10 +10,12 @@ from __future__ import annotations
 import json
 import shutil
 from collections.abc import Iterator
+from dataclasses import fields
 from pathlib import Path
 from typing import Any
 
 from app.config.trade_parameters import load_trade_parameters
+from app.engine_analysis.analysis_snapshot import AnalysisSnapshot
 from app.engine_market_data.candle import Candle
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.pipeline_result import json_safe
@@ -39,6 +41,58 @@ from .full_pipeline_v3 import (
     resolve_research_parameter_set_v3,
 )
 from .historical_reconstruction import CausalCandleRepository
+
+
+class _CachedAnalysisRunnerV3:
+    """Restore a certified enriched analysis snapshot for one exact boundary."""
+
+    def __init__(self) -> None:
+        self.current: AnalysisSnapshot | None = None
+
+    def set_boundary(self, source: CausalBoundaryFeaturesV3) -> None:
+        if not source.feature_completeness.get("analysis"):
+            raise ValueError("V3_ANALYSIS_CACHE_INCOMPLETE")
+        payload = source.analysis
+        values = {field.name: payload[field.name] for field in fields(AnalysisSnapshot)
+                  if field.init and field.name in payload}
+        snapshot = AnalysisSnapshot(**values)
+        if (snapshot.symbol != source.symbol or snapshot.timeframe != "5m"
+                or snapshot.closed_until_ms != source.boundary_ms
+                or snapshot.future_bars_used):
+            raise ValueError("V3_ANALYSIS_CACHE_BOUNDARY_MISMATCH")
+        self.current = snapshot
+
+    def analyze_market_data_snapshot(self, snapshot: object) -> AnalysisSnapshot:
+        current = self.current
+        if (current is None or current.symbol != getattr(snapshot, "symbol", None)
+                or current.timeframe != getattr(snapshot, "timeframe", None)
+                or current.closed_until_ms != getattr(snapshot, "closed_until_ms", None)):
+            raise ValueError("V3_ANALYSIS_CACHE_INPUT_MISMATCH")
+        self.current = None
+        return current
+
+
+class _CachedEnrichedAnalysisPipelineRunnerV3(PipelineRunner):
+    """Continue native setup/strategy/risk/paper from an already enriched analysis."""
+
+    def _enrich_5m_analysis_semantics(self, analysis: object, snapshot: object) -> None:
+        return None
+
+    def _enrich_independent_expert(self, analysis: object, snapshots: object) -> None:
+        return None
+
+    def _enrich_5m_target_context(self, analysis: object, snapshots: object) -> None:
+        return None
+
+
+def _analysis_reuse_safe_v3(changes: dict[str, Any]) -> bool:
+    """Only downstream plan economics/geometry may reuse the enriched analysis."""
+    from .full_pipeline_v3 import NATIVE_PARAMETER_PATHS_V3
+
+    return bool(changes) and all(
+        NATIVE_PARAMETER_PATHS_V3.get(name, "").startswith(
+            ("geometry.", "economics.", "exit_policy.analytical_exit."))
+        for name in changes)
 
 
 def _frozen_candles(partition: Path, dataset_hash: str) -> dict[str, list[Candle]]:
@@ -71,6 +125,8 @@ def _frozen_candles(partition: Path, dataset_hash: str) -> dict[str, list[Candle
 def native_candidate_decisions_v3(
     request_path: Path, dataset: Path, cache: Path, partition: Path,
     changes: dict[str, Any], *, maximum: int | None = None,
+    reuse_enriched_analysis: bool = False,
+    start_boundary_ms: int | None = None,
 ) -> Iterator[CausalBoundaryFeaturesV3]:
     """Yield a fresh native decision for each certified pre-holdout boundary."""
     request = FullPipelineCalibrationRequestV2.model_validate_json(request_path.read_text(encoding="utf-8"))
@@ -93,6 +149,8 @@ def native_candidate_decisions_v3(
     candles = _frozen_candles(partition, manifest.dataset_hash)
     repository = CausalCandleRepository(partition.parent.name, candles)
     resolved = resolve_research_parameter_set_v3(baseline, changes)
+    if reuse_enriched_analysis and not _analysis_reuse_safe_v3(changes):
+        raise ValueError("V3_ANALYSIS_REUSE_PARAMETER_DEPENDENCY_UNSAFE")
     cost_path = cache / "PREVALIDATION_COST_MODEL_V3_2.json"
     cost_receipt = cost_path.with_suffix(".receipt.json")
     if not cost_path.exists() or not cost_receipt.exists():
@@ -113,16 +171,25 @@ def native_candidate_decisions_v3(
     paper = ScalpingPaperRunner(runtime_parameters=config.runtime_parameters,
                                  cost_source=cost_source,
                                  clock_ms=lambda source=cost_source: source.boundary_ms)
-    runner = PipelineRunner(config, repository, paper_runner=paper,
-                            resolved_parameter_set=resolved)
+    cached_analysis = _CachedAnalysisRunnerV3() if reuse_enriched_analysis else None
+    runner_type = (_CachedEnrichedAnalysisPipelineRunnerV3 if cached_analysis
+                   else PipelineRunner)
+    runner = runner_type(config, repository, analysis_runner=cached_analysis,
+                         paper_runner=paper, resolved_parameter_set=resolved)
     holdout = next(window for window in request.windows if window.role == "INTERNAL_HOLDOUT")
     with feature_path.open(encoding="utf-8") as handle:
         for count, line in enumerate(handle):
             original = CausalBoundaryFeaturesV3.model_validate_json(line)
             if original.boundary_ms >= holdout.start_ms:
                 raise ValueError("CANDIDATE_HOLDOUT_READ")
+            if start_boundary_ms is not None and original.boundary_ms < start_boundary_ms:
+                continue
             cost_source.boundary_ms = original.boundary_ms
+            if cached_analysis is not None:
+                cached_analysis.set_boundary(original)
             result = json_safe(runner.run(original.symbol, original.boundary_ms))
+            if cached_analysis is not None and cached_analysis.current is not None:
+                raise ValueError("V3_ANALYSIS_CACHE_NOT_CONSUMED")
             if result.get("safety_counters", {}).get("future_bars_used_count", 0):
                 raise ValueError("CANDIDATE_FUTURE_BAR_READ")
             if (repository.maximum_close_read_ms is not None and
@@ -182,6 +249,7 @@ def write_native_candidate_partition_v3(
 def write_native_candidate_signals_v3(
     request_path: Path, dataset: Path, cache: Path, partition: Path,
     changes: dict[str, Any], output: Path,
+    *, reuse_enriched_analysis: bool = False,
 ) -> dict[str, Any]:
     """Checkpoint a compact native stage trace for one candidate and symbol.
 
@@ -193,6 +261,8 @@ def write_native_candidate_signals_v3(
         (dataset / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
     baseline = load_trade_parameters().resolve_scalping_v2_parameter_set()
     candidate = resolve_research_parameter_set_v3(baseline, changes)
+    if reuse_enriched_analysis and not _analysis_reuse_safe_v3(changes):
+        raise ValueError("V3_ANALYSIS_REUSE_PARAMETER_DEPENDENCY_UNSAFE")
     identity = {"version": "candidate-native-signals/3",
                 "dataset_hash": manifest.dataset_hash,
                 "request_hash": manifest.request_hash,
@@ -200,6 +270,8 @@ def write_native_candidate_signals_v3(
                 "symbol": partition.parent.name,
                 "segment_start_ms": int(partition.name),
                 "source_sha256": json.loads((partition / "DONE.json").read_text(encoding="utf-8"))["sha256"]}
+    if reuse_enriched_analysis:
+        identity["analysis_reuse_mode"] = "ENRICHED_BASELINE_ANALYSIS"
     receipt_path = output.with_suffix(".json")
     if output.exists() or receipt_path.exists():
         if output.exists() and not receipt_path.exists():
@@ -221,7 +293,9 @@ def write_native_candidate_signals_v3(
         if not output.exists() or not receipt_path.exists():
             raise ValueError("CANDIDATE_SIGNAL_INCOMPLETE_FINAL_OUTPUT")
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        if any(receipt.get(key) != value for key, value in identity.items()) or receipt.get("sha256") != _sha256(output):
+        if (any(receipt.get(key) != value for key, value in identity.items())
+                or receipt.get("analysis_reuse_mode") != identity.get("analysis_reuse_mode")
+                or receipt.get("sha256") != _sha256(output)):
             raise ValueError("CANDIDATE_SIGNAL_RESUME_IDENTITY_MISMATCH")
         return receipt
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -231,7 +305,8 @@ def write_native_candidate_signals_v3(
     if partial.exists() and not checkpoint and partial.stat().st_size == 0:
         checkpoint = {**identity, "boundaries": 0, "last_boundary_ms": -1}
         _write_json(checkpoint_path, checkpoint)
-    if checkpoint and any(checkpoint.get(key) != value for key, value in identity.items()):
+    if checkpoint and (any(checkpoint.get(key) != value for key, value in identity.items())
+                       or checkpoint.get("analysis_reuse_mode") != identity.get("analysis_reuse_mode")):
         raise ValueError("CANDIDATE_SIGNAL_CHECKPOINT_IDENTITY_MISMATCH")
     if partial.exists() != bool(checkpoint):
         raise ValueError("CANDIDATE_SIGNAL_PARTIAL_WITHOUT_CHECKPOINT")
@@ -245,7 +320,8 @@ def write_native_candidate_signals_v3(
         _write_json(checkpoint_path, checkpoint)
     with partial.open("a", encoding="utf-8") as handle:
         for index, decision in enumerate(native_candidate_decisions_v3(
-                request_path, dataset, cache, partition, changes)):
+                request_path, dataset, cache, partition, changes,
+                reuse_enriched_analysis=reuse_enriched_analysis)):
             if index < count:
                 continue
             paper = decision.paper
@@ -289,6 +365,7 @@ def write_native_candidate_signals_v3(
 def build_native_candidate_signal_cache_v3(
     request_path: Path, dataset: Path, cache: Path, output: Path,
     changes: dict[str, Any],
+    *, reuse_enriched_analysis: bool = False,
 ) -> dict[str, Any]:
     """Run one candidate sequentially over every certified pre-holdout partition."""
     request = FullPipelineCalibrationRequestV2.model_validate_json(
@@ -315,12 +392,16 @@ def build_native_candidate_signal_cache_v3(
         raise ValueError("CANDIDATE_SIGNAL_DISK_RESERVE_BELOW_5GB")
     baseline = load_trade_parameters().resolve_scalping_v2_parameter_set()
     candidate = resolve_research_parameter_set_v3(baseline, changes)
+    if reuse_enriched_analysis and not _analysis_reuse_safe_v3(changes):
+        raise ValueError("V3_ANALYSIS_REUSE_PARAMETER_DEPENDENCY_UNSAFE")
     identity = {"version": "candidate-native-signal-cache/3",
                 "dataset_hash": dataset_manifest.dataset_hash,
                 "request_hash": request.identity,
                 "source_cache_hash": fingerprint(cache_manifest),
                 "configuration_hash": candidate.resolved_config_hash,
                 "expected_boundaries": expected, "holdout_evaluated": False}
+    if reuse_enriched_analysis:
+        identity["analysis_reuse_mode"] = "ENRICHED_BASELINE_ANALYSIS"
     output.mkdir(parents=True, exist_ok=True)
     cost_path = cache / "PREVALIDATION_COST_MODEL_V3_2.json"
     cost_receipt_path = cost_path.with_suffix(".receipt.json")
@@ -344,7 +425,8 @@ def build_native_candidate_signal_cache_v3(
     manifest_path = output / "CANDIDATE_SIGNAL_MANIFEST.json"
     if manifest_path.exists():
         saved = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if any(saved.get(key) != value for key, value in identity.items()):
+        if (any(saved.get(key) != value for key, value in identity.items())
+                or saved.get("analysis_reuse_mode") != identity.get("analysis_reuse_mode")):
             raise ValueError("CANDIDATE_SIGNAL_CACHE_IDENTITY_CHANGED")
     receipts: list[dict[str, Any]] = []
     for part in partitions:
@@ -353,7 +435,8 @@ def build_native_candidate_signal_cache_v3(
         destination = output / "symbols" / symbol / str(part["segment_start_ms"]) / "SIGNALS.jsonl"
         print(f"CANDIDATE_V3_SYMBOL_START {symbol} {part['segment_start_ms']}", flush=True)
         receipt = write_native_candidate_signals_v3(
-            request_path, dataset, cache, partition, changes, destination)
+            request_path, dataset, cache, partition, changes, destination,
+            reuse_enriched_analysis=reuse_enriched_analysis)
         receipts.append(receipt)
         progress = {**identity, "status": "IN_PROGRESS",
                     "completed_boundaries": sum(item["boundaries"] for item in receipts),
