@@ -20,7 +20,8 @@ The V2 aggregate cost model was fit through the dataset end and is unsuitable fo
 - A `parity-v3` diagnostic command compares aligned stage statuses, first rejection and ready-plan geometry on every certified pre-holdout boundary. It validates partition hashes, never grants train eligibility, and will run only after the background native baseline signal pass finishes.
 - A `replay-v3` diagnostic command now requires complete candidate shards, matching source and cost-model hashes, and a named pre-holdout calendar role. It separates train spans from all validation intervals and refuses an internal holdout role. The corrected native signal pass has not completed, so no full-history role replay has been accepted.
 - The resume path now locks the V3_2 cost-model hash. The already running corrected pass received the matching lock artifact before this code change; a later resume must verify it. The lifecycle also prevents a fill exactly at the role end and evaluates analytical-exit cost with the position's regime.
-- Focused tests: 27 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` still has unrelated pre-existing Ruff findings; it compiles.
+- Research candidates can now change validated native entry-score weights and analytical-exit weights/thresholds. The exit evaluator accepts an explicit research policy while the production call keeps its default policy. This fixes an inactive-parameter route; full-history effect on decisions and trades remains to be demonstrated after the native signal pass.
+- Focused tests: 33 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` and `analytical_exit.py` still have unrelated pre-existing Ruff findings; both compile.
 
 ## Remaining gates
 
