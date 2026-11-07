@@ -735,13 +735,16 @@ def record_blocked_action(action: str, request_path: Path, dataset: Path, output
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Full causal scalping pipeline calibration")
-    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "parity-v3", "replay-v3", "train", "verify", "paper-canary"))
+    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "parity-v3", "replay-v3", "audit-analysis-reuse-v3", "train", "verify", "paper-canary"))
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--database-url")
     parser.add_argument("--dataset", type=Path)
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--changes", type=Path)
+    parser.add_argument("--reuse-enriched-analysis", action="store_true")
+    parser.add_argument("--analysis-reuse-audit", type=Path)
+    parser.add_argument("--stage-parity-report", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--candidate", type=Path)
     parser.add_argument("--role-name")
@@ -782,7 +785,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         if not isinstance(changes, dict):
             raise SystemExit("CANDIDATE_V3_CHANGES_OBJECT_REQUIRED")
         result = build_native_candidate_signal_cache_v3(
-            args.request, args.dataset, args.cache, args.output, changes)
+            args.request, args.dataset, args.cache, args.output, changes,
+            reuse_enriched_analysis=args.reuse_enriched_analysis,
+            analysis_reuse_audit=args.analysis_reuse_audit,
+            stage_parity_report=args.stage_parity_report)
         print(f"FULL_PIPELINE_CANDIDATE_SIGNALS_V3 = {result['status']} "
               f"boundaries={result['completed_boundaries']}")
         return
@@ -809,6 +815,19 @@ def main(argv: Sequence[str] | None = None) -> None:
             args.output, args.role_name, changes)
         print(f"FULL_PIPELINE_REPLAY_V3 = {result['status']} "
               f"role={result['role']} trades={len(result['trades'])}")
+        return
+    if args.action == "audit-analysis-reuse-v3":
+        if args.dataset is None or args.cache is None or args.changes is None:
+            raise SystemExit("REUSE_AUDIT_DATASET_CACHE_AND_CHANGES_REQUIRED")
+        from .full_pipeline_reuse_audit_v3 import audit_enriched_analysis_reuse_v3
+
+        changes = json.loads(args.changes.read_text(encoding="utf-8"))
+        if not isinstance(changes, dict):
+            raise SystemExit("REUSE_AUDIT_CHANGES_OBJECT_REQUIRED")
+        result = audit_enriched_analysis_reuse_v3(
+            args.request, args.dataset, args.cache, args.output, changes)
+        print(f"FULL_PIPELINE_REUSE_AUDIT_V3 = {result['status']} "
+              f"symbols={len(result['symbols'])}")
         return
     if args.action in {"baseline", "train"}:
         # Training is intentionally fail-closed until a frozen trace dataset from

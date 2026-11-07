@@ -46,8 +46,9 @@ from .historical_reconstruction import CausalCandleRepository
 class _CachedAnalysisRunnerV3:
     """Restore a certified enriched analysis snapshot for one exact boundary."""
 
-    def __init__(self) -> None:
+    def __init__(self, parameter_set_id: str) -> None:
         self.current: AnalysisSnapshot | None = None
+        self.parameter_set_id = parameter_set_id
 
     def set_boundary(self, source: CausalBoundaryFeaturesV3) -> None:
         if not source.feature_completeness.get("analysis"):
@@ -55,6 +56,10 @@ class _CachedAnalysisRunnerV3:
         payload = source.analysis
         values = {field.name: payload[field.name] for field in fields(AnalysisSnapshot)
                   if field.init and field.name in payload}
+        context = values.get("analysis_context")
+        if isinstance(context, dict) and "runtime_parameter_set_id" in context:
+            values["analysis_context"] = {
+                **context, "runtime_parameter_set_id": self.parameter_set_id}
         snapshot = AnalysisSnapshot(**values)
         if (snapshot.symbol != source.symbol or snapshot.timeframe != "5m"
                 or snapshot.closed_until_ms != source.boundary_ms
@@ -127,6 +132,7 @@ def native_candidate_decisions_v3(
     changes: dict[str, Any], *, maximum: int | None = None,
     reuse_enriched_analysis: bool = False,
     start_boundary_ms: int | None = None,
+    selected_boundaries: frozenset[int] | None = None,
 ) -> Iterator[CausalBoundaryFeaturesV3]:
     """Yield a fresh native decision for each certified pre-holdout boundary."""
     request = FullPipelineCalibrationRequestV2.model_validate_json(request_path.read_text(encoding="utf-8"))
@@ -171,7 +177,8 @@ def native_candidate_decisions_v3(
     paper = ScalpingPaperRunner(runtime_parameters=config.runtime_parameters,
                                  cost_source=cost_source,
                                  clock_ms=lambda source=cost_source: source.boundary_ms)
-    cached_analysis = _CachedAnalysisRunnerV3() if reuse_enriched_analysis else None
+    cached_analysis = (_CachedAnalysisRunnerV3(resolved.id)
+                       if reuse_enriched_analysis else None)
     runner_type = (_CachedEnrichedAnalysisPipelineRunnerV3 if cached_analysis
                    else PipelineRunner)
     runner = runner_type(config, repository, analysis_runner=cached_analysis,
@@ -179,7 +186,15 @@ def native_candidate_decisions_v3(
     holdout = next(window for window in request.windows if window.role == "INTERNAL_HOLDOUT")
     with feature_path.open(encoding="utf-8") as handle:
         for count, line in enumerate(handle):
-            original = CausalBoundaryFeaturesV3.model_validate_json(line)
+            if selected_boundaries is not None:
+                raw = json.loads(line)
+                if int(raw["boundary_ms"]) >= holdout.start_ms:
+                    raise ValueError("CANDIDATE_HOLDOUT_READ")
+                if int(raw["boundary_ms"]) not in selected_boundaries:
+                    continue
+                original = CausalBoundaryFeaturesV3.model_validate(raw)
+            else:
+                original = CausalBoundaryFeaturesV3.model_validate_json(line)
             if original.boundary_ms >= holdout.start_ms:
                 raise ValueError("CANDIDATE_HOLDOUT_READ")
             if start_boundary_ms is not None and original.boundary_ms < start_boundary_ms:
@@ -366,6 +381,8 @@ def build_native_candidate_signal_cache_v3(
     request_path: Path, dataset: Path, cache: Path, output: Path,
     changes: dict[str, Any],
     *, reuse_enriched_analysis: bool = False,
+    analysis_reuse_audit: Path | None = None,
+    stage_parity_report: Path | None = None,
 ) -> dict[str, Any]:
     """Run one candidate sequentially over every certified pre-holdout partition."""
     request = FullPipelineCalibrationRequestV2.model_validate_json(
@@ -394,6 +411,28 @@ def build_native_candidate_signal_cache_v3(
     candidate = resolve_research_parameter_set_v3(baseline, changes)
     if reuse_enriched_analysis and not _analysis_reuse_safe_v3(changes):
         raise ValueError("V3_ANALYSIS_REUSE_PARAMETER_DEPENDENCY_UNSAFE")
+    reuse_audit_sha = None
+    if reuse_enriched_analysis:
+        if analysis_reuse_audit is None or stage_parity_report is None:
+            raise ValueError("V3_ANALYSIS_REUSE_AUDITS_REQUIRED")
+        audit = json.loads(analysis_reuse_audit.read_text(encoding="utf-8"))
+        parity = json.loads(stage_parity_report.read_text(encoding="utf-8"))
+        totals = parity.get("totals") or {}
+        if (audit.get("status") != "PASS_CONTROLS"
+                or audit.get("dataset_hash") != dataset_manifest.dataset_hash
+                or audit.get("request_hash") != request.identity
+                or audit.get("source_cache_hash") != fingerprint(cache_manifest)
+                or audit.get("changes_hash") != fingerprint(changes)
+                or audit.get("holdout_evaluated") is not False
+                or len(audit.get("symbols", [])) != len(request.symbols)
+                or parity.get("dataset_hash") != dataset_manifest.dataset_hash
+                or parity.get("holdout_evaluated") is not False
+                or totals.get("boundaries") != expected
+                or any(totals.get(name) != 0 for name in (
+                    "stage_status_mismatches", "first_rejection_mismatches",
+                    "ready_geometry_mismatches"))):
+            raise ValueError("V3_ANALYSIS_REUSE_AUDIT_NOT_PASS")
+        reuse_audit_sha = _sha256(analysis_reuse_audit)
     identity = {"version": "candidate-native-signal-cache/3",
                 "dataset_hash": dataset_manifest.dataset_hash,
                 "request_hash": request.identity,
@@ -402,6 +441,7 @@ def build_native_candidate_signal_cache_v3(
                 "expected_boundaries": expected, "holdout_evaluated": False}
     if reuse_enriched_analysis:
         identity["analysis_reuse_mode"] = "ENRICHED_BASELINE_ANALYSIS"
+        identity["analysis_reuse_audit_sha256"] = reuse_audit_sha
     output.mkdir(parents=True, exist_ok=True)
     cost_path = cache / "PREVALIDATION_COST_MODEL_V3_2.json"
     cost_receipt_path = cost_path.with_suffix(".receipt.json")

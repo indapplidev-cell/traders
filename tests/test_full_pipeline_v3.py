@@ -145,7 +145,7 @@ def test_cached_analysis_requires_exact_boundary_and_is_consumed_once() -> None:
         setup={}, strategy={}, risk={}, paper={}, statuses={},
         feature_completeness={"analysis": True}, decision_hash="c" * 64,
     )
-    cached = full_pipeline_candidate_v3._CachedAnalysisRunnerV3()
+    cached = full_pipeline_candidate_v3._CachedAnalysisRunnerV3("research-v3-test")
     cached.set_boundary(source)
     with pytest.raises(ValueError, match="INPUT_MISMATCH"):
         cached.analyze_market_data_snapshot(SimpleNamespace(
