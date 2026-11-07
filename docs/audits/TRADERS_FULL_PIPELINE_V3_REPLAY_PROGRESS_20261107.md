@@ -17,7 +17,8 @@ The V2 aggregate cost model was fit through the dataset end and is unsuitable fo
 - Native candidate stage decisions can be checkpointed as compact signal shards. A new CLI action processes the certified pre-holdout cache sequentially with one worker; it records all stage statuses, first rejection and decision hash, and stores execution inputs only for ready plans.
 - A shard replay reader merges candidate signals and frozen 1m candles by global event time and validates source hashes. The current result is explicitly `REPLAY_NOT_VERIFIED` and `eligible_for_training=false`.
 - The shard reader now also carries closed 5m context and calls the native `analyze_position_exit` on positions after fill, with stop/target evaluated first. Missing causal context yields `DATA_UNAVAILABLE` rather than a fabricated exit. This integration has only synthetic focused-test coverage; full-history parity is pending.
-- Focused tests: 22 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` still has unrelated pre-existing Ruff findings; it compiles.
+- A `parity-v3` diagnostic command compares aligned stage statuses, first rejection and ready-plan geometry on every certified pre-holdout boundary. It validates partition hashes, never grants train eligibility, and will run only after the background native baseline signal pass finishes.
+- Focused tests: 23 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` still has unrelated pre-existing Ruff findings; it compiles.
 
 ## Remaining gates
 

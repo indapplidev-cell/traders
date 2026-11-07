@@ -735,7 +735,7 @@ def record_blocked_action(action: str, request_path: Path, dataset: Path, output
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Full causal scalping pipeline calibration")
-    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "train", "verify", "paper-canary"))
+    parser.add_argument("action", choices=("freeze", "baseline", "cache-v3", "candidate-signals-v3", "parity-v3", "train", "verify", "paper-canary"))
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--database-url")
@@ -784,6 +784,15 @@ def main(argv: Sequence[str] | None = None) -> None:
             args.request, args.dataset, args.cache, args.output, changes)
         print(f"FULL_PIPELINE_CANDIDATE_SIGNALS_V3 = {result['status']} "
               f"boundaries={result['completed_boundaries']}")
+        return
+    if args.action == "parity-v3":
+        if args.dataset is None or args.cache is None or args.candidate is None:
+            raise SystemExit("PARITY_V3_DATASET_CACHE_AND_SIGNALS_REQUIRED")
+        from .full_pipeline_parity_v3 import audit_native_stage_parity_v3
+        result = audit_native_stage_parity_v3(
+            args.request, args.dataset, args.cache, args.candidate, args.output)
+        print(f"FULL_PIPELINE_PARITY_V3 = {result['status']} "
+              f"boundaries={result['totals']['boundaries']}")
         return
     if args.action in {"baseline", "train"}:
         # Training is intentionally fail-closed until a frozen trace dataset from
