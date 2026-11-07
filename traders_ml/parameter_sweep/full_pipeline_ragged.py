@@ -39,6 +39,15 @@ INTERVAL_MS = {"1m": 60_000, "5m": 300_000, "15m": 900_000, "1h": 3_600_000}
 TIMEFRAMES = tuple(INTERVAL_MS)
 
 
+def _closed_boundary_count(start_ms: int, end_ms: int, interval_ms: int) -> int:
+    """Count aligned boundaries in the half-open interval [start_ms, end_ms)."""
+    if end_ms <= start_ms:
+        return 0
+    first = (start_ms + interval_ms - 1) // interval_ms
+    last = (end_ms - 1) // interval_ms
+    return max(0, last - first + 1)
+
+
 def _json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
@@ -123,7 +132,25 @@ def _cost_bucket(key: str, rows: Sequence[Mapping[str, Any]], *, fee_floor: floa
     )
 
 
-def fit_cost_model(connection: Any, request: FullPipelineCalibrationRequestV2) -> HistoricalCostModelV1:
+def fit_cost_model(
+    connection: Any, request: FullPipelineCalibrationRequestV2, *,
+    cutoff_ms: int | None = None, exclude_validation: bool = False,
+) -> HistoricalCostModelV1:
+    """Fit cost assumptions from explicitly permitted historical observations."""
+    end_ms = min(request.data_end_ms, cutoff_ms) if cutoff_ms is not None else request.data_end_ms
+    if end_ms <= request.data_start_ms:
+        raise ValueError("COST_MODEL_CUTOFF_BEFORE_START")
+    exclusions = ""
+    parameters: dict[str, Any] = {"start_ms": request.data_start_ms,
+                                  "end_ms": end_ms, "symbols": list(request.symbols)}
+    if exclude_validation:
+        for index, window in enumerate(request.windows):
+            if window.role != "VALIDATION" or window.start_ms >= end_ms:
+                continue
+            exclusions += (f" AND NOT (r.closed_until_ms>=:v{index}_start "
+                           f"AND r.closed_until_ms<:v{index}_end)")
+            parameters[f"v{index}_start"] = window.start_ms
+            parameters[f"v{index}_end"] = min(window.end_ms, end_ms)
     result = connection.execute(text("""
         SELECT r.symbol, r.closed_until_ms,
                COALESCE(r.analysis_payload_json->>'regime',
@@ -140,11 +167,7 @@ def fit_cost_model(connection: Any, request: FullPipelineCalibrationRequestV2) -
           AND u.paper_status='PAPER_PLAN_READY'
           AND r.closed_until_ms>=:start_ms AND r.closed_until_ms<:end_ms
           AND r.symbol=ANY(:symbols)
-    """), {
-        "start_ms": request.data_start_ms,
-        "end_ms": request.data_end_ms,
-        "symbols": list(request.symbols),
-    }).mappings()
+    """ + exclusions), parameters).mappings()
     rows = [dict(row) for row in result if row.get("entry_fee_bps") is not None]
     grouped: dict[str, list[dict[str, Any]]] = {"GLOBAL": rows}
     for row in rows:
@@ -263,7 +286,8 @@ def _symbol_coverage(connection: Any, request: FullPipelineCalibrationRequestV2,
     minimum_ms = request.minimum_segment_bars_5m * INTERVAL_MS["5m"]
     usable = [(start + warmup_ms, end) for start, end in (all_segments or ()) if end - start - warmup_ms >= minimum_ms]
     coverage_segments = tuple(CoverageSegmentV2(
-        start_ms=start, end_ms=end, rows_5m=max(0, (end - start) // INTERVAL_MS["5m"]),
+        start_ms=start, end_ms=end,
+        rows_5m=_closed_boundary_count(start, end, INTERVAL_MS["5m"]),
     ) for start, end in usable)
     raw_starts = [info["minimum"] for info in inventory.values() if info["minimum"] is not None]
     raw_ends = [info["maximum"] for info in inventory.values() if info["maximum"] is not None]
@@ -354,7 +378,10 @@ class HistoricalConservativeCostSource:
         self.regime: str | None = None
 
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs:
-        bucket, provenance = self.model.resolve(symbol, self.regime)
+        bucket, _ = self.model.resolve(symbol, self.regime)
+        # Bucket percentiles are fitted aggregates, not a timestamped market
+        # observation at this decision boundary. Never label them OBSERVED.
+        provenance = "MODELLED_CONSERVATIVE"
         return ShadowCostInputs(
             entry_fee_bps=bucket.entry_fee_bps, exit_fee_bps=bucket.exit_fee_bps,
             entry_slippage_bps=bucket.entry_slippage_bps,

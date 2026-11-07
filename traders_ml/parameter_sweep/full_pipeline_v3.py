@@ -40,6 +40,7 @@ from .full_pipeline_ragged import (
     INTERVAL_MS,
     HistoricalConservativeCostSource,
     HistoricalCostModelV1,
+    fit_cost_model,
 )
 from .historical_reconstruction import CausalCandleRepository, _load_candles
 
@@ -188,6 +189,51 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def build_prevalidation_cost_model_v3(
+    request_path: Path, dataset: Path, output: Path,
+    database_url: str | None = None,
+) -> dict[str, Any]:
+    """Derive research costs without querying validation or holdout rows."""
+    request = FullPipelineCalibrationRequestV2.model_validate_json(
+        request_path.read_text(encoding="utf-8"))
+    manifest = RaggedDatasetManifestV2.model_validate_json(
+        (dataset / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+    if manifest.status != "FROZEN" or manifest.request_hash != request.identity:
+        raise ValueError("V3_COST_MODEL_FROZEN_DATASET_MISMATCH")
+    cutoff_ms = max(window.start_ms for window in request.windows
+                    if window.role == "VALIDATION")
+    receipt_path = output.with_suffix(".receipt.json")
+    if output.exists() or receipt_path.exists():
+        if not output.exists() or not receipt_path.exists():
+            raise ValueError("V3_COST_MODEL_INCOMPLETE_OUTPUT")
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        if (receipt.get("dataset_hash") != manifest.dataset_hash
+                or receipt.get("request_hash") != request.identity
+                or receipt.get("cutoff_ms") != cutoff_ms
+                or receipt.get("sha256") != _sha256(output)):
+            raise ValueError("V3_COST_MODEL_IDENTITY_MISMATCH")
+        return receipt
+    database = ReadOnlyResearchDatabase(resolve_database_binding(explicit_url=database_url))
+    try:
+        with database.connection() as connection:
+            model = fit_cost_model(connection, request, cutoff_ms=cutoff_ms,
+                                   exclude_validation=True)
+    finally:
+        database.dispose()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(output, model.model_dump(mode="json"))
+    receipt = {"version": "prevalidation-cost-model/3",
+               "dataset_hash": manifest.dataset_hash,
+               "request_hash": request.identity, "cutoff_ms": cutoff_ms,
+               "excluded_validation_windows": [window.name for window in request.windows
+                                               if window.role == "VALIDATION"],
+               "observed_rows": model.observed_rows,
+               "model_hash": model.identity, "sha256": _sha256(output),
+               "holdout_evaluated": False}
+    _write_json(receipt_path, receipt)
+    return receipt
 
 
 def _write_json(path: Path, payload: Any) -> None:

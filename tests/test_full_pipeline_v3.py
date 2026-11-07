@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
 from app.config.trade_parameters import load_trade_parameters
 from app.engine_market_data.candle import Candle
+from traders_ml.parameter_sweep import full_pipeline_candidate_v3
 from traders_ml.parameter_sweep.full_pipeline import fingerprint
 from traders_ml.parameter_sweep.full_pipeline_candidate_v3 import _frozen_candles
 from traders_ml.parameter_sweep.full_pipeline_v3 import (
@@ -36,6 +39,37 @@ def test_costs_are_separate_and_reconcile() -> None:
     assert ledger.gross_pnl - sum((ledger.entry_fee, ledger.exit_fee, ledger.spread,
         ledger.entry_slippage, ledger.exit_slippage, ledger.depth_impact,
         ledger.reserve)) == pytest.approx(ledger.net_pnl)
+
+
+def test_compact_candidate_signal_receipt_and_resume(tmp_path, monkeypatch) -> None:
+    root = tmp_path / "cache"
+    partition = root / "symbols" / "BTCUSDT" / "1000"
+    partition.mkdir(parents=True)
+    (partition / "DONE.json").write_text(json.dumps({"sha256": "a" * 64,
+                                                      "boundaries": 2}), encoding="utf-8")
+    candidate_hash = resolve_research_parameter_set_v3(
+        load_trade_parameters().resolve_scalping_v2_parameter_set(), {}).resolved_config_hash
+    decisions = [SimpleNamespace(
+        symbol="BTCUSDT", boundary_ms=1000 + index * 300_000,
+        statuses={"paper_status": "NO_PLAN"}, first_rejection="NO_SETUP",
+        decision_hash="b" * 64, analysis_parameter_hash=candidate_hash,
+        paper={},
+    ) for index in range(2)]
+    monkeypatch.setattr(full_pipeline_candidate_v3, "native_candidate_decisions_v3",
+                        lambda *args, **kwargs: iter(decisions))
+    request = Path(__file__).resolve().parents[1] / "config/research/full_pipeline_calibration_v2.json"
+    dataset = Path(__file__).resolve().parents[1] / "artifacts/full_pipeline_calibration/ragged_freeze_20261102_v1"
+    output = tmp_path / "signals.jsonl"
+    receipt = full_pipeline_candidate_v3.write_native_candidate_signals_v3(
+        request, dataset, root, partition, {}, output)
+    assert receipt["boundaries"] == 2
+    assert receipt["holdout_evaluated"] is False
+    assert len(output.read_text(encoding="utf-8").splitlines()) == 2
+    assert full_pipeline_candidate_v3.write_native_candidate_signals_v3(
+        request, dataset, root, partition, {}, output) == receipt
+    output.with_suffix(".json").unlink()
+    assert full_pipeline_candidate_v3.write_native_candidate_signals_v3(
+        request, dataset, root, partition, {}, output) == receipt
 
 
 def test_future_cost_snapshot_is_rejected() -> None:

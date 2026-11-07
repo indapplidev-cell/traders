@@ -7,11 +7,14 @@ import pytest
 from traders_ml.parameter_sweep.full_pipeline import FullPipelineCalibrationRequestV2
 from traders_ml.parameter_sweep.full_pipeline_ragged import (
     FullPipelineReplayEngineV1,
+    HistoricalConservativeCostSource,
     HistoricalCostBucketV1,
     HistoricalCostModelV1,
+    _closed_boundary_count,
     _intersect,
     _training_validation_rows,
     _truncate_to_checkpoint,
+    fit_cost_model,
 )
 from traders_ml.parameter_sweep.historical_replay import gate_candidate
 
@@ -35,6 +38,63 @@ def test_segment_intersection_keeps_only_common_causal_ranges():
     assert _intersect([(0, 10), (20, 40)], [(5, 25), (30, 35)]) == [
         (5, 10), (20, 25), (30, 35),
     ]
+
+
+def test_closed_boundary_count_respects_alignment_and_exclusive_end():
+    step = 300_000
+    assert _closed_boundary_count(0, 3 * step - 1, step) == 3
+    assert _closed_boundary_count(60_000, 3 * step - 1, step) == 2
+    assert _closed_boundary_count(0, step, step) == 1
+    assert _closed_boundary_count(step, step, step) == 0
+
+
+def test_v3_cost_fit_query_excludes_all_validation_and_holdout():
+    request = FullPipelineCalibrationRequestV2.model_validate_json(
+        REQUEST.read_text(encoding="utf-8"))
+
+    class EmptyRows:
+        def mappings(self):
+            return iter(())
+
+    class Connection:
+        statement = None
+        parameters = None
+
+        def execute(self, statement, parameters):
+            self.statement = str(statement)
+            self.parameters = parameters
+            return EmptyRows()
+
+    connection = Connection()
+    cutoff = next(window.start_ms for window in request.windows
+                  if window.name == "FINAL_VALIDATION")
+    model = fit_cost_model(connection, request, cutoff_ms=cutoff,
+                           exclude_validation=True)
+    assert connection.parameters["end_ms"] == cutoff
+    assert connection.parameters["v0_start"] == request.windows[0].start_ms
+    assert connection.parameters["v1_start"] == request.windows[1].start_ms
+    assert connection.parameters["v2_start"] == request.windows[2].start_ms
+    assert "v3_start" not in connection.parameters
+    assert "AND NOT" in connection.statement
+    assert model.observed_rows == 0
+
+
+def test_aggregate_cost_bucket_is_modelled_at_decision_time():
+    model = HistoricalCostModelV1(
+        observed_rows=100,
+        buckets={"GLOBAL": HistoricalCostBucketV1(
+            key="GLOBAL", sample_size=100, entry_fee_bps=10,
+            exit_fee_bps=10, spread_bps=5, entry_slippage_bps=2,
+            exit_slippage_bps=2, reserve_bps=3),
+                 "SYMBOL:BTCUSDT": HistoricalCostBucketV1(
+            key="SYMBOL:BTCUSDT", sample_size=100, entry_fee_bps=10,
+            exit_fee_bps=10, spread_bps=5, entry_slippage_bps=2,
+            exit_slippage_bps=2, reserve_bps=3)},
+    )
+    source = HistoricalConservativeCostSource(model)
+    source.boundary_ms = 12345
+    costs = source.load("BTCUSDT", 100, safety_margin_bps=3)
+    assert "MODELLED_CONSERVATIVE" in costs.fee_source
 
 
 def test_conservative_cost_model_uses_symbol_then_global_fallback():
