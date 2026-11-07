@@ -102,6 +102,16 @@ def test_research_candidate_is_native_and_does_not_change_baseline() -> None:
     assert candidate.parameters.signal.strategy_minimum_score == old + 1
     assert baseline.parameters.signal.strategy_minimum_score == old
     assert candidate.resolved_config_hash != baseline.resolved_config_hash
+    weights = baseline.parameters.signal.entry_score_weights.model_dump()
+    weights["structure"] -= 1
+    weights["context"] += 1
+    weighted = resolve_research_parameter_set_v3(
+        baseline, {"entry_score_weights": weights,
+                   "analytical_exit_exit_threshold": 60},
+    )
+    assert weighted.parameters.signal.entry_score_weights.structure == weights["structure"]
+    assert weighted.parameters.exit_policy.analytical_exit.exit_threshold == 60
+    assert baseline.parameters.exit_policy.analytical_exit.exit_threshold != 60
     with pytest.raises(ValueError, match="UNSUPPORTED_NATIVE_PARAMETER"):
         resolve_research_parameter_set_v3(baseline, {"entry_slippage_bps": 0})
 

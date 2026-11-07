@@ -134,6 +134,7 @@ class HistoricalCostLedgerV3(Contract):
 # costs are intentionally absent: they are observed/modelled data, not knobs.
 NATIVE_PARAMETER_PATHS_V3: dict[str, str] = {
     "strategy_minimum_score": "signal.strategy_minimum_score",
+    "entry_score_weights": "signal.entry_score_weights",
     "atr_multiplier": "geometry.atr_multiplier",
     "stop_max_bps": "geometry.stop_max_bps",
     "target_min_bps": "geometry.target_min_bps",
@@ -152,6 +153,13 @@ NATIVE_PARAMETER_PATHS_V3: dict[str, str] = {
     "hard_timeout_seconds": "exit_policy.stale_position.hard_timeout_seconds",
     "extension_seconds": "exit_policy.stale_position.extension_seconds",
     "max_extensions": "exit_policy.stale_position.max_extensions",
+    "analytical_exit_weights": "exit_policy.analytical_exit.weights",
+    "analytical_exit_at_risk_threshold": "exit_policy.analytical_exit.at_risk_threshold",
+    "analytical_exit_exit_threshold": "exit_policy.analytical_exit.exit_threshold",
+    "analytical_exit_strong_reversal_threshold": "exit_policy.analytical_exit.strong_reversal_threshold",
+    "analytical_exit_confirmation_boundaries": "exit_policy.analytical_exit.confirmation_boundaries",
+    "analytical_exit_profit_protection_progress": "exit_policy.analytical_exit.profit_protection_target_progress",
+    "analytical_exit_profit_lock_buffer_bps": "exit_policy.analytical_exit.profit_lock_buffer_bps",
 }
 
 

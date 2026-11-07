@@ -106,7 +106,8 @@ def run_preholdout_role_v3(
         policy=ReplayPolicyV3.from_parameters(candidate.parameters),
         cost_model=cost_model, initial_equity=request.initial_equity,
         role_start_ms=start_ms, role_end_ms=end_ms,
-        holdout_start_ms=holdout_start)
+        holdout_start_ms=holdout_start,
+        analytical_policy=candidate.parameters.exit_policy.analytical_exit)
     result.update({"version": "preholdout-portfolio-replay/3", "role": role_name,
                    "role_start_ms": start_ms, "role_end_ms": end_ms,
                    "dataset_hash": frozen.dataset_hash,

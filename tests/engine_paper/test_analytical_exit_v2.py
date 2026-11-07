@@ -90,6 +90,20 @@ def test_single_indicator_cannot_reach_exit_threshold():
     assert result.component_scores["technical_indicators"] < 70
 
 
+def test_research_policy_changes_exit_classification_without_global_mutation():
+    default = classify_analytical_exit(
+        exit_score=65, strong_reversal=False, prior_exit_scores=(65,),
+        net_positive=False, target_progress=0,
+    )
+    policy = AnalyticalExitParameters(exit_threshold=60)
+    changed = classify_analytical_exit(
+        exit_score=65, strong_reversal=False, prior_exit_scores=(65,),
+        net_positive=False, target_progress=0, policy=policy,
+    )
+    assert default[0] is not AnalyticalExitDecision.ANALYTICAL_EXIT
+    assert changed[0] is AnalyticalExitDecision.ANALYTICAL_EXIT
+
+
 def test_analytical_exit_is_authoritative_for_paper_by_default():
     policy = AnalyticalExitParameters()
     assert policy.enabled is True

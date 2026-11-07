@@ -13,7 +13,11 @@ from enum import StrEnum
 from time import perf_counter
 from typing import Iterable
 
-from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.config.trade_parameters import (
+    SCALPING_V2,
+    TRADE_PARAMETERS,
+    AnalyticalExitParameters,
+)
 from app.engine_analysis import AnalysisWindowConfig, EngineAnalysisCandle, run_engine_analysis
 from app.engine_analysis.independent_expert import exit_components as expert_exit_components
 from app.engine_market_data.candle import Candle
@@ -145,8 +149,9 @@ def classify_analytical_exit(
     *, exit_score: float, strong_reversal: bool,
     prior_exit_scores: tuple[float, ...], net_positive: bool,
     target_progress: float,
+    policy: AnalyticalExitParameters | None = None,
 ) -> tuple[AnalyticalExitDecision, tuple[str, ...], int]:
-    policy = SCALPING_V2.exit_policy.analytical_exit
+    policy = policy or SCALPING_V2.exit_policy.analytical_exit
     confirmations = sum(
         value >= policy.exit_threshold
         for value in prior_exit_scores[-(policy.confirmation_boundaries - 1):]
@@ -180,9 +185,10 @@ def analyze_position_exit(
     gross_pnl: Decimal | None = None, net_pnl: Decimal | None = None,
     net_pnl_bps: float | None = None,
     runtime_revision: str | None = None,
+    policy: AnalyticalExitParameters | None = None,
 ) -> ExitEvidenceV2:
     started = perf_counter()
-    policy = SCALPING_V2.exit_policy.analytical_exit
+    policy = policy or SCALPING_V2.exit_policy.analytical_exit
     one = _causal_series(candles_1m, "1m", boundary_ms)
     five_boundary = (boundary_ms // 300_000) * 300_000
     five = _causal_series(candles_5m, "5m", five_boundary)
@@ -293,6 +299,7 @@ def analyze_position_exit(
             prior_exit_scores=prior_exit_scores,
             net_positive=protected_profit,
             target_progress=progress,
+            policy=policy,
         )
         return ExitEvidenceV2(
             CONTRACT_VERSION, position_id, symbol, side, boundary_ms,

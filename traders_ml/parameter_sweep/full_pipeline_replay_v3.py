@@ -16,7 +16,7 @@ from heapq import merge
 from pathlib import Path
 from typing import Any
 
-from app.config.trade_parameters import ScalpingV2Parameters
+from app.config.trade_parameters import AnalyticalExitParameters, ScalpingV2Parameters
 from app.engine_analysis import AnalysisWindowConfig
 from app.engine_paper.analytical_exit import (
     AnalyticalExitDecision,
@@ -321,6 +321,7 @@ def replay_signal_shards_v3(
     holdout_start_ms: int,
     analytical_exit: Callable[[str, Mapping[str, Any], Mapping[str, Any]], str | None]
     | None = None,
+    analytical_policy: AnalyticalExitParameters | None = None,
 ) -> dict[str, Any]:
     """Merge certified per-symbol native signals and frozen 1m candles."""
     if role_start_ms >= role_end_ms or role_end_ms > holdout_start_ms or not shards:
@@ -355,6 +356,7 @@ def replay_signal_shards_v3(
             prior_exit_scores=tuple(prior_scores[identity]),
             gross_pnl=gross, net_pnl=net,
             net_pnl_bps=float(net / Decimal(str(position["notional"])) * 10_000),
+            policy=analytical_policy,
         )
         if evidence.decision not in {AnalyticalExitDecision.DATA_UNAVAILABLE,
                                      AnalyticalExitDecision.ERROR}:
