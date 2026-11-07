@@ -18,7 +18,9 @@ The V2 aggregate cost model was fit through the dataset end and is unsuitable fo
 - A shard replay reader merges candidate signals and frozen 1m candles by global event time and validates source hashes. The current result is explicitly `REPLAY_NOT_VERIFIED` and `eligible_for_training=false`.
 - The shard reader now also carries closed 5m context and calls the native `analyze_position_exit` on positions after fill, with stop/target evaluated first. Missing causal context yields `DATA_UNAVAILABLE` rather than a fabricated exit. This integration has only synthetic focused-test coverage; full-history parity is pending.
 - A `parity-v3` diagnostic command compares aligned stage statuses, first rejection and ready-plan geometry on every certified pre-holdout boundary. It validates partition hashes, never grants train eligibility, and will run only after the background native baseline signal pass finishes.
-- Focused tests: 23 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` still has unrelated pre-existing Ruff findings; it compiles.
+- A `replay-v3` diagnostic command now requires complete candidate shards, matching source and cost-model hashes, and a named pre-holdout calendar role. It separates train spans from all validation intervals and refuses an internal holdout role. The corrected native signal pass has not completed, so no full-history role replay has been accepted.
+- The resume path now locks the V3_2 cost-model hash. The already running corrected pass received the matching lock artifact before this code change; a later resume must verify it. The lifecycle also prevents a fill exactly at the role end and evaluates analytical-exit cost with the position's regime.
+- Focused tests: 27 passed. Ruff passes on changed v3 modules and focused tests. The legacy `full_pipeline.py` still has unrelated pre-existing Ruff findings; it compiles.
 
 ## Remaining gates
 
